@@ -1,0 +1,13 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "~/libdragon/mips64-elf/include/**"
+            ]
+        
+        }
+    ],
+    "version": 4
+}
