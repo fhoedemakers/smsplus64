@@ -1,4 +1,4 @@
-all: infones64.z64
+all: smsPlus64.z64
 	@echo "Builded $(if $(RELEASE),release,debug)"
 .PHONY: all
 
@@ -11,13 +11,13 @@ else
 include n64.mk
 endif
 # add current folder and infones subfolder to include path
-INCDIR = -I. -Iinfones -Iassets
+INCDIR = -I. -Ismsplus -Iassets
 # add INCDIR to CFLAGS
-CFLAGS += $(INCDIR)
+CFLAGS += $(INCDIR) -DLSB_FIRST=0
 # add INCDIR to CXXFLAGS
-CXXFLAGS += $(INCDIR)
+CXXFLAGS += $(INCDIR) -DLSB_FIRST=0
 
-SUBDIRS = $(SOURCE_DIR) $(SOURCE_DIR)/infones $(SOURCE_DIR)/assets
+SUBDIRS = $(SOURCE_DIR) $(SOURCE_DIR)/smsplus $(SOURCE_DIR)/assets
 #$(BUILD_DIR)/%.o: %.c 
 # 	@mkdir -p $(dir $@)
 # 	@echo "    [CC] $<"
@@ -31,11 +31,11 @@ vpath %.cpp $(SUBDIRS)
 vpath %.c $(SUBDIRS)
 # 
 
-OBJS = $(BUILD_DIR)/infones64.o $(BUILD_DIR)/InfoNES.o $(BUILD_DIR)/tar.o $(BUILD_DIR)/InfoNES_Mapper.o  $(BUILD_DIR)/InfoNES_pAPU.o $(BUILD_DIR)/K6502.o $(BUILD_DIR)/builtinrom.o 
+OBJS = $(BUILD_DIR)/smsPlus64.o $(BUILD_DIR)/loadrom.o $(BUILD_DIR)/render.o $(BUILD_DIR)/sms.o  $(BUILD_DIR)/sn76496.o $(BUILD_DIR)/system.o $(BUILD_DIR)/vdp.o $(BUILD_DIR)/z80.o $(BUILD_DIR)/builtinrom.o 
 
-infones64.z64: N64_ROM_TITLE = "InfoNES NES emulator"
+smsPlus64.z64: N64_ROM_TITLE = "SMSPlus emulator"
 
-$(BUILD_DIR)/infones64.elf: $(OBJS)
+$(BUILD_DIR)/smsPlus64.elf: $(OBJS)
 
 clean:
 	rm -rf $(BUILD_DIR) *.z64

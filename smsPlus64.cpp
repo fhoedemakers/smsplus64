@@ -151,6 +151,7 @@ extern "C" void sms_render_line(int line, const uint8_t *buffer)
     // Audio needs to be processed per scanline
 
     processaudio(line);
+#if 0
     // Adjust line number to center the emulator display
     line += MARGINTOP;
     // Only render lines that are visible on the screen, keeping into account top and bottom margins
@@ -195,7 +196,8 @@ extern "C" void sms_render_line(int line, const uint8_t *buffer)
             }
         }
     }
-    // dvi_->setLineBuffer(line, b);
+    dvi_->setLineBuffer(line, b);
+#endif
 }
 
 void system_load_sram(void)

@@ -1,13 +1,8 @@
 fh.log
 **/*.z64
 # you need to provide your own roms
-assets/smb3.c
-assets/galaga.c
-assets/CV1.c
-assets/CV2.c
-assets/CV3.c
-assets/smb.c
-**/*.nes
+assets/sonic.c
+**/*.gg
 #
 /pimoroni-pico/
 # Prerequisites
