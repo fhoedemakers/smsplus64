@@ -10,9 +10,12 @@
 #include "menu.h"
 
 #include "FrensHelpers.h"
+#include "libdragon.h"
 
 #define ERRORMESSAGESIZE 40
 #define GAMESAVEDIR "/SAVES"
+
+surface_t *_dc;
 
 char *ErrorMessage;
 bool isFatalError = false;
@@ -356,8 +359,11 @@ void process(void)
     DWORD pdwPad1, pdwPad2, pdwSystem; // have only meaning in menu
     while (reset == false)
     {
+        debugf("Frame %d\n", framecounter);
         processinput(&pdwPad1, &pdwPad2, &pdwSystem, false);
+        _dc = display_get();
         sms_frame(0);
+        display_show(_dc);
         ProcessAfterFrameIsRendered();
     }
 }
@@ -381,12 +387,21 @@ int main()
    
     printf("Starting Master System Emulator\n");
 
+    debug_init(DEBUG_FEATURE_LOG_ISVIEWER);
+    debugf("Starting SmsPlus 64, a Sega Master System emulator for the Nintendo 64\n");
+    debugf("Built on %s %s using libdragon\n", __DATE__, __TIME__);
+    debugf("Now running %s\n", GetBuiltinROMName());
+
+    /* Initialize peripherals */
+    display_init(RESOLUTION_256x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
+    // register_VI_handler(vblCallback);
+    controller_init();
 
     if ((isFatalError = !initSDCard()) == false)
     {
         
     }
-    
+
     while (true)
     {
 #if 0
@@ -404,6 +419,5 @@ int main()
         process();
         romName[0] = 0;
     }
-
     return 0;
 }

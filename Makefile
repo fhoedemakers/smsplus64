@@ -13,9 +13,9 @@ endif
 # add current folder and infones subfolder to include path
 INCDIR = -I. -Ismsplus -Iassets
 # add INCDIR to CFLAGS
-CFLAGS += $(INCDIR) -DLSB_FIRST=0
+CFLAGS += $(INCDIR) # -DLSB_FIRST=0
 # add INCDIR to CXXFLAGS
-CXXFLAGS += $(INCDIR) -DLSB_FIRST=0
+CXXFLAGS += $(INCDIR) #-DLSB_FIRST=0
 
 SUBDIRS = $(SOURCE_DIR) $(SOURCE_DIR)/smsplus $(SOURCE_DIR)/assets
 #$(BUILD_DIR)/%.o: %.c 

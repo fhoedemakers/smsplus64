@@ -40,7 +40,7 @@ void system_init(int rate) {
     render_init();
 
     /* Enable sound emulation if the sample rate was specified */
-    audio_init(rate);
+    sms_audio_init(rate);
 
     /* Don't save SRAM by default */
     sms.save = 0;
@@ -49,7 +49,7 @@ void system_init(int rate) {
     __builtin_memset(&input, 0, sizeof(t_input));
 }
 
-void audio_init(int rate) {
+void sms_audio_init(int rate) {
     /* Clear sound context */
     __builtin_memset(&snd, 0, sizeof(t_snd));
 

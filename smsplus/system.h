@@ -96,6 +96,6 @@ void system_save_state(void *fd);
 
 void system_load_state(void *fd);
 
-void audio_init(int rate);
+void sms_audio_init(int rate);
 
 #endif /* _SYSTEM_H_ */
