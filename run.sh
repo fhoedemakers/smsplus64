@@ -1,2 +1,2 @@
 :
-~/projects/public/ares-137/desktop-ui/out/ares smsPlus.z64
+~/projects/public/ares-137/desktop-ui/out/ares smsPlus64.z64

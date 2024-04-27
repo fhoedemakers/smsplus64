@@ -9,7 +9,7 @@
             "request": "attach",
             "name": "Attach to gdbserver",
             "gdbpath": "/usr/bin/gdb-multiarch",
-            "executable": "./build/infones64.elf",
+            "executable": "./build/smsPlus64.elf",
             "target": "localhost:9123",
             "remote": true,
             "printCalls": true,

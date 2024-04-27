@@ -4,7 +4,6 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-
 #include "shared.h"
 #include "mytypes.h"
 #include "menu.h"
@@ -15,6 +14,33 @@
 #define ERRORMESSAGESIZE 40
 #define GAMESAVEDIR "/SAVES"
 
+/* hardware definitions */
+// Pad buttons
+#define A_BUTTON(a) ((a) & 0x8000)
+#define B_BUTTON(a) ((a) & 0x4000)
+#define Z_BUTTON(a) ((a) & 0x2000)
+#define START_BUTTON(a) ((a) & 0x1000)
+
+// D-Pad
+#define DU_BUTTON(a) ((a) & 0x0800)
+#define DD_BUTTON(a) ((a) & 0x0400)
+#define DL_BUTTON(a) ((a) & 0x0200)
+#define DR_BUTTON(a) ((a) & 0x0100)
+
+// Triggers
+#define TL_BUTTON(a) ((a) & 0x0020)
+#define TR_BUTTON(a) ((a) & 0x0010)
+
+// Yellow C buttons
+#define CU_BUTTON(a) ((a) & 0x0008)
+#define CD_BUTTON(a) ((a) & 0x0004)
+#define CL_BUTTON(a) ((a) & 0x0002)
+#define CR_BUTTON(a) ((a) & 0x0001)
+
+#define PAD_DEADZONE 5
+#define PAD_ACCELERATION 10
+#define PAD_CHECK_TIME 40
+
 surface_t *_dc;
 
 char *ErrorMessage;
@@ -23,23 +49,17 @@ bool isFatalError = false;
 char romName[256];
 
 static bool fps_enabled = false;
-static uint32_t start_tick_us = 0;
-static uint32_t fps = 0;
-static char fpsString[3] = "00";
-#define fpsfgcolor 0;     // black
-#define fpsbgcolor 0xFFF; // white
-
-#define MARGINTOP 24
-#define MARGINBOTTOM 4
-
-#define FPSSTART (((MARGINTOP + 7) / 8) * 8)
-#define FPSEND ((FPSSTART) + 8)
 
 bool reset = false;
+
+bool controller1IsInserted = false;
+bool controller2IsInserted = false;
 
 // The Sega Master system color palette converted to RGB444
 // so it can be used with the DVI library.
 // from https://segaretro.org/Palette
+
+#if 0
 WORD SMSPaletteRGB444[64] = {
     0x0, 0x500, 0xA00, 0xF00, 0x50, 0x550, 0xA50, 0xF50,
     0xA0, 0x5A0, 0xAA0, 0xFA0, 0xF0, 0x5F0, 0xAF0, 0xFF0,
@@ -49,8 +69,7 @@ WORD SMSPaletteRGB444[64] = {
     0xAA, 0x5AA, 0xAAA, 0xFAA, 0xFA, 0x5FA, 0xAFA, 0xFFA,
     0xF, 0x50F, 0xA0F, 0xF0F, 0x5F, 0x55F, 0xA5F, 0xF5F,
     0xAF, 0x5AF, 0xAAF, 0xFAF, 0xFF, 0x5FF, 0xAFF, 0xFFF};
-
-
+#endif
 
 bool initSDCard()
 {
@@ -102,23 +121,26 @@ void processaudio(int offset)
 #endif
 }
 
-
+#define RGB888_TO_RGB5551(r, g, b) (((r >> 3) << 11) | ((g >> 3) << 6) | ((b >> 3) << 1) | 1)
 extern "C" void sms_palette_syncGG(int index)
 {
     // The GG has a different palette format
     int r = ((vdp.cram[(index << 1) | 0] >> 1) & 7) << 5;
     int g = ((vdp.cram[(index << 1) | 0] >> 5) & 7) << 5;
     int b = ((vdp.cram[(index << 1) | 1] >> 1) & 7) << 5;
-   
+#if 0
     int r444 = ((r << 4) + 127) >> 8; // equivalent to (r888 * 15 + 127) / 255
     int g444 = ((g << 4) + 127) >> 8; // equivalent to (g888 * 15 + 127) / 255
     int b444 = ((b << 4) + 127) >> 8;
     palette444[index] = (r444 << 8) | (g444 << 4) | b444;
+#endif
+    palette444[index] = RGB888_TO_RGB5551(r, g, b);
+    return;
 }
 
 extern "C" void sms_palette_sync(int index)
 {
-#if 1
+#if 0
     // Get SMS palette color index from CRAM
     WORD r = ((vdp.cram[index] >> 0) & 3);
     WORD g = ((vdp.cram[index] >> 2) & 3);
@@ -126,81 +148,57 @@ extern "C" void sms_palette_sync(int index)
     WORD tableIndex = b << 4 | g << 2 | r;
     // Get the RGB444 color from the SMS RGB444 palette
     palette444[index] = SMSPaletteRGB444[tableIndex];
-#endif 
+#endif
 
-#if 0
+#if 1
     // Alternative color rendering below
     WORD r = ((vdp.cram[index] >> 0) & 3) << 6;
     WORD g = ((vdp.cram[index] >> 2) & 3) << 6;
     WORD b = ((vdp.cram[index] >> 4) & 3) << 6;
+#if 0
     int r444 = ((r << 4) + 127) >> 8; // equivalent to (r888 * 15 + 127) / 255
     int g444 = ((g << 4) + 127) >> 8; // equivalent to (g888 * 15 + 127) / 255
     int b444 = ((b << 4) + 127) >> 8;
     palette444[index] = (r444 << 8) | (g444 << 4) | b444;
+#endif
+    palette444[index] = RGB888_TO_RGB5551(r, g, b);
 #endif
     return;
 }
 
 extern "C" void sms_render_line(int line, const uint8_t *buffer)
 {
-    // DVI top margin has #MARGINTOP lines
-    // DVI bottom margin has #MARGINBOTTOM lines
-    // DVI usable screen estate: MARGINTOP .. (240 - #MARGINBOTTOM)
     // SMS has 192 lines
     // GG  has 144 lines
     // gg : Line starts at line 24
     // sms: Line starts at line 0
     // Emulator loops from scanline 0 to 261
     // Audio needs to be processed per scanline
-
     processaudio(line);
-#if 0
-    // Adjust line number to center the emulator display
-    line += MARGINTOP;
-    // Only render lines that are visible on the screen, keeping into account top and bottom margins
-    if (line < MARGINTOP || line >= 240 - MARGINBOTTOM)
-        return;
-
-    auto b = dvi_->getLineBuffer();
-    uint16_t *sbuffer;
-    if (buffer)
+    if (IS_GG)
     {
-        uint16_t *sbuffer = b->data() + 32 + (IS_GG ? 48 : 0);
-        for (int i = screenCropX; i < BMP_WIDTH - screenCropX; i++)
+        if (line < 24 || line >= 168)
         {
-            sbuffer[i - screenCropX] = palette444[(buffer[i + BMP_X_OFFSET]) & 31];
+            return;
         }
     }
     else
     {
-        sbuffer = b->data() + 32;
-        __builtin_memset(sbuffer, 0, 512);
-    }
-    // Display frame rate
-    if (fps_enabled && line >= FPSSTART && line < FPSEND)
-    {
-        WORD *fpsBuffer = b->data() + 40;
-        int rowInChar = line % 8;
-        for (auto i = 0; i < 2; i++)
+        if (line >= 192)
         {
-            char firstFpsDigit = fpsString[i];
-            char fontSlice = getcharslicefrom8x8font(firstFpsDigit, rowInChar);
-            for (auto bit = 0; bit < 8; bit++)
-            {
-                if (fontSlice & 1)
-                {
-                    *fpsBuffer++ = fpsfgcolor;
-                }
-                else
-                {
-                    *fpsBuffer++ = fpsbgcolor;
-                }
-                fontSlice >>= 1;
-            }
+            return;
         }
     }
-    dvi_->setLineBuffer(line, b);
-#endif
+    // debugf("\tLine %d, ISGG: %d\n", line, IS_GG);
+
+    if (buffer)
+    {
+        WORD *framebufferline = ((WORD *)(_dc)->buffer) + (line << 8) + (IS_GG ? 48 : 0);
+        for (int i = screenCropX; i < BMP_WIDTH - screenCropX; i++)
+        {
+            framebufferline[i - screenCropX] = palette444[(buffer[i + BMP_X_OFFSET]) & 31];
+        }
+    }
 }
 
 void system_load_sram(void)
@@ -228,66 +226,75 @@ void system_save_state()
 }
 
 int framecounter = 0;
+int framedisplay = 0;
 int ProcessAfterFrameIsRendered()
 {
 
+    char buffer[10];
+    sprintf(buffer, "%d", framedisplay);
+    if (IS_GG)
+    {
+        graphics_draw_text(_dc, 48, 24, buffer);
+    }
+    else
+    {
+        graphics_draw_text(_dc, 5, 5, buffer);
+    }
     // Frame rate calculation
     if (fps_enabled)
     {
-        
     }
     return framecounter++;
 }
+
+#define OTHER_BUTTON1 (0b1)
+#define OTHER_BUTTON2 (0b10)
 
 static DWORD prevButtons[2]{};
 static DWORD prevButtonssystem[2]{};
 static DWORD prevOtherButtons[2]{};
 
-#define OTHER_BUTTON1 (0b1)
-#define OTHER_BUTTON2 (0b10)
-
-#define NESPAD_SELECT (0x04)
-#define NESPAD_START (0x08)
-#define NESPAD_UP (0x10)
-#define NESPAD_DOWN (0x20)
-#define NESPAD_LEFT (0x40)
-#define NESPAD_RIGHT (0x80)
-#define NESPAD_A (0x01)
-#define NESPAD_B (0x02)
-
+struct controller_data gKeys;
 static int rapidFireMask[2]{};
 static int rapidFireCounter = 0;
 void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorepushed)
 {
+    controller_scan();
+    gKeys = get_keys_pressed();
+
     // pwdPad1 and pwdPad2 are only used in menu and are only set on first push
     *pdwPad1 = *pdwPad2 = *pdwSystem = 0;
 
     int smssystem[2]{};
     unsigned long pushed, pushedsystem, pushedother;
-    for (int i = 0; i < 2; i++)
+    for (int i = 0; i < 1; i++)
     {
-        int nespadbuttons = 0;
+        if ((i == 0 && controller1IsInserted == false) ||
+            (i == 1 && controller2IsInserted == false))
+        {
+            continue;
+        }
         auto &dst = (i == 0) ? *pdwPad1 : *pdwPad2;
-        int smsbuttons = 0;
-        int otherButtons = 0;
-#if 0
-        auto &gp = io::getCurrentGamePadState(i);
-        int smsbuttons = (gp.buttons & io::GamePadState::Button::LEFT ? INPUT_LEFT : 0) |
-                         (gp.buttons & io::GamePadState::Button::RIGHT ? INPUT_RIGHT : 0) |
-                         (gp.buttons & io::GamePadState::Button::UP ? INPUT_UP : 0) |
-                         (gp.buttons & io::GamePadState::Button::DOWN ? INPUT_DOWN : 0) |
-                         (gp.buttons & io::GamePadState::Button::A ? INPUT_BUTTON1 : 0) |
-                         (gp.buttons & io::GamePadState::Button::B ? INPUT_BUTTON2 : 0) | 0;
-        int otherButtons = (gp.buttons & io::GamePadState::Button::X ? OTHER_BUTTON1 : 0) |
-                           (gp.buttons & io::GamePadState::Button::Y ? OTHER_BUTTON2 : 0) | 0;
+
+        auto gp = gKeys.c[i].data >> 16;
+
+        int smsbuttons = (DL_BUTTON(gp) ? INPUT_LEFT : 0) |
+                         (DR_BUTTON(gp) ? INPUT_RIGHT : 0) |
+                         (DU_BUTTON(gp) ? INPUT_UP : 0) |
+                         (DD_BUTTON(gp) ? INPUT_DOWN : 0) |
+                         (A_BUTTON(gp) ? INPUT_BUTTON1 : 0) |
+                         (B_BUTTON(gp) ? INPUT_BUTTON2 : 0) | 0;
+        int otherButtons = (CL_BUTTON(gp) ? OTHER_BUTTON1 : 0) |
+                           (CU_BUTTON(gp) ? OTHER_BUTTON2 : 0) | 0;
         smssystem[i] =
-            (gp.buttons & io::GamePadState::Button::SELECT ? INPUT_PAUSE : 0) |
-            (gp.buttons & io::GamePadState::Button::START ? INPUT_START : 0) |
+            (Z_BUTTON(gp) ? INPUT_PAUSE : 0) |
+            (START_BUTTON(gp) ? INPUT_START : 0) |
             0;
-#endif
+
         // if (gp.buttons & io::GamePadState::Button::SELECT) printf("SELECT\n");
         // if (gp.buttons & io::GamePadState::Button::START) printf("START\n");
         input.pad[i] = smsbuttons;
+
         auto p1 = smssystem[i];
         if (ignorepushed == false)
         {
@@ -306,7 +313,7 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
             if (pushedsystem & INPUT_START)
             {
                 reset = true;
-                printf("Reset pressed\n");
+                debugf("Reset pressed\n");
             }
         }
         if (p1 & INPUT_START)
@@ -315,7 +322,7 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
             if (pushed & INPUT_BUTTON1)
             {
                 fps_enabled = !fps_enabled;
-                printf("FPS: %s\n", fps_enabled ? "ON" : "OFF");
+                debugf("FPS: %s\n", fps_enabled ? "ON" : "OFF");
             }
             if (pushed & INPUT_UP)
             {
@@ -338,11 +345,11 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
         {
             if (pushedother & OTHER_BUTTON1)
             {
-                printf("Other 1\n");
+                debugf("Other 1\n");
             }
             if (pushedother & OTHER_BUTTON2)
             {
-                printf("Other 2\n");
+                debugf("Other 2\n");
             }
         }
     }
@@ -359,32 +366,51 @@ void process(void)
     DWORD pdwPad1, pdwPad2, pdwSystem; // have only meaning in menu
     while (reset == false)
     {
-        debugf("Frame %d\n", framecounter);
+        // debugf("Frame %d\n", framecounter);
         processinput(&pdwPad1, &pdwPad2, &pdwSystem, false);
         _dc = display_get();
         sms_frame(0);
-        display_show(_dc);
         ProcessAfterFrameIsRendered();
+        display_show(_dc);
     }
 }
-
+void frameratecalc(int ovfl)
+{
+    // debugf("FPS: %d\n", framecounter);
+    framedisplay = framecounter;
+    framecounter = 0;
+}
+void checkcontrollers()
+{
+    controller1IsInserted = controller2IsInserted = false;
+    int controllers = get_controllers_present();
+    if (controllers & CONTROLLER_1_INSERTED)
+    {
+        debugf("Controller 1 inserted\n");
+        controller1IsInserted = true;
+    }
+    if (controllers & CONTROLLER_2_INSERTED)
+    {
+        debugf("Controller 2 inserted\n");
+        controller2IsInserted = true;
+    }
+}
 /// @brief
 /// Start emulator. Emulator does not run well in DEBUG mode, lots of red screen flicker. In order to keep it running fast enough, we need to run it in release mode or in
 /// RelWithDebugInfo mode.
 /// @return
 int main()
 {
-   
-  
+
     char errMSG[ERRORMESSAGESIZE];
     errMSG[0] = romName[0] = 0;
     int fileSize = 0;
     bool isGameGear = false;
-    
+
     size_t tmpSize;
 
     ErrorMessage = errMSG;
-   
+
     printf("Starting Master System Emulator\n");
 
     debug_init(DEBUG_FEATURE_LOG_ISVIEWER);
@@ -396,26 +422,28 @@ int main()
     display_init(RESOLUTION_256x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
     // register_VI_handler(vblCallback);
     controller_init();
-
-    if ((isFatalError = !initSDCard()) == false)
-    {
-        
-    }
+    timer_init();
+    new_timer(TIMER_TICKS(1000000), TF_CONTINUOUS, frameratecalc);
 
     while (true)
     {
+        checkcontrollers();
 #if 0
         menu(SMS_FILE_ADDR, ErrorMessage, isFatalError, reset);
 #endif
+        checkcontrollers();
+        if ((isFatalError = !initSDCard()) == false)
+        {
+        }
         reset = false;
-        printf("Now playing: %s\n", romName);
+        debugf("Now playing: %s\n", romName);
         load_rom(fileSize, isGameGear);
         // Initialize all systems and power on
         system_init(SMS_AUD_RATE);
         // load state if any
         // system_load_state();
         system_reset();
-        printf("Starting game\n");
+        debugf("Starting game\n");
         process();
         romName[0] = 0;
     }

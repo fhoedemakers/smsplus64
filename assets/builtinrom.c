@@ -10,8 +10,14 @@
 // Only one rom can be used at a time.
 
 #include "builtinrom.h"
-#ifdef BUILTINROM_SONIC
-#include "sonic.c"
+#ifdef BUILTINROM_SONIC_GG
+#include "sonic_gg.c"
+#endif
+#ifdef BUILTINROM_ALADDIN_GG
+#include "aladdin_gg.c"
+#endif
+#ifdef BUILTINROM_SONIC_SMS
+#include "sonic_sms.c"
 #endif
 
 char *GetBuiltinROMName()
