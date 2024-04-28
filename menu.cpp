@@ -1,38 +1,21 @@
 #include <stdio.h>
 #include <string.h>
-
+#include "mytypes.h"
 #include "FrensHelpers.h"
-#include <pico.h>
 #include <memory>
-#include "pico/stdlib.h"
-#include "hardware/flash.h"
-#include <dvi/dvi.h>
-#include <util/exclusive_proc.h>
-#include <gamepad.h>
-#include "hardware/watchdog.h"
+
+
 #include "RomLister.h"
 #include "menu.h"
-#include "nespad.h"
-#include "wiipad.h"
-#include "shared.h"
-#include "font_8x8.h"
-#define FONT_CHAR_WIDTH 8
-#define FONT_CHAR_HEIGHT 8
-#define FONT_N_CHARS 95
-#define FONT_FIRST_ASCII 32
-#define SCREEN_COLS 32
-#define SCREEN_ROWS 29
 
+#define SCREEN_ROWS 30
+#define SCREEN_COLS 32
 #define STARTROW 2
 #define ENDROW 25
 #define PAGESIZE (ENDROW - STARTROW + 1)
 
 #define VISIBLEPATHSIZE (SCREEN_COLS - 3)
 
-extern util::ExclusiveProc exclProc_;
-extern std::unique_ptr<dvi::DVI> dvi_;
-void screenMode(int incr);
-extern WORD SMSPaletteRGB444[];
 
 #define CBLACK 0
 #define CWHITE 0x3f
@@ -70,63 +53,7 @@ static constexpr int B = 0x00000010;
 // static constexpr int X = 1 << 8;
 // static constexpr int Y = 1 << 9;
 
-char getcharslicefrom8x8font(char c, int rowInChar)
-{
-    sizeof(screenBuffer);
-    return font_8x8[(c - FONT_FIRST_ASCII) + (rowInChar)*FONT_N_CHARS];
-}
 
-void RomSelect_DrawLine(int line, int selectedRow)
-{
-    WORD fgcolor, bgcolor;
-    memset(WorkLineRom, 0, 640);
-
-    for (auto i = 0; i < SCREEN_COLS; ++i)
-    {
-        int charIndex = i + line / FONT_CHAR_HEIGHT * SCREEN_COLS;
-        int row = charIndex / SCREEN_COLS;
-        uint c = screenBuffer[charIndex].charvalue;
-        if (row == selectedRow)
-        {
-            fgcolor = SMSPaletteRGB444[screenBuffer[charIndex].bgcolor];
-            bgcolor = SMSPaletteRGB444[screenBuffer[charIndex].fgcolor];
-        }
-        else
-        {
-            fgcolor = SMSPaletteRGB444[screenBuffer[charIndex].fgcolor];
-            bgcolor = SMSPaletteRGB444[screenBuffer[charIndex].bgcolor];
-        }
-
-        int rowInChar = line % FONT_CHAR_HEIGHT;
-        char fontSlice = getcharslicefrom8x8font(c, rowInChar); // font_8x8[(c - FONT_FIRST_ASCII) + (rowInChar)*FONT_N_CHARS];
-        for (auto bit = 0; bit < 8; bit++)
-        {
-            if (fontSlice & 1)
-            {
-                *WorkLineRom = fgcolor;
-            }
-            else
-            {
-                *WorkLineRom = bgcolor;
-            }
-            fontSlice >>= 1;
-            WorkLineRom++;
-        }
-    }
-    return;
-}
-
-void drawline(int scanline, int selectedRow)
-{
-    // RomSelect_PreDrawLine(scanline);
-    // RomSelect_DrawLine(scanline - 4, selectedRow);
-    // InfoNES_PostDrawLine(scanline);
-
-    auto b = dvi_->getLineBuffer();
-    WorkLineRom = b->data() + 32;
-    RomSelect_DrawLine(scanline - 4, selectedRow);
-    dvi_->setLineBuffer(scanline, b);
-}
 
 static void putText(int x, int y, const char *text, int fgcolor, int bgcolor)
 {
@@ -154,7 +81,7 @@ void DrawScreen(int selectedRow)
 {
     for (auto line = 4; line < 236; line++)
     {
-        drawline(line, selectedRow);
+        
     }
 }
 

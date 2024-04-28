@@ -1,10 +1,8 @@
 #include <stdio.h>
-#include <pico/stdlib.h>
 #include <string.h>
 #include "RomLister.h"
 #include "FrensHelpers.h"
 
-#include "ff.h"
 
 // class to listing directories and .NES files on sd card
 namespace Frens
@@ -29,6 +27,12 @@ namespace Frens
 	{
 		return directoryname;
 	}
+
+	char *RomLister::ParentFolderName()
+	{
+		return parentdirectoryname;
+	}
+
 	size_t RomLister::Count()
 	{
 		return numberOfEntries;
@@ -36,7 +40,8 @@ namespace Frens
 
 	void RomLister::list(const char *directoryName)
 	{
-		FRESULT fr;
+		strcpy(parentdirectoryname, directoryName);
+		
 		numberOfEntries = 0;
 		strcpy(directoryname, directoryName);
 		FILINFO file;

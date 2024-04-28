@@ -413,7 +413,7 @@ int main()
 
     printf("Starting Master System Emulator\n");
 
-    debug_init(DEBUG_FEATURE_LOG_ISVIEWER);
+    debug_init(DEBUG_FEATURE_LOG_ISVIEWER | DEBUG_FEATURE_LOG_USB);
     debugf("Starting SmsPlus 64, a Sega Master System emulator for the Nintendo 64\n");
     debugf("Built on %s %s using libdragon\n", __DATE__, __TIME__);
     debugf("Now running %s\n", GetBuiltinROMName());
