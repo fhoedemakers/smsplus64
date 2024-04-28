@@ -6,5 +6,6 @@ z64file=smsPlus64.z64
 [ -f $z64file ] || { echo "$z64file not found"; exit 1; }
 echo "Running $z64file on real hardware"
 # Note: usb64.exe must be in the same directory as this script and smsPlus64.z64, otherwise the rom will not start.
+# Also, the usb cable must be connected to the N64 and the PC and the console must be in the everdrive menu.
 ./usb64.exe -rom=$z64file -start
 # End of run64.sh
