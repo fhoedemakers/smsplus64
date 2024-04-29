@@ -6,10 +6,11 @@
 
 #include "shared.h"
 #include "mytypes.h"
+#include "libdragon.h"
 #include "menu.h"
 
 #include "FrensHelpers.h"
-#include "libdragon.h"
+
 
 #define ERRORMESSAGESIZE 40
 #define GAMESAVEDIR "/SAVES"
@@ -227,24 +228,27 @@ void system_save_state()
 
 int framecounter = 0;
 int framedisplay = 0;
-int ProcessAfterFrameIsRendered()
+int totalfames=0;
+int ProcessAfterFrameIsRendered(surface_t *display)
 {
 
     char buffer[10];
     sprintf(buffer, "%d", framedisplay);
+    //debugf("Frame %d\n", totalfames);
     if (IS_GG)
     {
-        graphics_draw_text(_dc, 48, 24, buffer);
+        graphics_draw_text(display, 48, 24, buffer);
     }
     else
     {
-        graphics_draw_text(_dc, 5, 5, buffer);
+        graphics_draw_text(display, 10, 5, buffer);
     }
     // Frame rate calculation
     if (fps_enabled)
     {
     }
-    return framecounter++;
+    framecounter++;
+    return totalfames++;
 }
 
 #define OTHER_BUTTON1 (0b1)
@@ -370,13 +374,13 @@ void process(void)
         processinput(&pdwPad1, &pdwPad2, &pdwSystem, false);
         _dc = display_get();
         sms_frame(0);
-        ProcessAfterFrameIsRendered();
+        ProcessAfterFrameIsRendered(_dc);
         display_show(_dc);
     }
 }
 void frameratecalc(int ovfl)
 {
-    // debugf("FPS: %d\n", framecounter);
+    debugf("FPS: %d\n", framecounter);
     framedisplay = framecounter;
     framecounter = 0;
 }
@@ -418,8 +422,7 @@ int main()
     debugf("Built on %s %s using libdragon\n", __DATE__, __TIME__);
     debugf("Now running %s\n", GetBuiltinROMName());
 
-    /* Initialize peripherals */
-    display_init(RESOLUTION_256x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
+   
     // register_VI_handler(vblCallback);
     controller_init();
     timer_init();
@@ -428,9 +431,14 @@ int main()
     while (true)
     {
         checkcontrollers();
-#if 0
-        menu(SMS_FILE_ADDR, ErrorMessage, isFatalError, reset);
+
+#if 1
+        display_init(RESOLUTION_640x480, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
+        menu(0, ErrorMessage, isFatalError, reset);
+        display_close();
 #endif
+        /* Initialize display */
+        display_init(RESOLUTION_256x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
         checkcontrollers();
         if ((isFatalError = !initSDCard()) == false)
         {
@@ -446,6 +454,7 @@ int main()
         debugf("Starting game\n");
         process();
         romName[0] = 0;
+        display_close();
     }
     return 0;
 }

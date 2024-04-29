@@ -28,10 +28,7 @@ namespace Frens
 		return directoryname;
 	}
 
-	char *RomLister::ParentFolderName()
-	{
-		return parentdirectoryname;
-	}
+	
 
 	size_t RomLister::Count()
 	{
@@ -40,12 +37,12 @@ namespace Frens
 
 	void RomLister::list(const char *directoryName)
 	{
-		strcpy(parentdirectoryname, directoryName);
-		
+		RomEntry tempEntry;
+#if 0
 		numberOfEntries = 0;
 		strcpy(directoryname, directoryName);
 		FILINFO file;
-		RomEntry tempEntry;
+		
 		if (directoryname == "")
 		{
 			return;
@@ -85,6 +82,7 @@ namespace Frens
 			}
 		}
 		f_closedir(&dir);
+#endif
 		// (bubble) Sort
 		if (numberOfEntries > 1)
 		{

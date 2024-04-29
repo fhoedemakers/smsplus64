@@ -20,7 +20,6 @@ namespace Frens {
 		~RomLister();
 		RomEntry* GetEntries();
 		char  *FolderName();
-		char *ParentFolderName();
 		size_t Count();
 		void list(const char *directoryName);
 

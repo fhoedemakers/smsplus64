@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include <string.h>
+#include "libdragon.h"
 #include "mytypes.h"
 #include "FrensHelpers.h"
 #include <memory>
-
-
 #include "RomLister.h"
 #include "menu.h"
+#include "shared.h"
 
 #define SCREEN_ROWS 30
 #define SCREEN_COLS 32
@@ -77,12 +77,17 @@ static void putText(int x, int y, const char *text, int fgcolor, int bgcolor)
     }
 }
 
-void DrawScreen(int selectedRow)
+int DrawScreen(int selectedRow)
 {
+    surface_t *surface = display_get();
+    graphics_fill_screen(surface, 1);
     for (auto line = 4; line < 236; line++)
     {
         
     }
+    int framecount = ProcessAfterFrameIsRendered(surface);
+    display_show(surface);
+    return framecount;
 }
 
 void ClearScreen(charCell *screenBuffer, int color)
@@ -131,8 +136,7 @@ void DisplayFatalError(char *error)
     putText(1, 3, error, fgcolor, bgcolor);
     while (true)
     {
-        auto frameCount = ProcessAfterFrameIsRendered();
-        DrawScreen(-1);
+        auto framecount = DrawScreen(-1);
     }
 }
 
@@ -145,8 +149,7 @@ void DisplayEmulatorErrorMessage(char *error)
     putText(0, ENDROW, "Press a button to continue.", fgcolor, bgcolor);
     while (true)
     {
-        auto frameCount = ProcessAfterFrameIsRendered();
-        DrawScreen(-1);
+        auto frameCount = DrawScreen(-1);
         processinput(&PAD1_Latch, &PAD1_Latch2, &pdwSystem, false);
         if (PAD1_Latch > 0)
         {
@@ -203,14 +206,14 @@ void showSplashScreen()
     int startFrame = -1;
     while (true)
     {
-        auto frameCount = ProcessAfterFrameIsRendered();
+        auto frameCount =  DrawScreen(-1);
         if (startFrame == -1)
         {
             startFrame = frameCount;
         }
-        DrawScreen(-1);
+       
         processinput(&PAD1_Latch, &PAD1_Latch2, &pdwSystem, false);
-        if (PAD1_Latch > 0 || (frameCount - startFrame) > 1000)
+        if (PAD1_Latch > 0 || (frameCount - startFrame) > 120)
         {
              return;
         }
@@ -240,8 +243,7 @@ void screenSaver()
     WORD frameCount;
     while (true)
     {
-        frameCount = ProcessAfterFrameIsRendered();
-        DrawScreen(-1);
+        frameCount = DrawScreen(-1);
         processinput(&PAD1_Latch, &PAD1_Latch2, &pdwSystem, false);
 
         if (PAD1_Latch > 0)
@@ -262,7 +264,6 @@ void clearinput()
     DWORD PAD1_Latch, PAD1_Latch2, pdwSystem;
     while (1)
     {
-        ProcessAfterFrameIsRendered();
         DrawScreen(-1);
         processinput(&PAD1_Latch, &PAD1_Latch2, &pdwSystem, true);
         if (PAD1_Latch == 0)
@@ -286,15 +287,15 @@ void menu(uintptr_t NES_FILE_ADDR, char *errorMessage, bool isFatal, bool reset)
     FLASH_ADDRESS = NES_FILE_ADDR;
     int firstVisibleRowINDEX = 0;
     int selectedRow = STARTROW;
-    char currentDir[FF_MAX_LFN];
+    char currentDir[MAX_FILENAME_LEN];
     int totalFrames = -1;
 
     globalErrorMessage = errorMessage;
-    FRESULT fr;
+    
     DWORD PAD1_Latch, PAD1_Latch2, pdwSystem;
 
     int horzontalScrollIndex = 0;
-    printf("Starting Menu\n");
+    debugf("Starting Menu\n");
     screenBuffer = (charCell *)malloc(SCREENBUFCELLS * sizeof(charCell));
     size_t ramsize;
     // Borrow Emulator RAM buffer for screen.
@@ -322,20 +323,24 @@ void menu(uintptr_t NES_FILE_ADDR, char *errorMessage, bool isFatal, bool reset)
         // Show splash screen, only when not reset from emulation
         if ( reset == false )
         {
+            debugf("Showing splash screen\n");
             showSplashScreen();
-        } else sleep_ms(300);
+        } else {
+         //   sleep_ms(300);
+        }
     }
+    debugf("Listing roms\n");
     romlister.list("/");
     displayRoms(romlister, firstVisibleRowINDEX);
     while (1)
     {
 
-        auto frameCount = ProcessAfterFrameIsRendered();
+       
         auto index = selectedRow - STARTROW + firstVisibleRowINDEX;
         auto entries = romlister.GetEntries();
         selectedRomOrFolder = (romlister.Count() > 0) ? entries[index].Path : nullptr;
         errorInSavingRom = false;
-        DrawScreen(selectedRow);
+        auto frameCount =DrawScreen(selectedRow);
         processinput(&PAD1_Latch, &PAD1_Latch2, &pdwSystem, false);
 
         if (PAD1_Latch > 0 || pdwSystem > 0)
@@ -417,11 +422,14 @@ void menu(uintptr_t NES_FILE_ADDR, char *errorMessage, bool isFatal, bool reset)
             }
             else if ((PAD1_Latch & B) == B)
             {
+                // go up level
+#if 0
                 fr = f_getcwd(currentDir, 40);
                 if (fr != FR_OK)
                 {
                     printf("Cannot get current dir: %d\n", fr);
                 }
+#endif
                 if (strcmp(currentDir, "/") != 0)
                 {
                     romlister.list("..");
@@ -435,6 +443,7 @@ void menu(uintptr_t NES_FILE_ADDR, char *errorMessage, bool isFatal, bool reset)
                 // reboot and start emulator with currently loaded game
                 // Create a file /START indicating not to reflash the already flashed game
                 // The emulator will delete this file after loading the game
+#if 0
                 FRESULT fr;
                 FIL fil;
                 printf("Creating /START\n");
@@ -451,8 +460,9 @@ void menu(uintptr_t NES_FILE_ADDR, char *errorMessage, bool isFatal, bool reset)
                 }
                 else
                 {
-                    printf("Cannot create file /START:%d\n", fr);
-                }
+                    printf("Cannot create file /START:%d\n", fr); 
+               }
+#endif
                 break; // reboot
             }
             else if ((PAD1_Latch & A) == A && selectedRomOrFolder)
@@ -466,6 +476,8 @@ void menu(uintptr_t NES_FILE_ADDR, char *errorMessage, bool isFatal, bool reset)
                 }
                 else
                 {
+                    // start game
+#if 0
                     FRESULT fr;
                     FIL fil;
                     char curdir[256];
@@ -519,6 +531,7 @@ void menu(uintptr_t NES_FILE_ADDR, char *errorMessage, bool isFatal, bool reset)
                     // rom will be flashed and started by main.cpp
                     // Cannot flash here because of lockups (when using wii controller) and sound issues
                     break;
+#endif
                 }
             }
         }
@@ -544,7 +557,7 @@ void menu(uintptr_t NES_FILE_ADDR, char *errorMessage, bool isFatal, bool reset)
         }
         if ((frameCount - totalFrames) > 800)
         {
-            printf("Starting screensaver\n");
+            debugf("Starting screensaver\n");
             totalFrames = -1;
             screenSaver();
             displayRoms(romlister, firstVisibleRowINDEX);
@@ -552,15 +565,12 @@ void menu(uintptr_t NES_FILE_ADDR, char *errorMessage, bool isFatal, bool reset)
     } // while 1
       // Wait until user has released all buttons
     clearinput();
-    
-#if WII_PIN_SDA >= 0 and WII_PIN_SCL >= 0
-    wiipad_end();
-#endif
+
 
     // Don't return from this function call, but reboot in order to get avoid several problems with sound and lockups (WII-pad)
     // After reboot the emulator will and flash start the selected game.
-    printf("Rebooting...\n");
-    watchdog_enable(100, 1);
+    debugf("Rebooting...\n");
+
     while (1)
         ;
     // Never return

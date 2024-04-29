@@ -7,6 +7,8 @@
         }
     ],
     "files.associations": {
-        "random": "cpp"
+        "random": "cpp",
+        "memory": "cpp",
+        "optional": "cpp"
     }
 }
