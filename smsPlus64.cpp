@@ -451,7 +451,7 @@ int main()
         checkcontrollers();
 
 #if 1
-        display_init(RESOLUTION_640x480, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
+        display_init(RESOLUTION_320x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
         menu(mountPoint, 0, ErrorMessage, isFatalError, reset);
         display_close();
 #endif

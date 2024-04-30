@@ -8,8 +8,8 @@
 #include "menu.h"
 #include "shared.h"
 
-#define SCREEN_ROWS 60
-#define SCREEN_COLS 80
+#define SCREEN_ROWS 29
+#define SCREEN_COLS 39
 #define STARTROW 2
 #define ENDROW (SCREEN_ROWS - 2)
 #define PAGESIZE (ENDROW - STARTROW + 1)
@@ -86,7 +86,7 @@ int DrawScreen(int selectedRow)
     uint32_t bgcolor;
 
     graphics_fill_screen(surface, 1);
-    for ( int y = STARTROW; y < ENDROW; y++)
+    for ( int y = 0; y < SCREEN_ROWS; y++)
     {
         if (selectedRow == y)
         {
