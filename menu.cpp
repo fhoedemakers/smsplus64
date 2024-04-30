@@ -85,7 +85,7 @@ int DrawScreen(int selectedRow)
     uint32_t fgcolor;
     uint32_t bgcolor;
 
-    graphics_fill_screen(surface, 1);
+    //graphics_fill_screen(surface, 1);
     for ( int y = 0; y < SCREEN_ROWS; y++)
     {
         if (selectedRow == y)
