@@ -346,7 +346,7 @@ void menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool is
         if ( reset == false )
         {
             debugf("Showing splash screen\n");
-            //showSplashScreen();
+            showSplashScreen();
         } else {
          //   sleep_ms(300);
         }
