@@ -11,7 +11,6 @@
 
 #include "FrensHelpers.h"
 
-
 #define ERRORMESSAGESIZE 40
 #define GAMESAVEDIR "/SAVES"
 
@@ -49,7 +48,7 @@ bool isFatalError = false;
 
 char romName[256];
 
-static bool fps_enabled = false;
+static bool fps_enabled = true;
 
 bool reset = false;
 
@@ -228,24 +227,23 @@ void system_save_state()
 
 int framecounter = 0;
 int framedisplay = 0;
-int totalfames=0;
-int ProcessAfterFrameIsRendered(surface_t *display)
+int totalfames = 0;
+int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
 {
-
     char buffer[10];
-    sprintf(buffer, "%d", framedisplay);
-    //debugf("Frame %d\n", totalfames);
-    if (IS_GG)
-    {
-        graphics_draw_text(display, 48, 24, buffer);
-    }
-    else
-    {
-        graphics_draw_text(display, 10, 5, buffer);
-    }
-    // Frame rate calculation
     if (fps_enabled)
     {
+        sprintf(buffer, "%d", framedisplay);
+        // debugf("Frame %d\n", totalfames);
+        if (IS_GG && fromMenu == false)
+        {
+            graphics_draw_text(display, 48, 24, buffer);
+        }
+        else
+        {
+            graphics_draw_text(display, 10, 5, buffer);
+        }
+        // Frame rate calculation
     }
     framecounter++;
     return totalfames++;
@@ -374,13 +372,13 @@ void process(void)
         processinput(&pdwPad1, &pdwPad2, &pdwSystem, false);
         _dc = display_get();
         sms_frame(0);
-        ProcessAfterFrameIsRendered(_dc);
+        ProcessAfterFrameIsRendered(_dc, false);
         display_show(_dc);
     }
 }
 void frameratecalc(int ovfl)
 {
-    debugf("FPS: %d\n", framecounter);
+    // debugf("FPS: %d\n", framecounter);
     framedisplay = framecounter;
     framecounter = 0;
 }
@@ -410,7 +408,7 @@ int main()
     errMSG[0] = romName[0] = 0;
     int fileSize = 0;
     bool isGameGear = false;
-
+    char mountPoint[10];
     size_t tmpSize;
 
     ErrorMessage = errMSG;
@@ -421,8 +419,28 @@ int main()
     debugf("Starting SmsPlus 64, a Sega Master System emulator for the Nintendo 64\n");
     debugf("Built on %s %s using libdragon\n", __DATE__, __TIME__);
     debugf("Now running %s\n", GetBuiltinROMName());
-
-   
+    debugf("Trying to mount SD card...");
+    if (!debug_init_sdfs("sd:/", -1))
+    {
+        debugf("Error opening SD, trying rom filesystem...");
+        if (dfs_init(DFS_DEFAULT_LOCATION) != DFS_ESUCCESS)
+        {
+            debugf("rom filesystem failed to start!\n");
+            debugf("Exit program\n");
+            isFatalError = true;
+            strcpy(ErrorMessage, "Error opening SD card and rom filesystem.");
+        }
+        else
+        {
+            debugf("rom filesystem mounted\n");
+            strcpy(mountPoint, "rom://");
+        }
+    }
+    else
+    {
+        debugf("SD card mounted\n");
+        strcpy(mountPoint, "sd:/");
+    }
     // register_VI_handler(vblCallback);
     controller_init();
     timer_init();
@@ -434,7 +452,7 @@ int main()
 
 #if 1
         display_init(RESOLUTION_640x480, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
-        menu(0, ErrorMessage, isFatalError, reset);
+        menu(mountPoint, 0, ErrorMessage, isFatalError, reset);
         display_close();
 #endif
         /* Initialize display */

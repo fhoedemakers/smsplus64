@@ -85,7 +85,7 @@ int DrawScreen(int selectedRow)
     {
         
     }
-    int framecount = ProcessAfterFrameIsRendered(surface);
+    int framecount = ProcessAfterFrameIsRendered(surface, true);
     display_show(surface);
     return framecount;
 }
@@ -282,7 +282,7 @@ static char *globalErrorMessage;
 //
 BYTE *dirbuffer;
 
-void menu(uintptr_t NES_FILE_ADDR, char *errorMessage, bool isFatal, bool reset)
+void menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool isFatal, bool reset)
 {
     FLASH_ADDRESS = NES_FILE_ADDR;
     int firstVisibleRowINDEX = 0;
