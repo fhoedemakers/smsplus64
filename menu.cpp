@@ -8,10 +8,10 @@
 #include "menu.h"
 #include "shared.h"
 
-#define SCREEN_ROWS 30
-#define SCREEN_COLS 32
+#define SCREEN_ROWS 60
+#define SCREEN_COLS 80
 #define STARTROW 2
-#define ENDROW 25
+#define ENDROW (SCREEN_ROWS - 2)
 #define PAGESIZE (ENDROW - STARTROW + 1)
 
 #define VISIBLEPATHSIZE (SCREEN_COLS - 3)
@@ -80,10 +80,30 @@ static void putText(int x, int y, const char *text, int fgcolor, int bgcolor)
 int DrawScreen(int selectedRow)
 {
     surface_t *surface = display_get();
+    uint32_t white = graphics_make_color(0xff, 0xff, 0xff, 0xff);
+    uint32_t black = graphics_make_color(0x00, 0x00, 0x00, 0xff);
+    uint32_t fgcolor;
+    uint32_t bgcolor;
+
     graphics_fill_screen(surface, 1);
-    for (auto line = 4; line < 236; line++)
+    for ( int y = STARTROW; y < ENDROW; y++)
     {
-        
+        if (selectedRow == y)
+        {
+           fgcolor = black;
+            bgcolor = white;
+        } else {
+           
+             fgcolor = white;
+            bgcolor = black;
+        }
+        for (int x = 0; x < SCREEN_COLS; x++)
+        {
+            auto index = y * SCREEN_COLS + x;
+            auto cell = screenBuffer[index];
+            graphics_set_color(fgcolor, bgcolor);
+            graphics_draw_character(surface, x << 3, y << 3, cell.charvalue);
+        }
     }
     int framecount = ProcessAfterFrameIsRendered(surface, true);
     display_show(surface);
@@ -117,10 +137,12 @@ void displayRoms(Frens::RomLister romlister, int startIndex)
             if (info.IsDirectory)
             {
                 snprintf(buffer, sizeof(buffer), "D %s", info.Path);
+                debugf("D %s\n", info.Path);
             }
             else
             {
                 snprintf(buffer, sizeof(buffer), "R %s", info.Path);
+                debugf("R %s\n", info.Path);
             }
 
             putText(1, y, buffer, fgcolor, bgcolor);
@@ -295,7 +317,7 @@ void menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool is
     DWORD PAD1_Latch, PAD1_Latch2, pdwSystem;
 
     int horzontalScrollIndex = 0;
-    debugf("Starting Menu\n");
+    debugf("Starting Menu Mount Point %s\n", mountPoint);
     screenBuffer = (charCell *)malloc(SCREENBUFCELLS * sizeof(charCell));
     size_t ramsize;
     // Borrow Emulator RAM buffer for screen.
@@ -324,13 +346,13 @@ void menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool is
         if ( reset == false )
         {
             debugf("Showing splash screen\n");
-            showSplashScreen();
+            //showSplashScreen();
         } else {
          //   sleep_ms(300);
         }
     }
     debugf("Listing roms\n");
-    romlister.list("/");
+    romlister.list(mountPoint);
     displayRoms(romlister, firstVisibleRowINDEX);
     while (1)
     {
@@ -338,6 +360,7 @@ void menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool is
        
         auto index = selectedRow - STARTROW + firstVisibleRowINDEX;
         auto entries = romlister.GetEntries();
+
         selectedRomOrFolder = (romlister.Count() > 0) ? entries[index].Path : nullptr;
         errorInSavingRom = false;
         auto frameCount =DrawScreen(selectedRow);

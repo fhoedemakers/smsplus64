@@ -408,7 +408,7 @@ int main()
     errMSG[0] = romName[0] = 0;
     int fileSize = 0;
     bool isGameGear = false;
-    char mountPoint[10];
+    char mountPoint[20];
     size_t tmpSize;
 
     ErrorMessage = errMSG;
@@ -439,7 +439,7 @@ int main()
     else
     {
         debugf("SD card mounted\n");
-        strcpy(mountPoint, "sd:/");
+        strcpy(mountPoint, "sd:/smsPlus64");
     }
     // register_VI_handler(vblCallback);
     controller_init();

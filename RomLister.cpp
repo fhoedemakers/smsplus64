@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
+#include "libdragon.h"
 #include "RomLister.h"
 #include "FrensHelpers.h"
-
 
 // class to listing directories and .NES files on sd card
 namespace Frens
@@ -28,8 +28,6 @@ namespace Frens
 		return directoryname;
 	}
 
-	
-
 	size_t RomLister::Count()
 	{
 		return numberOfEntries;
@@ -38,37 +36,18 @@ namespace Frens
 	void RomLister::list(const char *directoryName)
 	{
 		RomEntry tempEntry;
-#if 0
+		dir_t dir;
+		debugf("Listing %s\n", directoryName);
+		int err = dir_findfirst(directoryName, &dir);
 		numberOfEntries = 0;
-		strcpy(directoryname, directoryName);
-		FILINFO file;
-		
-		if (directoryname == "")
+		while (err == 0)
 		{
-			return;
-		}
-		DIR dir;
-		printf("chdir(%s)\n", directoryName);
-		// for f_getcwd to work, set
-		//   #define FF_FS_RPATH		2
-		// in ffconf.c
-		fr = f_chdir(directoryName);
-		if (fr != FR_OK)
-		{
-			printf("Error changing dir: %d\n", fr);
-			return;
-		}
-		printf("Listing %s\n", ".");
-
-		f_opendir(&dir, ".");
-		while (f_readdir(&dir, &file) == FR_OK && file.fname[0] && numberOfEntries < max_entries)
-		{
-			if (strlen(file.fname) < ROMLISTER_MAXPATH)
+			if (strlen(dir.d_name) < ROMLISTER_MAXPATH)
 			{
 				struct RomEntry romInfo;
-				strcpy(romInfo.Path, file.fname);
-				romInfo.IsDirectory = file.fattrib & AM_DIR;
-				if (!romInfo.IsDirectory && (Frens::cstr_endswith(romInfo.Path, ".sms") || Frens::cstr_endswith(romInfo.Path, ".gg"))) 
+				strcpy(romInfo.Path, dir.d_name);
+				romInfo.IsDirectory = (dir.d_type == DT_DIR);
+				if (!romInfo.IsDirectory ) //&& (Frens::cstr_endswith(romInfo.Path, ".sms") || Frens::cstr_endswith(romInfo.Path, ".gg")))
 				{
 					entries[numberOfEntries++] = romInfo;
 				}
@@ -80,37 +59,45 @@ namespace Frens
 					}
 				}
 			}
+			err = dir_findnext(directoryName, &dir);
 		}
-		f_closedir(&dir);
-#endif
+		if (numberOfEntries == 0)
+		{
+			debugf("No files in this dir...\n");
+		}
+
 		// (bubble) Sort
 		if (numberOfEntries > 1)
 		{
+			debugf("Sorting %d entries\n", numberOfEntries);
 			for (int pass = 0; pass < numberOfEntries - 1; ++pass)
 			{
 				for (int j = 0; j < numberOfEntries - 1 - pass; ++j)
 				{
 					int result = 0;
 					// Directories first in the list
-					if (entries[j].IsDirectory && entries[j+1].IsDirectory == false ) {
+					if (entries[j].IsDirectory && entries[j + 1].IsDirectory == false)
+					{
 						continue;
 					}
-					bool swap  = false;
-					if (entries[j].IsDirectory == false && entries[j+1].IsDirectory)
+					bool swap = false;
+					if (entries[j].IsDirectory == false && entries[j + 1].IsDirectory)
 					{
 						swap = true;
-					} else {
+					}
+					else
+					{
 						result = strcasecmp(entries[j].Path, entries[j + 1].Path);
 					}
 					if (swap || result > 0)
-					{						
+					{
 						tempEntry = entries[j];
 						entries[j] = entries[j + 1];
 						entries[j + 1] = tempEntry;
 					}
 				}
 			}
+			debugf("Sort done\n");
 		}
-		printf("Sort done\n");
 	}
 }
