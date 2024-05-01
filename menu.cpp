@@ -26,6 +26,11 @@
 #define DEFAULT_FGCOLOR CBLACK // 60
 #define DEFAULT_BGCOLOR CWHITE
 
+#define MAXDIRDEPTH 5
+
+char dirstack[MAXDIRDEPTH][MAX_FILENAME_LEN];
+int dirstackindex = 0;
+
 static int fgcolor = DEFAULT_FGCOLOR;
 static int bgcolor = DEFAULT_BGCOLOR;
 
@@ -309,7 +314,7 @@ void menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool is
     int selectedRow = STARTROW;
     char currentDir[MAX_FILENAME_LEN];
     int totalFrames = -1;
-
+    strcpy(dirstack[dirstackindex], mountPoint);
     globalErrorMessage = errorMessage;
     
     DWORD PAD1_Latch, PAD1_Latch2, pdwSystem;
@@ -451,13 +456,15 @@ void menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool is
                     printf("Cannot get current dir: %d\n", fr);
                 }
 #endif
-                if (strcmp(currentDir, "/") != 0)
+                if (dirstackindex > 0)
                 {
-                    romlister.list("..");
+                    dirstackindex--;
+                    romlister.list(dirstack[dirstackindex]);
                     firstVisibleRowINDEX = 0;
                     selectedRow = STARTROW;
                     displayRoms(romlister, firstVisibleRowINDEX);
                 }
+               
             }
             else if ((pdwSystem & START) == START && (pdwSystem & SELECT) != SELECT)
             {
@@ -490,7 +497,17 @@ void menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool is
             {
                 if (entries[index].IsDirectory)
                 {
-                    romlister.list(selectedRomOrFolder);
+                    if ( dirstackindex < MAXDIRDEPTH - 1)
+                    {
+                        dirstackindex++;
+                        sprintf(dirstack[dirstackindex], "%s/%s", dirstack[dirstackindex-1], selectedRomOrFolder);
+                        debugf("Pushing %s\n", dirstack[dirstackindex]);
+                    }
+                    else
+                    {
+                        debugf("Directory stack full\n");
+                    }
+                    romlister.list(dirstack[dirstackindex]);
                     firstVisibleRowINDEX = 0;
                     selectedRow = STARTROW;
                     displayRoms(romlister, firstVisibleRowINDEX);
