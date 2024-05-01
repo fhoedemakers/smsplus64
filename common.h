@@ -24,4 +24,5 @@ typedef unsigned char  BYTE;
 #define NULL  0
 #endif /* !NULL */
 
+#define RGB888_TO_RGB5551(r, g, b) (((r >> 3) << 11) | ((g >> 3) << 6) | ((b >> 3) << 1) | 1)
 #endif /* !nytypes_TYPES_H_INCLUDED */
