@@ -249,7 +249,7 @@ void showSplashScreen()
         }
 
         processinput(&PAD1_Latch, &PAD1_Latch2, &pdwSystem, false);
-        if (PAD1_Latch > 0 || (frameCount - startFrame) > 120)
+        if (PAD1_Latch > 0 || (frameCount - startFrame) > 800)
         {
             return;
         }
@@ -338,6 +338,7 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
         debugf("Cannot allocate memory for directory stack");
         exit(0);
     }
+    dirstackindex = 0;
     strcpy(dirstack[dirstackindex], mountPoint);
     screenBuffer = (charCell *)malloc(SCREENBUFCELLS * sizeof(charCell));
     if (screenBuffer == nullptr)
@@ -523,14 +524,14 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
                     if (dirstackindex < MAXDIRDEPTH - 1)
                     {
                         dirstackindex++;
-                        if (dirstackindex == 1)
-                        {
-                            sprintf(dirstack[dirstackindex], "%s%s", dirstack[dirstackindex - 1], selectedRomOrFolder);
-                        }
-                        else
-                        {
+                        // if (dirstackindex == 1)
+                        // {
+                        //     sprintf(dirstack[dirstackindex], "%s%s", dirstack[dirstackindex - 1], selectedRomOrFolder);
+                        // }
+                        // else
+                        // {
                             sprintf(dirstack[dirstackindex], "%s/%s", dirstack[dirstackindex - 1], selectedRomOrFolder);
-                        }
+                        //}
                         debugf("Pushing %s\n", dirstack[dirstackindex]);
                     }
                     else
@@ -564,6 +565,8 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
                         debugf("Size of file %s is %d\n", filetoopen, size);
                         romInfo.size = size;
                         romInfo.rom = (uint8_t *)malloc(size);
+                        romInfo.isGameGear = Frens::cstr_endswith(selectedRomOrFolder, ".gg");
+                        strcpy(romInfo.title, selectedRomOrFolder);
                         if (romInfo.rom == nullptr)
                         {
                             snprintf(globalErrorMessage, 40, "Cannot allocate memory for rom");

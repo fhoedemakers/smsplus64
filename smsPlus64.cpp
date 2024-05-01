@@ -48,7 +48,7 @@ bool isFatalError = false;
 
 char romName[256];
 
-static bool fps_enabled = true;
+static bool fps_enabled = false;
 
 bool reset = false;
 
@@ -460,6 +460,7 @@ int main()
         info.rom = builtinrom;
         info.size = builtinrom_len;
         info.isGameGear = builtinrom_isgg;
+        strcpy(info.title, GetBuiltinROMName());
 #endif
         /* Initialize display */
         display_init(RESOLUTION_256x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
@@ -467,8 +468,13 @@ int main()
         if ((isFatalError = !initSDCard()) == false)
         {
         }
+        // dump info
+        debugf("Now loading:\n");
+        debugf("    ROM: %s\n", info.title);
+        debugf("    Size: %d\n", info.size);
+        debugf("    isGameGear: %d\n", info.isGameGear);
         reset = false;
-        debugf("Now playing: %s\n", romName);
+        
         load_rom(info.rom, info.size , info.isGameGear);
         // Initialize all systems and power on
         system_init(SMS_AUD_RATE);
@@ -481,6 +487,7 @@ int main()
         display_close();
         if ( info.rom != builtinrom) {
             free(info.rom);
+            debugf("Freeing rom\n");
         }
     }
     return 0;
