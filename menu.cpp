@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "libdragon.h"
-#include "mytypes.h"
+#include "common.h"
 #include "FrensHelpers.h"
 #include <memory>
 #include "RomLister.h"
@@ -17,12 +17,12 @@
 #define VISIBLEPATHSIZE (SCREEN_COLS - 3)
 
 
-#define CBLACK 0
-#define CWHITE 0x3f
-#define CRED 3
-#define CGREEN 0x40
-#define CBLUE 0x54
-#define CLIGHTBLUE 0x63
+#define CBLACK (RGB888_TO_RGB5551(0,0,0))
+#define CWHITE (RGB888_TO_RGB5551(255,255,255))
+#define CRED (RGB888_TO_RGB5551(255,0,0))
+#define CGREEN (RGB888_TO_RGB5551(76,255,0))
+#define CBLUE (RGB888_TO_RGB5551(0,38,255))
+#define CLIGHTBLUE (RGB888_TO_RGB5551(0,148,255))
 #define DEFAULT_FGCOLOR CBLACK // 60
 #define DEFAULT_BGCOLOR CWHITE
 
@@ -31,8 +31,8 @@ static int bgcolor = DEFAULT_BGCOLOR;
 
 struct charCell
 {
-    uint8_t fgcolor;
-    uint8_t bgcolor;
+    uint32_t fgcolor;
+    uint32_t bgcolor;
     char charvalue;
 };
 
@@ -53,7 +53,12 @@ static constexpr int B = 0x00000010;
 // static constexpr int X = 1 << 8;
 // static constexpr int Y = 1 << 9;
 
-
+uint32_t getrandomcolor()
+{
+    static int colors[] = { 0, 85, 170, 255 };
+   
+    return RGB888_TO_RGB5551(colors[rand() % 4], colors[rand() % 4], colors[rand() % 4]);
+}
 
 static void putText(int x, int y, const char *text, int fgcolor, int bgcolor)
 {
@@ -80,28 +85,21 @@ static void putText(int x, int y, const char *text, int fgcolor, int bgcolor)
 int DrawScreen(int selectedRow)
 {
     surface_t *surface = display_get();
-    uint32_t white = graphics_make_color(0xff, 0xff, 0xff, 0xff);
-    uint32_t black = graphics_make_color(0x00, 0x00, 0x00, 0xff);
-    uint32_t fgcolor;
-    uint32_t bgcolor;
-
+   
     //graphics_fill_screen(surface, 1);
     for ( int y = 0; y < SCREEN_ROWS; y++)
     {
-        if (selectedRow == y)
-        {
-           fgcolor = black;
-            bgcolor = white;
-        } else {
-           
-             fgcolor = white;
-            bgcolor = black;
-        }
         for (int x = 0; x < SCREEN_COLS; x++)
         {
             auto index = y * SCREEN_COLS + x;
             auto cell = screenBuffer[index];
-            graphics_set_color(fgcolor, bgcolor);
+            if ( y == selectedRow)
+            {
+                graphics_set_color(cell.bgcolor, cell.fgcolor);
+            } else {
+              graphics_set_color(cell.fgcolor, cell.bgcolor);
+            }
+           
             graphics_draw_character(surface, x << 3, y << 3, cell.charvalue);
         }
     }
@@ -243,16 +241,16 @@ void showSplashScreen()
         {
             for (auto i = 0; i < SCREEN_COLS; i++)
             {
-                auto col = rand() % 63;
+                auto col = getrandomcolor();
                 putText(i, 0, " ", col, col);
-                col = rand() % 63;
+                col =  getrandomcolor();
                 putText(i, SCREEN_ROWS - 1, " ", col, col);
             }
             for (auto i = 1; i < SCREEN_ROWS - 1; i++)
             {
-                auto col = rand() % 63;
+                auto col = getrandomcolor();
                 putText(0, i, " ", col, col);
-                col = rand() % 63;
+                col =  getrandomcolor();
                 putText(SCREEN_COLS - 1, i, " ", col, col);
             }
         }
@@ -274,7 +272,7 @@ void screenSaver()
         }
         if ((frameCount % 3) == 0)
         {
-            auto color = rand() % 63;
+            auto color = getrandomcolor();
             auto row = rand() % SCREEN_ROWS;
             auto column = rand() % SCREEN_COLS;
             putText(column, row, " ", color, color);
@@ -588,13 +586,5 @@ void menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool is
     } // while 1
       // Wait until user has released all buttons
     clearinput();
-
-
-    // Don't return from this function call, but reboot in order to get avoid several problems with sound and lockups (WII-pad)
-    // After reboot the emulator will and flash start the selected game.
-    debugf("Rebooting...\n");
-
-    while (1)
-        ;
-    // Never return
+    free(screenBuffer);
 }
