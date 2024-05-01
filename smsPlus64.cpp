@@ -5,7 +5,7 @@
  */
 
 #include "shared.h"
-#include "mytypes.h"
+#include "common.h"
 #include "libdragon.h"
 #include "menu.h"
 
@@ -121,7 +121,7 @@ void processaudio(int offset)
 #endif
 }
 
-#define RGB888_TO_RGB5551(r, g, b) (((r >> 3) << 11) | ((g >> 3) << 6) | ((b >> 3) << 1) | 1)
+
 extern "C" void sms_palette_syncGG(int index)
 {
     // The GG has a different palette format
