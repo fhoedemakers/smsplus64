@@ -95,9 +95,9 @@ typedef struct
 
 //     return 1;
 // }
-int load_rom(int size, bool isGameGear)
+int load_rom(uint8_t *rom, int size, bool isGameGear)
 {
-    uint8_t *start = (uint8_t *)builtinrom;
+    uint8_t *start = (uint8_t *)rom;
     sms.use_fm = 0;
     sms.country = TYPE_OVERSEAS;
     sms.sram = sram;
@@ -108,8 +108,8 @@ int load_rom(int size, bool isGameGear)
     bitmap.pitch = BMP_WIDTH;
     bitmap.depth = 8;
     cart.rom = start;
-    cart.pages = (builtinrom_len / 0x4000);
-    cart.type = builtinrom_isgg ? TYPE_GG : TYPE_SMS;
+    cart.pages = (size / 0x4000);
+    cart.type = isGameGear ? TYPE_GG : TYPE_SMS;
     return 1;
 }
 

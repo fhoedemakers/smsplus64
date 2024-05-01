@@ -448,12 +448,18 @@ int main()
 
     while (true)
     {
+       
         checkcontrollers();
 
 #if 1
         display_init(RESOLUTION_320x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
-        menu(mountPoint, 0, ErrorMessage, isFatalError, reset);
+        RomInfo info = menu(mountPoint, 0, ErrorMessage, isFatalError, reset);
         display_close();
+#else
+        RomInfo info;
+        info.rom = builtinrom;
+        info.size = builtinrom_len;
+        info.isGameGear = builtinrom_isgg;
 #endif
         /* Initialize display */
         display_init(RESOLUTION_256x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
@@ -463,7 +469,7 @@ int main()
         }
         reset = false;
         debugf("Now playing: %s\n", romName);
-        load_rom(fileSize, isGameGear);
+        load_rom(info.rom, info.size , info.isGameGear);
         // Initialize all systems and power on
         system_init(SMS_AUD_RATE);
         // load state if any
@@ -473,6 +479,9 @@ int main()
         process();
         romName[0] = 0;
         display_close();
+        if ( info.rom != builtinrom) {
+            free(info.rom);
+        }
     }
     return 0;
 }

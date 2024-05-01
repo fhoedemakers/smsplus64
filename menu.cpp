@@ -16,19 +16,18 @@
 
 #define VISIBLEPATHSIZE (SCREEN_COLS - 3)
 
-
-#define CBLACK (RGB888_TO_RGB5551(0,0,0))
-#define CWHITE (RGB888_TO_RGB5551(255,255,255))
-#define CRED (RGB888_TO_RGB5551(255,0,0))
-#define CGREEN (RGB888_TO_RGB5551(76,255,0))
-#define CBLUE (RGB888_TO_RGB5551(0,38,255))
-#define CLIGHTBLUE (RGB888_TO_RGB5551(0,148,255))
+#define CBLACK (RGB888_TO_RGB5551(0, 0, 0))
+#define CWHITE (RGB888_TO_RGB5551(255, 255, 255))
+#define CRED (RGB888_TO_RGB5551(255, 0, 0))
+#define CGREEN (RGB888_TO_RGB5551(76, 255, 0))
+#define CBLUE (RGB888_TO_RGB5551(0, 38, 255))
+#define CLIGHTBLUE (RGB888_TO_RGB5551(0, 148, 255))
 #define DEFAULT_FGCOLOR CBLACK // 60
 #define DEFAULT_BGCOLOR CWHITE
 
 #define MAXDIRDEPTH 5
 
-char dirstack[MAXDIRDEPTH][MAX_FILENAME_LEN];
+char (*dirstack)[MAX_FILENAME_LEN]; // [MAXDIRDEPTH][MAX_FILENAME_LEN];
 int dirstackindex = 0;
 
 static int fgcolor = DEFAULT_FGCOLOR;
@@ -58,10 +57,20 @@ static constexpr int B = 0x00000010;
 // static constexpr int X = 1 << 8;
 // static constexpr int Y = 1 << 9;
 
-uint32_t getrandomcolor()
+/* Gets the file size - used to know how much to allocate */
+int filesize(FILE *pFile)
 {
-    static int colors[] = { 0, 85, 170, 255 };
-   
+    fseek(pFile, 0, SEEK_END);
+    int lSize = ftell(pFile);
+    rewind(pFile);
+
+    return lSize;
+}
+
+static uint32_t getrandomcolor()
+{
+    static int colors[] = {0, 85, 170, 255};
+
     return RGB888_TO_RGB5551(colors[rand() % 4], colors[rand() % 4], colors[rand() % 4]);
 }
 
@@ -90,21 +99,23 @@ static void putText(int x, int y, const char *text, int fgcolor, int bgcolor)
 int DrawScreen(int selectedRow)
 {
     surface_t *surface = display_get();
-   
-    //graphics_fill_screen(surface, 1);
-    for ( int y = 0; y < SCREEN_ROWS; y++)
+
+    // graphics_fill_screen(surface, 1);
+    for (int y = 0; y < SCREEN_ROWS; y++)
     {
         for (int x = 0; x < SCREEN_COLS; x++)
         {
             auto index = y * SCREEN_COLS + x;
             auto cell = screenBuffer[index];
-            if ( y == selectedRow)
+            if (y == selectedRow)
             {
                 graphics_set_color(cell.bgcolor, cell.fgcolor);
-            } else {
-              graphics_set_color(cell.fgcolor, cell.bgcolor);
             }
-           
+            else
+            {
+                graphics_set_color(cell.fgcolor, cell.bgcolor);
+            }
+
             graphics_draw_character(surface, x << 3, y << 3, cell.charvalue);
         }
     }
@@ -131,7 +142,7 @@ void displayRoms(Frens::RomLister romlister, int startIndex)
     ClearScreen(screenBuffer, bgcolor);
     putText(1, 0, "Choose a rom to play:", fgcolor, bgcolor);
     putText(1, SCREEN_ROWS - 1, "A: Select, B: Back", fgcolor, bgcolor);
-    putText(SCREEN_COLS - strlen(SWVERSION), SCREEN_ROWS - 1,SWVERSION, fgcolor, bgcolor);
+    putText(SCREEN_COLS - strlen(SWVERSION), SCREEN_ROWS - 1, SWVERSION, fgcolor, bgcolor);
     for (auto index = startIndex; index < romlister.Count(); index++)
     {
         if (y <= ENDROW)
@@ -201,7 +212,7 @@ void showSplashScreen()
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 4, s, fgcolor, bgcolor);
     strcpy(s, "emulator for RP2040");
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 5, s, fgcolor, bgcolor);
-   
+
     strcpy(s, "Pico Port");
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 9, s, fgcolor, bgcolor);
     strcpy(s, "@frenskefrens");
@@ -231,16 +242,16 @@ void showSplashScreen()
     int startFrame = -1;
     while (true)
     {
-        auto frameCount =  DrawScreen(-1);
+        auto frameCount = DrawScreen(-1);
         if (startFrame == -1)
         {
             startFrame = frameCount;
         }
-       
+
         processinput(&PAD1_Latch, &PAD1_Latch2, &pdwSystem, false);
         if (PAD1_Latch > 0 || (frameCount - startFrame) > 120)
         {
-             return;
+            return;
         }
         if ((frameCount % 30) == 0)
         {
@@ -248,14 +259,14 @@ void showSplashScreen()
             {
                 auto col = getrandomcolor();
                 putText(i, 0, " ", col, col);
-                col =  getrandomcolor();
+                col = getrandomcolor();
                 putText(i, SCREEN_ROWS - 1, " ", col, col);
             }
             for (auto i = 1; i < SCREEN_ROWS - 1; i++)
             {
                 auto col = getrandomcolor();
                 putText(0, i, " ", col, col);
-                col =  getrandomcolor();
+                col = getrandomcolor();
                 putText(SCREEN_COLS - 1, i, " ", col, col);
             }
         }
@@ -303,25 +314,37 @@ static uintptr_t FLASH_ADDRESS;
 static bool errorInSavingRom = false;
 static char *globalErrorMessage;
 
-
 //
 BYTE *dirbuffer;
 
-void menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool isFatal, bool reset)
+RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool isFatal, bool reset)
 {
+    RomInfo romInfo;
     FLASH_ADDRESS = NES_FILE_ADDR;
     int firstVisibleRowINDEX = 0;
     int selectedRow = STARTROW;
     char currentDir[MAX_FILENAME_LEN];
     int totalFrames = -1;
-    strcpy(dirstack[dirstackindex], mountPoint);
+
     globalErrorMessage = errorMessage;
-    
+
     DWORD PAD1_Latch, PAD1_Latch2, pdwSystem;
 
     int horzontalScrollIndex = 0;
     debugf("Starting Menu Mount Point %s\n", mountPoint);
+    dirstack = (char(*)[MAX_FILENAME_LEN])calloc(MAXDIRDEPTH, sizeof(char[MAX_FILENAME_LEN]));
+    if (dirstack == nullptr)
+    {
+        debugf("Cannot allocate memory for directory stack");
+        exit(0);
+    }
+    strcpy(dirstack[dirstackindex], mountPoint);
     screenBuffer = (charCell *)malloc(SCREENBUFCELLS * sizeof(charCell));
+    if (screenBuffer == nullptr)
+    {
+        debugf("Cannot allocate memory for screen buffer");
+        exit(0);
+    }
     size_t ramsize;
     // Borrow Emulator RAM buffer for screen.
     // screenBuffer = (charCell *)InfoNes_GetRAM(&ramsize);
@@ -329,7 +352,7 @@ void menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool is
     // Borrow ChrBuffer to store directory contents
     // void *buffer = InfoNes_GetChrBuf(&chr_size);
     size_t bufsize;
-    dirbuffer = (BYTE *) getcachestorefromemulator(&bufsize);
+    dirbuffer = (BYTE *)getcachestorefromemulator(&bufsize);
     Frens::RomLister romlister(dirbuffer, bufsize);
     clearinput();
     if (strlen(errorMessage) > 0)
@@ -346,27 +369,28 @@ void menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool is
     else
     {
         // Show splash screen, only when not reset from emulation
-        if ( reset == false )
+        if (reset == false)
         {
             debugf("Showing splash screen\n");
             showSplashScreen();
-        } else {
-         //   sleep_ms(300);
+        }
+        else
+        {
+            //   sleep_ms(300);
         }
     }
     debugf("Listing roms\n");
-    romlister.list(mountPoint);
+    romlister.list(dirstack[dirstackindex]);
     displayRoms(romlister, firstVisibleRowINDEX);
     while (1)
     {
 
-       
         auto index = selectedRow - STARTROW + firstVisibleRowINDEX;
         auto entries = romlister.GetEntries();
 
         selectedRomOrFolder = (romlister.Count() > 0) ? entries[index].Path : nullptr;
         errorInSavingRom = false;
-        auto frameCount =DrawScreen(selectedRow);
+        auto frameCount = DrawScreen(selectedRow);
         processinput(&PAD1_Latch, &PAD1_Latch2, &pdwSystem, false);
 
         if (PAD1_Latch > 0 || pdwSystem > 0)
@@ -464,7 +488,6 @@ void menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool is
                     selectedRow = STARTROW;
                     displayRoms(romlister, firstVisibleRowINDEX);
                 }
-               
             }
             else if ((pdwSystem & START) == START && (pdwSystem & SELECT) != SELECT)
             {
@@ -497,10 +520,17 @@ void menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool is
             {
                 if (entries[index].IsDirectory)
                 {
-                    if ( dirstackindex < MAXDIRDEPTH - 1)
+                    if (dirstackindex < MAXDIRDEPTH - 1)
                     {
                         dirstackindex++;
-                        sprintf(dirstack[dirstackindex], "%s/%s", dirstack[dirstackindex-1], selectedRomOrFolder);
+                        if (dirstackindex == 1)
+                        {
+                            sprintf(dirstack[dirstackindex], "%s%s", dirstack[dirstackindex - 1], selectedRomOrFolder);
+                        }
+                        else
+                        {
+                            sprintf(dirstack[dirstackindex], "%s/%s", dirstack[dirstackindex - 1], selectedRomOrFolder);
+                        }
                         debugf("Pushing %s\n", dirstack[dirstackindex]);
                     }
                     else
@@ -515,6 +545,42 @@ void menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool is
                 else
                 {
                     // start game
+                    debugf("Selected %s\n", selectedRomOrFolder);
+                    char filetoopen[MAX_FILENAME_LEN];
+                    sprintf(filetoopen, "%s/%s", dirstack[dirstackindex], selectedRomOrFolder);
+                    debugf("Opening %s\n", filetoopen);
+                    // Load the rom into the emulator
+                    FILE *pFile = fopen(filetoopen, "rb");
+                    if (pFile == nullptr)
+                    {
+                        snprintf(globalErrorMessage, 40, "Cannot open %s", filetoopen);
+                        errorInSavingRom = true;
+                        debugf("Cannot open %s\n", filetoopen);
+                        break;
+                    }
+                    int size = filesize(pFile);
+                    if (size > 0)
+                    {
+                        debugf("Size of file %s is %d\n", filetoopen, size);
+                        romInfo.size = size;
+                        romInfo.rom = (uint8_t *)malloc(size);
+                        if (romInfo.rom == nullptr)
+                        {
+                            snprintf(globalErrorMessage, 40, "Cannot allocate memory for rom");
+                            errorInSavingRom = true;
+                            debugf("Cannot allocate memory for rom\n");
+                        } else {
+                            debugf("Allocated %d bytes for rom, reading file\n", size);
+                            fread(romInfo.rom, 1, size, pFile);
+                            fclose(pFile);
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        debugf("Size of file %s is 0\n", filetoopen);
+                    }
+                    fclose(pFile);
 #if 0
                     FRESULT fr;
                     FIL fil;
@@ -603,5 +669,8 @@ void menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool is
     } // while 1
       // Wait until user has released all buttons
     clearinput();
+    debugf("Exiting menu\n");
+    free(dirstack);
     free(screenBuffer);
+    return romInfo;
 }
