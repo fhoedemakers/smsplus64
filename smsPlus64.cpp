@@ -486,9 +486,10 @@ int main()
         romName[0] = 0;
         display_close();
         if ( info.rom != builtinrom) {
-            free(info.rom);
             debugf("Freeing rom\n");
+            free(info.rom);
         }
+        
     }
     return 0;
 }

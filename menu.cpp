@@ -200,17 +200,19 @@ void showSplashScreen()
     char s[SCREEN_COLS];
     ClearScreen(screenBuffer, bgcolor);
 
-    strcpy(s, "Pico-SMSPlus");
+    strcpy(s, "SMSPlus");
     putText(SCREEN_COLS / 2 - (strlen(s) + 4) / 2, 2, s, fgcolor, bgcolor);
 
-    putText((SCREEN_COLS / 2 - (strlen(s)) / 2) + 10, 2, "6", CRED, bgcolor);
-    putText((SCREEN_COLS / 2 - (strlen(s)) / 2) + 11, 2, "4", CGREEN, bgcolor);
+    putText((SCREEN_COLS / 2 - (strlen(s)) / 2) + 5, 2, "6", CRED, bgcolor);
+    putText((SCREEN_COLS / 2 - (strlen(s)) / 2) + 6, 2, "4", CGREEN, bgcolor);
     
 
-    strcpy(s, "Sega Master System");
+    strcpy(s, "Sega Master System &");
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 4, s, fgcolor, bgcolor);
+    strcpy(s, "Sega Game Gear");
+    putText(SCREEN_COLS / 2 - strlen(s) / 2, 5, s, fgcolor, bgcolor);   
     strcpy(s, "emulator for the Nintendo 64");
-    putText(SCREEN_COLS / 2 - strlen(s) / 2, 5, s, fgcolor, bgcolor);
+    putText(SCREEN_COLS / 2 - strlen(s) / 2, 6, s, fgcolor, bgcolor);
 
     strcpy(s, "N64 Port");
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 9, s, fgcolor, bgcolor);
@@ -320,7 +322,7 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
     DWORD PAD1_Latch, PAD1_Latch2, pdwSystem;
 
     int horzontalScrollIndex = 0;
-    debugf("Starting Menu Mount Point %s\n", mountPoint);
+    debugf("Starting Menu, Mount Point: %s\n", mountPoint);
     dirstack = (char(*)[MAX_FILENAME_LEN])calloc(MAXDIRDEPTH, sizeof(char[MAX_FILENAME_LEN]));
     if (dirstack == nullptr)
     {
