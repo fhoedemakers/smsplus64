@@ -116,7 +116,7 @@ int DrawScreen(int selectedRow)
                 graphics_set_color(cell.fgcolor, cell.bgcolor);
             }
 
-            graphics_draw_character(surface, x << 3, y << 3, cell.charvalue);
+            graphics_draw_character(surface, (x << 3)+4, y << 3, cell.charvalue);
         }
     }
     int framecount = ProcessAfterFrameIsRendered(surface, true);
@@ -221,7 +221,7 @@ void showSplashScreen()
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 12, s, fgcolor, bgcolor);
     strcpy(s, "https://github.com/");
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 13, s, CLIGHTBLUE, bgcolor);
-    strcpy(s, "dragonminded/libdragon");
+    strcpy(s, "DragonMinded/libdragon");
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 14, s, CLIGHTBLUE, bgcolor);
 
     strcpy(s, "https://github.com/");
