@@ -48,7 +48,7 @@ bool isFatalError = false;
 
 char romName[256];
 
-static bool fps_enabled = false;
+static bool fps_enabled = true;
 
 bool reset = false;
 
@@ -77,11 +77,11 @@ bool initSDCard()
     return true;
 }
 int sampleIndex = 0;
-int audioBufferLeft = 0;
+int audioBufferLeft = -1;
 void processaudio(int offset)
 {
     int samples = 4; // 735/192 = 3.828125 192*4=768 735/3=245
-
+    short *p;
     if (offset == (IS_GG ? 24 : 0))
     {
         sampleIndex = 0;
@@ -96,15 +96,22 @@ void processaudio(int offset)
     }
     short *p1 = snd.buffer[0] + sampleIndex;
     short *p2 = snd.buffer[1] + sampleIndex;
-    if (audioBufferLeft == 0)
+#if 0
+    if (audioBufferLeft <= 0)
     {
+        if ( audioBufferLeft ==  0) {
+             //debugf("Close audio buffer\n");
+             audio_write_end();
+        }
+        p = audio_write_begin();
         audioBufferLeft = audio_get_buffer_length();
+        //debugf("Audio buffer length: %d\n", audioBufferLeft);
     }
     // 1760
     // debugf("Audio buffer length: %d\n", buflen);
   
-#if 1
-    short *p = audio_write_begin();
+
+   
     while (samples)
     {
        
@@ -114,23 +121,22 @@ void processaudio(int offset)
         {
             return;
         }
-       
         int ct = n;
         while (ct--)
         {
-             debugf("Samples: %d/%d, audioBufferLeft: %d\n", ct, samples, audioBufferLeft);
-            int l = (*p1++ << 16) + *p2++;
+            //debugf("Samples: %d/%d, audioBufferLeft: %d\n", ct, samples, audioBufferLeft);
+            // int l = (*p1++ << 16) + *p2++;
             // works also : int l = (*p1++ + *p2++) / 2;
-            int r = l;
+            //int r = l;
             // int l = *wave1++;
-            *p++ = static_cast<short>(l);
-            *p++ = static_cast<short>(r);
-            audioBufferLeft -= 2;
+            *p++ = *p1++;
+            *p++ = *p2++;
+            //*p++ = static_cast<short>(r);
+            audioBufferLeft-=2;
         }
-     
         samples -= n;
     }
-    audio_write_end();
+
 #endif
 }
 
@@ -462,7 +468,7 @@ int main()
 
         checkcontrollers();
 
-#if 0
+#if 1
         display_init(RESOLUTION_320x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
         RomInfo info = menu(mountPoint, 0, ErrorMessage, isFatalError, reset);
         display_close();
@@ -486,7 +492,7 @@ int main()
         debugf("    isGameGear: %d\n", info.isGameGear);
         reset = false;
         debugf("Init audio\n");
-        audioBufferLeft = 0;
+        audioBufferLeft = -1;
         audio_init(44100, 4);
         load_rom(info.rom, info.size, info.isGameGear);
         // Initialize all systems and power on
@@ -498,6 +504,11 @@ int main()
         process();
         romName[0] = 0;
         display_close();
+        if (audioBufferLeft >= 0)
+        {
+            debugf("audio_write_end()\n");
+            audio_write_end();
+        }
         debugf("Closing audio\n");
         audio_close();
         if (info.rom != builtinrom)
