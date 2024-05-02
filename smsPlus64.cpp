@@ -95,6 +95,9 @@ void processaudio(int offset)
     }
     short *p1 = snd.buffer[0] + sampleIndex;
     short *p2 = snd.buffer[1] + sampleIndex;
+    int buflen = audio_get_buffer_length();
+    debugf("Audio buffer length: %d\n", buflen);	
+
 #if 0
     while (samples)
     {
@@ -432,7 +435,7 @@ int main()
         else
         {
             debugf("rom filesystem mounted\n");
-            strcpy(mountPoint, "rom://");
+            strcpy(mountPoint, "rom:/");
         }
     }
     else
@@ -444,13 +447,13 @@ int main()
     controller_init();
     timer_init();
     new_timer(TIMER_TICKS(1000000), TF_CONTINUOUS, frameratecalc);
-
+   
     while (true)
     {
        
         checkcontrollers();
 
-#if 1
+#if 0
         display_init(RESOLUTION_320x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
         RomInfo info = menu(mountPoint, 0, ErrorMessage, isFatalError, reset);
         display_close();
@@ -473,7 +476,8 @@ int main()
         debugf("    Size: %d\n", info.size);
         debugf("    isGameGear: %d\n", info.isGameGear);
         reset = false;
-        
+        debugf("Init audio\n");
+        audio_init(44100, 4);
         load_rom(info.rom, info.size , info.isGameGear);
         // Initialize all systems and power on
         system_init(SMS_AUD_RATE);
@@ -484,6 +488,8 @@ int main()
         process();
         romName[0] = 0;
         display_close();
+        debugf("Closing audio\n");
+        audio_close();
         if ( info.rom != builtinrom) {
             debugf("Freeing rom\n");
             free(info.rom);
