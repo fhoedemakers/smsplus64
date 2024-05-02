@@ -77,6 +77,7 @@ bool initSDCard()
     return true;
 }
 int sampleIndex = 0;
+int audioBufferLeft = 0;
 void processaudio(int offset)
 {
     int samples = 4; // 735/192 = 3.828125 192*4=768 735/3=245
@@ -95,35 +96,43 @@ void processaudio(int offset)
     }
     short *p1 = snd.buffer[0] + sampleIndex;
     short *p2 = snd.buffer[1] + sampleIndex;
-    int buflen = audio_get_buffer_length();
-    debugf("Audio buffer length: %d\n", buflen);	
-
-#if 0
+    if (audioBufferLeft == 0)
+    {
+        audioBufferLeft = audio_get_buffer_length();
+    }
+    // 1760
+    // debugf("Audio buffer length: %d\n", buflen);
+  
+#if 1
+    short *p = audio_write_begin();
     while (samples)
     {
-        auto &ring = dvi_->getAudioRingBuffer();
-        auto n = std::min<int>(samples, ring.getWritableSize());
-        auto n = samples;
+       
+        auto n = std::min<int>(samples, audioBufferLeft);
+       
         if (!n)
         {
             return;
         }
-        auto p = ring.getWritePointer();
+       
         int ct = n;
         while (ct--)
         {
+             debugf("Samples: %d/%d, audioBufferLeft: %d\n", ct, samples, audioBufferLeft);
             int l = (*p1++ << 16) + *p2++;
             // works also : int l = (*p1++ + *p2++) / 2;
             int r = l;
             // int l = *wave1++;
-            *p++ = {static_cast<short>(l), static_cast<short>(r)};
+            *p++ = static_cast<short>(l);
+            *p++ = static_cast<short>(r);
+            audioBufferLeft -= 2;
         }
-        ring.advanceWritePointer(n);
+     
         samples -= n;
     }
+    audio_write_end();
 #endif
 }
-
 
 extern "C" void sms_palette_syncGG(int index)
 {
@@ -447,10 +456,10 @@ int main()
     controller_init();
     timer_init();
     new_timer(TIMER_TICKS(1000000), TF_CONTINUOUS, frameratecalc);
-   
+
     while (true)
     {
-       
+
         checkcontrollers();
 
 #if 0
@@ -477,8 +486,9 @@ int main()
         debugf("    isGameGear: %d\n", info.isGameGear);
         reset = false;
         debugf("Init audio\n");
+        audioBufferLeft = 0;
         audio_init(44100, 4);
-        load_rom(info.rom, info.size , info.isGameGear);
+        load_rom(info.rom, info.size, info.isGameGear);
         // Initialize all systems and power on
         system_init(SMS_AUD_RATE);
         // load state if any
@@ -490,11 +500,11 @@ int main()
         display_close();
         debugf("Closing audio\n");
         audio_close();
-        if ( info.rom != builtinrom) {
+        if (info.rom != builtinrom)
+        {
             debugf("Freeing rom\n");
             free(info.rom);
         }
-
     }
     return 0;
 }
