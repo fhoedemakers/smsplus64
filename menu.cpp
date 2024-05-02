@@ -200,45 +200,34 @@ void showSplashScreen()
     char s[SCREEN_COLS];
     ClearScreen(screenBuffer, bgcolor);
 
-    strcpy(s, "Pico-");
+    strcpy(s, "Pico-SMSPlus");
     putText(SCREEN_COLS / 2 - (strlen(s) + 4) / 2, 2, s, fgcolor, bgcolor);
 
-    putText((SCREEN_COLS / 2 - (strlen(s)) / 2) + 3, 2, "S", CRED, bgcolor);
-    putText((SCREEN_COLS / 2 - (strlen(s)) / 2) + 4, 2, "M", CGREEN, bgcolor);
-    putText((SCREEN_COLS / 2 - (strlen(s)) / 2) + 5, 2, "S", CBLUE, bgcolor);
-    putText((SCREEN_COLS / 2 - (strlen(s)) / 2) + 6, 2, "+", fgcolor, bgcolor);
+    putText((SCREEN_COLS / 2 - (strlen(s)) / 2) + 10, 2, "6", CRED, bgcolor);
+    putText((SCREEN_COLS / 2 - (strlen(s)) / 2) + 11, 2, "4", CGREEN, bgcolor);
+    
 
     strcpy(s, "Sega Master System");
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 4, s, fgcolor, bgcolor);
-    strcpy(s, "emulator for RP2040");
+    strcpy(s, "emulator for the Nintendo 64");
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 5, s, fgcolor, bgcolor);
 
-    strcpy(s, "Pico Port");
+    strcpy(s, "N64 Port");
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 9, s, fgcolor, bgcolor);
     strcpy(s, "@frenskefrens");
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 10, s, CLIGHTBLUE, bgcolor);
 
-    strcpy(s, "DVI Support");
-    putText(SCREEN_COLS / 2 - strlen(s) / 2, 13, s, fgcolor, bgcolor);
-    strcpy(s, "@shuichi_takano");
+    strcpy(s, "Built with Libdragon");
+    putText(SCREEN_COLS / 2 - strlen(s) / 2, 12, s, fgcolor, bgcolor);
+    strcpy(s, "https://github.com/");
+    putText(SCREEN_COLS / 2 - strlen(s) / 2, 13, s, CLIGHTBLUE, bgcolor);
+    strcpy(s, "dragonminded/libdragon");
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 14, s, CLIGHTBLUE, bgcolor);
-
-    strcpy(s, "(S)NES/WII controller support");
-    putText(SCREEN_COLS / 2 - strlen(s) / 2, 17, s, fgcolor, bgcolor);
-
-    strcpy(s, "@PaintYourDragon @adafruit");
-    putText(SCREEN_COLS / 2 - strlen(s) / 2, 18, s, CLIGHTBLUE, bgcolor);
-
-    strcpy(s, "PCB Design");
-    putText(SCREEN_COLS / 2 - strlen(s) / 2, 21, s, fgcolor, bgcolor);
-
-    strcpy(s, "@johnedgarpark");
-    putText(SCREEN_COLS / 2 - strlen(s) / 2, 22, s, CLIGHTBLUE, bgcolor);
 
     strcpy(s, "https://github.com/");
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 25, s, CLIGHTBLUE, bgcolor);
-    strcpy(s, "fhoedemakers/pico-smsplus");
-    putText(1, 26, s, CLIGHTBLUE, bgcolor);
+    strcpy(s, "fhoedemakers/smsplus64");
+    putText(SCREEN_COLS / 2 - strlen(s) / 2, 26, s, CLIGHTBLUE, bgcolor);
     int startFrame = -1;
     while (true)
     {
