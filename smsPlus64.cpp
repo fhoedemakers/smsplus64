@@ -416,9 +416,8 @@ int main()
     printf("Starting Master System Emulator\n");
 
     debug_init(DEBUG_FEATURE_LOG_ISVIEWER | DEBUG_FEATURE_LOG_USB);
-    debugf("Starting SmsPlus 64, a Sega Master System emulator for the Nintendo 64\n");
-    debugf("Built on %s %s using libdragon\n", __DATE__, __TIME__);
-    debugf("Now running %s\n", GetBuiltinROMName());
+    debugf("Starting SMSPlus64, a Sega Master System emulator for the Nintendo 64 - https://github.com/fhoedemakers/smsplus64\n");
+    debugf("Built on %s %s using libdragon - https://github.com/DragonMinded/libdragon\n", __DATE__, __TIME__);
     debugf("Trying to mount SD card...");
     if (!debug_init_sdfs("sd:/", -1))
     {
@@ -489,7 +488,7 @@ int main()
             debugf("Freeing rom\n");
             free(info.rom);
         }
-        
+
     }
     return 0;
 }
