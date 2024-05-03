@@ -80,6 +80,7 @@ int sampleIndex = 0;
 int audioBufferLeft = -1;
 void processaudio(int offset)
 {
+#if 0
     int samples = 4; // 735/192 = 3.828125 192*4=768 735/3=245
     short *p;
     if (offset == (IS_GG ? 24 : 0))
@@ -96,7 +97,7 @@ void processaudio(int offset)
     }
     short *p1 = snd.buffer[0] + sampleIndex;
     short *p2 = snd.buffer[1] + sampleIndex;
-#if 0
+
     if (audioBufferLeft <= 0)
     {
         if ( audioBufferLeft ==  0) {
@@ -392,6 +393,19 @@ void process(void)
         sms_frame(0);
         ProcessAfterFrameIsRendered(_dc, false);
         display_show(_dc);
+        //
+#if 0
+        short *p = audio_write_begin();
+        //debugf("Audio buffer length: %d\n",  snd.bufsize );
+        int i = 0;
+        for (int x = 0; x < snd.bufsize; x++)
+        {
+            // audio_buffer[x] = (snd.buffer[0][x] << 16) + snd.buffer[1][x];
+            p[i++]= snd.buffer[0][x];
+            p[i++] = snd.buffer[1][x]; 
+        }
+        audio_write_end();
+#endif
     }
 }
 void frameratecalc(int ovfl)
@@ -504,11 +518,13 @@ int main()
         process();
         romName[0] = 0;
         display_close();
+    #if 0
         if (audioBufferLeft >= 0)
         {
             debugf("audio_write_end()\n");
             audio_write_end();
         }
+    #endif
         debugf("Closing audio\n");
         audio_close();
         if (info.rom != builtinrom)
