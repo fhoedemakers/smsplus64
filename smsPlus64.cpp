@@ -432,6 +432,23 @@ void checkcontrollers()
         controller2IsInserted = true;
     }
 }
+
+// debug_init_sdfs is only available when NDEBUG is not defined
+// We need sdfs to access the everdrive SD filesystem. So make it also available when NDEBUG is defined.
+//#ifdef 	NDEBUG
+#undef debug_init_sdfs
+#ifdef __cplusplus
+extern "C" {
+#endif
+bool debug_init_sdfs(const char *prefix, int npart);
+bool init_sdfs(const char *prefix, int npart)
+{
+    return debug_init_sdfs(prefix, npart);
+}
+#ifdef __cplusplus
+}
+#endif
+//#endif
 /// @brief
 /// Start emulator. Emulator does not run well in DEBUG mode, lots of red screen flicker. In order to keep it running fast enough, we need to run it in release mode or in
 /// RelWithDebugInfo mode.
@@ -454,7 +471,7 @@ int main()
     debugf("Starting SMSPlus64, a Sega Master System emulator for the Nintendo 64 - https://github.com/fhoedemakers/smsplus64\n");
     debugf("Built on %s %s using libdragon - https://github.com/DragonMinded/libdragon\n", __DATE__, __TIME__);
     debugf("Trying to mount SD card...");
-    if (!debug_init_sdfs("sd:/", -1))
+    if (!init_sdfs("sd:/", -1))
     {
         debugf("Error opening SD, trying rom filesystem...");
         if (dfs_init(DFS_DEFAULT_LOCATION) != DFS_ESUCCESS)
