@@ -116,7 +116,7 @@ int DrawScreen(int selectedRow)
                 graphics_set_color(cell.fgcolor, cell.bgcolor);
             }
 
-            graphics_draw_character(surface, (x << 3)+4, y << 3, cell.charvalue);
+            graphics_draw_character(surface, (x << 3) + 4, y << 3, cell.charvalue);
         }
     }
     int framecount = ProcessAfterFrameIsRendered(surface, true);
@@ -205,12 +205,11 @@ void showSplashScreen()
 
     putText((SCREEN_COLS / 2 - (strlen(s)) / 2) + 5, 2, "6", CRED, bgcolor);
     putText((SCREEN_COLS / 2 - (strlen(s)) / 2) + 6, 2, "4", CGREEN, bgcolor);
-    
 
     strcpy(s, "Sega Master System &");
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 4, s, fgcolor, bgcolor);
     strcpy(s, "Sega Game Gear");
-    putText(SCREEN_COLS / 2 - strlen(s) / 2, 5, s, fgcolor, bgcolor);   
+    putText(SCREEN_COLS / 2 - strlen(s) / 2, 5, s, fgcolor, bgcolor);
     strcpy(s, "emulator for the Nintendo 64");
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 6, s, fgcolor, bgcolor);
 
@@ -263,7 +262,18 @@ void showSplashScreen()
         }
     }
 }
-
+void showLoadScreen()
+{
+   
+    const char *s;
+    s = "------------";
+    putText(SCREEN_COLS / 2 - strlen(s) / 2, 14, s, bgcolor, fgcolor);
+    s = "|Loading...|";
+    putText(SCREEN_COLS / 2 - strlen(s) / 2, 15, s, bgcolor, fgcolor);
+    s = "------------";
+    putText(SCREEN_COLS / 2 - strlen(s) / 2, 16, s, bgcolor, fgcolor);
+    DrawScreen(-1);
+}
 void screenSaver()
 {
     DWORD PAD1_Latch, PAD1_Latch2, pdwSystem;
@@ -345,6 +355,7 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
     // void *buffer = InfoNes_GetChrBuf(&chr_size);
     size_t bufsize;
     dirbuffer = (BYTE *)getcachestorefromemulator(&bufsize);
+
     Frens::RomLister romlister(dirbuffer, bufsize);
     clearinput();
     if (strlen(errorMessage) > 0)
@@ -372,6 +383,7 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
         }
     }
     debugf("Listing roms\n");
+    showLoadScreen();
     romlister.list(dirstack[dirstackindex]);
     displayRoms(romlister, firstVisibleRowINDEX);
     while (1)
@@ -391,28 +403,6 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
             // reset horizontal scroll of highlighted row
             horzontalScrollIndex = 0;
             putText(3, selectedRow, selectedRomOrFolder, fgcolor, bgcolor);
-
-            // if ((PAD1_Latch & Y) == Y)
-            // {
-            //     fgcolor++;
-            //     if (fgcolor > 63)
-            //     {
-            //         fgcolor = 0;
-            //     }
-            //     printf("fgColor++ : %02d (%04x)\n", fgcolor, NesPalette[fgcolor]);
-            //     displayRoms(romlister, firstVisibleRowINDEX);
-            // }
-            // else if ((PAD1_Latch & X) == X)
-            // {
-            //     bgcolor++;
-            //     if (bgcolor > 63)
-            //     {
-            //         bgcolor = 0;
-            //     }
-            //     printf("bgColor++ : %02d (%04x)\n", bgcolor, NesPalette[bgcolor]);
-            //     displayRoms(romlister, firstVisibleRowINDEX);
-            // }
-            // else
             if ((PAD1_Latch & UP) == UP && selectedRomOrFolder)
             {
                 if (selectedRow > STARTROW)
@@ -445,6 +435,7 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
             }
             else if ((PAD1_Latch & LEFT) == LEFT && selectedRomOrFolder)
             {
+                showLoadScreen();
                 firstVisibleRowINDEX -= PAGESIZE;
                 if (firstVisibleRowINDEX < 0)
                 {
@@ -455,6 +446,7 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
             }
             else if ((PAD1_Latch & RIGHT) == RIGHT && selectedRomOrFolder)
             {
+                showLoadScreen();
                 if (firstVisibleRowINDEX + PAGESIZE < romlister.Count())
                 {
                     firstVisibleRowINDEX += PAGESIZE;
@@ -465,16 +457,10 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
             else if ((PAD1_Latch & B) == B)
             {
                 // go up level
-#if 0
-                fr = f_getcwd(currentDir, 40);
-                if (fr != FR_OK)
-                {
-                    printf("Cannot get current dir: %d\n", fr);
-                }
-#endif
                 if (dirstackindex > 0)
                 {
                     dirstackindex--;
+                    showLoadScreen();
                     romlister.list(dirstack[dirstackindex]);
                     firstVisibleRowINDEX = 0;
                     selectedRow = STARTROW;
@@ -486,26 +472,7 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
                 // reboot and start emulator with currently loaded game
                 // Create a file /START indicating not to reflash the already flashed game
                 // The emulator will delete this file after loading the game
-#if 0
-                FRESULT fr;
-                FIL fil;
-                printf("Creating /START\n");
-                fr = f_open(&fil, "/START", FA_CREATE_ALWAYS | FA_WRITE);
-                if (fr == FR_OK)
-                {
-                    auto bytes = f_puts("START", &fil);
-                    printf("Wrote %d bytes\n", bytes);
-                    fr = f_close(&fil);
-                    if (fr != FR_OK)
-                    {
-                        printf("Cannot close file /START:%d\n", fr);
-                    }
-                }
-                else
-                {
-                    printf("Cannot create file /START:%d\n", fr); 
-               }
-#endif
+
                 break; // reboot
             }
             else if ((PAD1_Latch & A) == A && selectedRomOrFolder)
@@ -521,7 +488,7 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
                         // }
                         // else
                         // {
-                            sprintf(dirstack[dirstackindex], "%s/%s", dirstack[dirstackindex - 1], selectedRomOrFolder);
+                        sprintf(dirstack[dirstackindex], "%s/%s", dirstack[dirstackindex - 1], selectedRomOrFolder);
                         //}
                         debugf("Pushing %s\n", dirstack[dirstackindex]);
                     }
@@ -529,6 +496,7 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
                     {
                         debugf("Directory stack full\n");
                     }
+                    showLoadScreen();
                     romlister.list(dirstack[dirstackindex]);
                     firstVisibleRowINDEX = 0;
                     selectedRow = STARTROW;
@@ -553,6 +521,7 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
                     int size = filesize(pFile);
                     if (size > 0)
                     {
+                        showLoadScreen();
                         debugf("Size of file %s is %d\n", filetoopen, size);
                         romInfo.size = size;
                         romInfo.rom = (uint8_t *)malloc(size);
@@ -563,7 +532,9 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
                             snprintf(globalErrorMessage, 40, "Cannot allocate memory for rom");
                             errorInSavingRom = true;
                             debugf("Cannot allocate memory for rom\n");
-                        } else {
+                        }
+                        else
+                        {
                             debugf("Allocated %d bytes for rom, reading file\n", size);
                             fread(romInfo.rom, 1, size, pFile);
                             fclose(pFile);
@@ -575,61 +546,6 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
                         debugf("Size of file %s is 0\n", filetoopen);
                     }
                     fclose(pFile);
-#if 0
-                    FRESULT fr;
-                    FIL fil;
-                    char curdir[256];
-
-                    fr = f_getcwd(curdir, sizeof(curdir));
-                    printf("Current dir: %s\n", curdir);
-                    // Create file containing full path name currently loaded rom
-                    // The contents of this file will be used by the emulator to flash and start the correct rom in main.cpp
-                    printf("Creating %s\n", ROMINFOFILE);
-                    fr = f_open(&fil, ROMINFOFILE, FA_CREATE_ALWAYS | FA_WRITE);
-                    if (fr == FR_OK)
-                    {
-                        for (auto i = 0; i < strlen(curdir); i++)
-                        {
-
-                            int x = f_putc(curdir[i], &fil);
-                            printf("%c", curdir[i]);
-                            if (x < 0)
-                            {
-                                snprintf(globalErrorMessage, 40, "Error writing file %d", fr);
-                                printf("%s\n", globalErrorMessage);
-                                errorInSavingRom = true;
-                                break;
-                            }
-                        }
-                        f_putc('/', &fil);
-                        printf("%c", '/');
-                        for (auto i = 0; i < strlen(selectedRomOrFolder); i++)
-                        {
-
-                            int x = f_putc(selectedRomOrFolder[i], &fil);
-                            printf("%c", selectedRomOrFolder[i]);
-                            if (x < 0)
-                            {
-                                snprintf(globalErrorMessage, 40, "Error writing file %d", fr);
-                                printf("%s\n", globalErrorMessage);
-                                errorInSavingRom = true;
-                                break;
-                            }
-                        }
-                        printf("\n");
-                    }
-                    else
-                    {
-                        printf("Cannot create %s:%d\n", ROMINFOFILE, fr);
-                        snprintf(globalErrorMessage, 40, "Cannot create %s:%d", ROMINFOFILE, fr);
-                        errorInSavingRom = true;
-                    }
-                    f_close(&fil);
-                    // break out of loop and reboot
-                    // rom will be flashed and started by main.cpp
-                    // Cannot flash here because of lockups (when using wii controller) and sound issues
-                    break;
-#endif
                 }
             }
         }
