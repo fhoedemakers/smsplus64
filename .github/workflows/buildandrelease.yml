@@ -51,7 +51,8 @@ jobs:
           - name: Build the files
             run: |            
                  export N64_INST=$HOME/libdragon && \
-                 make && \
+                 chmod +x ./build.sh && \
+                 ./build.sh && \
                  ls -l ${{ env.APP_NAME }}.z64
 
           - name: Create release
