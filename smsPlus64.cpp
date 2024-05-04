@@ -8,8 +8,11 @@
 #include "common.h"
 #include "libdragon.h"
 #include "menu.h"
-
 #include "FrensHelpers.h"
+
+#ifndef USEMENU
+#include "builtinrom.h"
+#endif
 
 #define ERRORMESSAGESIZE 40
 #define GAMESAVEDIR "/SAVES"
@@ -209,8 +212,8 @@ extern "C" void sms_render_line(int line, const uint8_t *buffer)
         }
     }
     // center more or less screen
-    line+=24;
-    
+    line += 24;
+
     // debugf("\tLine %d, ISGG: %d\n", line, IS_GG);
 
     if (buffer)
@@ -435,20 +438,21 @@ void checkcontrollers()
 
 // debug_init_sdfs is only available when NDEBUG is not defined
 // We need sdfs to access the everdrive SD filesystem. So make it also available when NDEBUG is defined.
-//#ifdef 	NDEBUG
+// #ifdef 	NDEBUG
 #undef debug_init_sdfs
 #ifdef __cplusplus
-extern "C" {
-#endif
-bool debug_init_sdfs(const char *prefix, int npart);
-bool init_sdfs(const char *prefix, int npart)
+extern "C"
 {
-    return debug_init_sdfs(prefix, npart);
-}
+#endif
+    bool debug_init_sdfs(const char *prefix, int npart);
+    bool init_sdfs(const char *prefix, int npart)
+    {
+        return debug_init_sdfs(prefix, npart);
+    }
 #ifdef __cplusplus
 }
 #endif
-//#endif
+// #endif
 /// @brief
 /// Start emulator. Emulator does not run well in DEBUG mode, lots of red screen flicker. In order to keep it running fast enough, we need to run it in release mode or in
 /// RelWithDebugInfo mode.
@@ -496,13 +500,33 @@ int main()
     controller_init();
     timer_init();
     new_timer(TIMER_TICKS(1000000), TF_CONTINUOUS, frameratecalc);
-
+    struct controller_data output;
+    get_accessories_present(&output);
+    int x = identify_accessory(0);
+    switch (x)
+    {
+    case ACCESSORY_MEMPAK:
+        debugf("Accessory: Memory Pak\n");
+        break;
+    case ACCESSORY_RUMBLEPAK:
+        debugf("Accessory: Rumble Pak\n");
+        break;
+    case ACCESSORY_TRANSFERPAK:
+        debugf("Accessory: Transfer Pak\n");
+        break;
+    case ACCESSORY_VRU:
+        debugf("Accessory: VRU\n");
+        break;
+    default:
+        debugf("Accessory: None\n");
+        break;
+    }
     while (true)
     {
 
         checkcontrollers();
 
-#if 1
+#ifdef USEMENU
         display_init(RESOLUTION_320x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
         RomInfo info = menu(mountPoint, 0, ErrorMessage, isFatalError, reset);
         display_close();
@@ -538,20 +562,19 @@ int main()
         process();
         romName[0] = 0;
         display_close();
-    #if 0
+#if 0
         if (audioBufferLeft >= 0)
         {
             debugf("audio_write_end()\n");
             audio_write_end();
         }
-    #endif
+#endif
         debugf("Closing audio\n");
         audio_close();
-        if (info.rom != builtinrom)
-        {
-            debugf("Freeing rom\n");
-            free(info.rom);
-        }
+#ifdef USEMENU
+        debugf("Freeing rom\n");
+        free(info.rom);
+#endif
     }
     return 0;
 }

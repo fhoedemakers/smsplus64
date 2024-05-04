@@ -8,7 +8,7 @@
 // Modify this file to include the new rom based on the #define
 // Modify builtinrom.h and change the #define of the rom you want to use.
 // Only one rom can be used at a time.
-
+#ifndef USEMENU
 #include "builtinrom.h"
 #ifdef BUILTINROM_SONIC_GG
 #include "sonic_gg.c"
@@ -24,3 +24,4 @@ char *GetBuiltinROMName()
 {
     return BUILTINROMNAME;
 }
+#endif

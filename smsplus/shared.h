@@ -12,7 +12,7 @@ extern "C" {
 #include <math.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include "builtinrom.h"
+
 #include "loadrom.h"
 
 #define VERSION     "0.9.4a"

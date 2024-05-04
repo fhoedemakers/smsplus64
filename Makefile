@@ -13,9 +13,9 @@ endif
 # add current folder and infones subfolder to include path
 INCDIR = -I. -Ismsplus -Iassets
 # add INCDIR to CFLAGS
-CFLAGS += $(INCDIR) # -DLSB_FIRST=0
+CFLAGS += $(INCDIR) -DUSEMENU # -DLSB_FIRST=0
 # add INCDIR to CXXFLAGS
-CXXFLAGS += $(INCDIR) #-DLSB_FIRST=0
+CXXFLAGS += $(INCDIR) -DUSEMENU #-DLSB_FIRST=0
 
 SUBDIRS = $(SOURCE_DIR) $(SOURCE_DIR)/smsplus $(SOURCE_DIR)/assets
 #$(BUILD_DIR)/%.o: %.c 
@@ -31,7 +31,7 @@ vpath %.cpp $(SUBDIRS)
 vpath %.c $(SUBDIRS)
 # 
 
-OBJS = $(BUILD_DIR)/smsPlus64.o $(BUILD_DIR)/loadrom.o $(BUILD_DIR)/render.o $(BUILD_DIR)/sms.o  $(BUILD_DIR)/sn76496.o $(BUILD_DIR)/system.o $(BUILD_DIR)/vdp.o $(BUILD_DIR)/z80.o $(BUILD_DIR)/builtinrom.o $(BUILD_DIR)/menu.o $(BUILD_DIR)/RomLister.o $(BUILD_DIR)/FrensHelpers.o 
+OBJS = $(BUILD_DIR)/smsPlus64.o $(BUILD_DIR)/loadrom.o $(BUILD_DIR)/render.o $(BUILD_DIR)/sms.o $(BUILD_DIR)/builtinrom.o  $(BUILD_DIR)/sn76496.o $(BUILD_DIR)/system.o $(BUILD_DIR)/vdp.o $(BUILD_DIR)/z80.o $(BUILD_DIR)/menu.o $(BUILD_DIR)/RomLister.o $(BUILD_DIR)/FrensHelpers.o 
 
 smsPlus64.z64: N64_ROM_TITLE = "SMSPlus emulator"
 smsPlus64.z64: $(BUILD_DIR)/smsPlus64.dfs
