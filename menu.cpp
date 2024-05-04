@@ -197,37 +197,37 @@ void DisplayEmulatorErrorMessage(char *error)
 void showSplashScreen()
 {
     DWORD PAD1_Latch, PAD1_Latch2, pdwSystem;
-    char s[SCREEN_COLS];
+    const char *s;
     ClearScreen(screenBuffer, bgcolor);
 
-    strcpy(s, "SMSPlus");
+    s = "SMSPlus";
     putText(SCREEN_COLS / 2 - (strlen(s) + 4) / 2, 2, s, fgcolor, bgcolor);
 
     putText((SCREEN_COLS / 2 - (strlen(s)) / 2) + 5, 2, "6", CRED, bgcolor);
     putText((SCREEN_COLS / 2 - (strlen(s)) / 2) + 6, 2, "4", CGREEN, bgcolor);
 
-    strcpy(s, "Sega Master System &");
+    s = "Sega Master System &";
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 4, s, fgcolor, bgcolor);
-    strcpy(s, "Sega Game Gear");
+    s = "Sega Game Gear";
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 5, s, fgcolor, bgcolor);
-    strcpy(s, "emulator for the Nintendo 64");
+    s = "emulator for the Nintendo 64";
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 6, s, fgcolor, bgcolor);
 
-    strcpy(s, "N64 Port");
+    s = "N64 Port";
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 9, s, fgcolor, bgcolor);
-    strcpy(s, "@frenskefrens");
+    s = "@frenskefrens";
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 10, s, CLIGHTBLUE, bgcolor);
 
-    strcpy(s, "Built with Libdragon");
+    s = "Built with Libdragon";
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 12, s, fgcolor, bgcolor);
-    strcpy(s, "https://github.com/");
+    s = "https://github.com/";
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 13, s, CLIGHTBLUE, bgcolor);
-    strcpy(s, "DragonMinded/libdragon");
+    s = "DragonMinded/libdragon";
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 14, s, CLIGHTBLUE, bgcolor);
 
-    strcpy(s, "https://github.com/");
+    s = "https://github.com/";
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 25, s, CLIGHTBLUE, bgcolor);
-    strcpy(s, "fhoedemakers/smsplus64");
+    s = "fhoedemakers/smsplus64";
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 26, s, CLIGHTBLUE, bgcolor);
     int startFrame = -1;
     while (true)
@@ -264,7 +264,7 @@ void showSplashScreen()
 }
 void showLoadScreen()
 {
-   
+
     const char *s;
     s = "------------";
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 14, s, bgcolor, fgcolor);
