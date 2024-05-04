@@ -208,6 +208,9 @@ extern "C" void sms_render_line(int line, const uint8_t *buffer)
             return;
         }
     }
+    // center more or less screen
+    line+=24;
+    
     // debugf("\tLine %d, ISGG: %d\n", line, IS_GG);
 
     if (buffer)
