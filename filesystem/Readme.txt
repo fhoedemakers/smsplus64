@@ -1,0 +1,1 @@
+When USEMENU is not define in Makefile, put your .sms and .gg files in this folder to be compiled into the rom.
