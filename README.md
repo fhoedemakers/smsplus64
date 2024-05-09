@@ -8,7 +8,7 @@ Game Gear games run faster than Master System games and are much more playable.
 
 Built with [Libdragon](https://github.com/DragonMinded/libdragon)
 
-The emulator code is ported from [Infones by Jay Kumogata](https://github.com/jay-kumogata/InfoNES)
+The emulator code is a port of smsPlus.
 
 ## How to use on an EverDrive-64 X7 on real hardware.
 
