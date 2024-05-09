@@ -79,70 +79,6 @@ bool initSDCard()
     printf("Mounting SDcard");
     return true;
 }
-int sampleIndex = 0;
-int audioBufferLeft = -1;
-void processaudio(int offset)
-{
-#if 0
-    int samples = 4; // 735/192 = 3.828125 192*4=768 735/3=245
-    short *p;
-    if (offset == (IS_GG ? 24 : 0))
-    {
-        sampleIndex = 0;
-    }
-    else
-    {
-        sampleIndex += samples;
-        if (sampleIndex >= 735)
-        {
-            return;
-        }
-    }
-    short *p1 = snd.buffer[0] + sampleIndex;
-    short *p2 = snd.buffer[1] + sampleIndex;
-
-    if (audioBufferLeft <= 0)
-    {
-        if ( audioBufferLeft ==  0) {
-             //debugf("Close audio buffer\n");
-             audio_write_end();
-        }
-        p = audio_write_begin();
-        audioBufferLeft = audio_get_buffer_length();
-        //debugf("Audio buffer length: %d\n", audioBufferLeft);
-    }
-    // 1760
-    // debugf("Audio buffer length: %d\n", buflen);
-  
-
-   
-    while (samples)
-    {
-       
-        auto n = std::min<int>(samples, audioBufferLeft);
-       
-        if (!n)
-        {
-            return;
-        }
-        int ct = n;
-        while (ct--)
-        {
-            //debugf("Samples: %d/%d, audioBufferLeft: %d\n", ct, samples, audioBufferLeft);
-            // int l = (*p1++ << 16) + *p2++;
-            // works also : int l = (*p1++ + *p2++) / 2;
-            //int r = l;
-            // int l = *wave1++;
-            *p++ = *p1++;
-            *p++ = *p2++;
-            //*p++ = static_cast<short>(r);
-            audioBufferLeft-=2;
-        }
-        samples -= n;
-    }
-
-#endif
-}
 
 extern "C" void sms_palette_syncGG(int index)
 {
@@ -195,8 +131,6 @@ extern "C" void sms_render_line(int line, const uint8_t *buffer)
     // gg : Line starts at line 24
     // sms: Line starts at line 0
     // Emulator loops from scanline 0 to 261
-    // Audio needs to be processed per scanline
-    processaudio(line);
     if (IS_GG)
     {
         if (line < 24 || line >= 168)
@@ -399,16 +333,17 @@ void process(void)
         sms_frame(0);
         ProcessAfterFrameIsRendered(_dc, false);
         display_show(_dc);
+
         //
 #if 0
+       
         short *p = audio_write_begin();
         //debugf("Audio buffer length: %d\n",  snd.bufsize );
         int i = 0;
         for (int x = 0; x < snd.bufsize; x++)
         {
             // audio_buffer[x] = (snd.buffer[0][x] << 16) + snd.buffer[1][x];
-            p[i++]= snd.buffer[0][x];
-            p[i++] = snd.buffer[1][x]; 
+            *p++ = (snd.buffer[0][x] << 16) + snd.buffer[1][x];
         }
         audio_write_end();
 #endif
@@ -550,7 +485,6 @@ int main()
         debugf("    isGameGear: %d\n", info.isGameGear);
         reset = false;
         debugf("Init audio\n");
-        audioBufferLeft = -1;
         audio_init(44100, 4);
         load_rom(info.rom, info.size, info.isGameGear);
         // Initialize all systems and power on
@@ -562,13 +496,6 @@ int main()
         process();
         romName[0] = 0;
         display_close();
-#if 0
-        if (audioBufferLeft >= 0)
-        {
-            debugf("audio_write_end()\n");
-            audio_write_end();
-        }
-#endif
         debugf("Closing audio\n");
         audio_close();
 #ifdef USEMENU

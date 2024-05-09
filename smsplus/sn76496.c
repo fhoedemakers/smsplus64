@@ -1,6 +1,6 @@
 
 #include "shared.h"
-
+#include "libdragon.h"
 #define MAX_OUTPUT  0x7FFF
 #define STEP        0x10000
 #define FB_WNOISE   0x12000
@@ -77,7 +77,7 @@ void SN76496Update(int chip, INT16 *buffer[2], int length, unsigned char mask) {
     int i, j;
     int buffer_index = 0;
     t_SN76496 *R = &sn[chip];
-
+    //short *p = audio_write_begin();
     /* If the volume is 0, increase the counter */
     for (i = 0; i < 4; i++) {
         if (R->Volume[i] == 0) {
@@ -155,12 +155,14 @@ void SN76496Update(int chip, INT16 *buffer[2], int length, unsigned char mask) {
         if (out[1] > MAX_OUTPUT * STEP) out[1] = MAX_OUTPUT * STEP;
         buffer[0][buffer_index] = out[0] / STEP;
         buffer[1][buffer_index] = out[1] / STEP;
-
+        short p = (buffer[0][buffer_index] << 16) + buffer[1][buffer_index];
+        audio_push(&p,1,true);
         /* Next sample set */
         buffer_index += 1;
 
         length--;
     }
+    //audio_write_end();
 }
 
 
