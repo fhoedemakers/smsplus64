@@ -3,7 +3,7 @@
 A Sega Master System and Game Gear Emulator running on the Nintendo 64. Use it on real hardware with an EverDrive-64. Tested with the [EverDrive-64 X7](https://krikzz.com/our-products/cartridges/ed64x7.html) on an NTSC Nintendo 64.
 
 > Note This project is more of a fun thing for me to try if it works. It runs way too slow to be really usable and playable.  I don't know if the emulator will ever run at full speed. Help is always welcome. 
-Game Gear games run faster than Master System games and are much more playable.
+Game Gear games run faster than Master System games and are much more playable. Try it yourself to find out.
 
 
 Built with [Libdragon](https://github.com/DragonMinded/libdragon)
