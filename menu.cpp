@@ -469,11 +469,7 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
             }
             else if ((pdwSystem & START) == START && (pdwSystem & SELECT) != SELECT)
             {
-                // reboot and start emulator with currently loaded game
-                // Create a file /START indicating not to reflash the already flashed game
-                // The emulator will delete this file after loading the game
-
-                break; // reboot
+                // Do nothing for now. Intended for starting the last played game. (TODO)
             }
             else if ((PAD1_Latch & A) == A && selectedRomOrFolder)
             {
