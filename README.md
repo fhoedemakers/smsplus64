@@ -10,7 +10,7 @@ Built with [Libdragon](https://github.com/DragonMinded/libdragon)
 
 The emulator code is a port of smsPlus.
 
-## How to use on an EverDrive-64 X7 on real hardware.
+## How to use on real hardware using an Everdrive 64 X7.
 
 To try the emulator, download smsPlus64.z64 from the [releases](https://github.com/fhoedemakers/smsplus64/releases/latest) page en copy it to your flash card.
 
