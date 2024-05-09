@@ -16,6 +16,23 @@ To try the emulator, download smsPlus64.z64 from the [releases](https://github.c
 
 Games can be played from the flashcard's SD card. Create a folder named `smsPlus64` in the root of your flashcard's SD card and copy your .sms or .gg ROMs there. You can organize your games in subfolders. The emulator shows a menu whith a list of games.
 
+## Controls
+
+### In menu
+
+- D-pad Up or Down: Next previous game
+- D-pad left or right: previous or next page.
+- B: Go to previous folder
+- A: Open folder or start selected game
+
+### In Game
+
+- D-Pad: movement
+- Start: Pause game
+- B: Button 1
+- A: Button 2
+- Z + Start: Go back to menu
+- Start + A: Toggle framerate
 
 ## Building from source
 
