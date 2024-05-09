@@ -3,6 +3,7 @@
 #include "libdragon.h"
 #define MAX_OUTPUT  0x7FFF
 #define STEP        0x10000
+#define STEPSHIFT  16
 #define FB_WNOISE   0x12000
 #define FB_PNOISE   0x08000
 #define NG_PRESET   0x0F35
@@ -73,7 +74,7 @@ void SN76496Write(int chip, int data) {
 }
 
 
-void SN76496Update(int chip, INT16 *buffer[2], int length, unsigned char mask) {
+void SN76496Update(int chip, int length, unsigned char mask) {
     int i, j;
     int buffer_index = 0;
     t_SN76496 *R = &sn[chip];
@@ -84,7 +85,7 @@ void SN76496Update(int chip, INT16 *buffer[2], int length, unsigned char mask) {
             /* note that I do count += length, NOT count = length + 1. You might think */
             /* it's the same since the volume is 0, but doing the latter could cause */
             /* interferencies when the program is rapidly modulating the volume. */
-            if (R->Count[i] <= length * STEP) R->Count[i] += length * STEP;
+            if (R->Count[i] <= (length << STEPSHIFT )) R->Count[i] += (length << STEPSHIFT);
         }
     }
 
@@ -151,11 +152,10 @@ void SN76496Update(int chip, INT16 *buffer[2], int length, unsigned char mask) {
             if (mask & (1 << (0 + j))) out[1] += k;
         }
 
-        if (out[0] > MAX_OUTPUT * STEP) out[0] = MAX_OUTPUT * STEP;
-        if (out[1] > MAX_OUTPUT * STEP) out[1] = MAX_OUTPUT * STEP;
-        buffer[0][buffer_index] = out[0] / STEP;
-        buffer[1][buffer_index] = out[1] / STEP;
-        short p = (buffer[0][buffer_index] << 16) + buffer[1][buffer_index];
+        if (out[0] > MAX_OUTPUT << STEPSHIFT) out[0] = (MAX_OUTPUT << STEPSHIFT);
+        if (out[1] > MAX_OUTPUT << STEPSHIFT) out[1] = (MAX_OUTPUT << STEPSHIFT);
+        short p = ((out[0] >> STEPSHIFT) << STEPSHIFT) + (out[1] >> STEPSHIFT);
+        // push sample into N64 audio system
         audio_push(&p,1,true);
         /* Next sample set */
         buffer_index += 1;

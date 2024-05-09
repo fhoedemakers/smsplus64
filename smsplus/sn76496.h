@@ -22,7 +22,7 @@ extern t_SN76496 sn[MAX_76496];
 
 void SN76496Write(int chip, int data);
 
-void SN76496Update(int chip, signed short int *buffer[2], int length, unsigned char mask);
+void SN76496Update(int chip, int length, unsigned char mask);
 
 void SN76496_set_clock(int chip, int clock);
 

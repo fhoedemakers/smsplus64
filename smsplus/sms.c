@@ -66,7 +66,7 @@ void (sms_frame)(int skip_render) {
             snd.buffer[1][count] = right;
         }
 */
-        SN76496Update(0, snd.buffer, snd.bufsize, sms.psg_mask);
+        SN76496Update(0, snd.bufsize, sms.psg_mask);
     }
 }
 

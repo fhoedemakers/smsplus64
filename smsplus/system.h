@@ -48,7 +48,7 @@ typedef struct {
 typedef struct {
     int enabled;
     int bufsize;
-    signed short *buffer[2];
+    //signed short *buffer[2];
     signed short *fm_buffer;        /* internal use only */
     signed short *psg_buffer[2];    /* internal use only */
     int log;

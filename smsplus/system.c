@@ -64,11 +64,11 @@ void sms_audio_init(int rate) {
     snd.bufsize = (rate / 60);
 
     /* Sound output */
-    snd.buffer[0] = (signed short int *) malloc(snd.bufsize * 2);
-    snd.buffer[1] = (signed short int *) malloc(snd.bufsize * 2);
-    if (!snd.buffer[0] || !snd.buffer[1]) return;
-    __builtin_memset(snd.buffer[0], 0, snd.bufsize * 2);
-    __builtin_memset(snd.buffer[1], 0, snd.bufsize * 2);
+    // snd.buffer[0] = (signed short int *) malloc(snd.bufsize * 2);
+    // snd.buffer[1] = (signed short int *) malloc(snd.bufsize * 2);
+    // if (!snd.buffer[0] || !snd.buffer[1]) return;
+    // __builtin_memset(snd.buffer[0], 0, snd.bufsize * 2);
+    // __builtin_memset(snd.buffer[1], 0, snd.bufsize * 2);
 
     /* YM2413 sound stream */
 //    snd.fm_buffer = (signed short int *)malloc(snd.bufsize * 2);
