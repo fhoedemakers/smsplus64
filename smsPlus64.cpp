@@ -17,6 +17,8 @@
 #define ERRORMESSAGESIZE 40
 #define GAMESAVEDIR "/SAVES"
 
+#define FRAMEBUFFERS 3
+
 /* hardware definitions */
 // Pad buttons
 #define A_BUTTON(a) ((a) & 0x8000)
@@ -51,7 +53,9 @@ bool isFatalError = false;
 
 char romName[256];
 
-static bool fps_enabled = true;
+static bool fps_enabled = false;
+timer_link_t *fpstimer = nullptr;
+static bool hideFrameRate = false;
 
 bool reset = false;
 
@@ -208,6 +212,28 @@ int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
     return totalfames++;
 }
 
+void frameratecalc(int ovfl)
+{
+    // debugf("FPS: %d\n", framecounter);
+    framedisplay = framecounter;
+    framecounter = 0;
+}
+void enableordisableTimer()
+{
+    if (fps_enabled)
+    {
+        fpstimer = new_timer(TIMER_TICKS(1000000), TF_CONTINUOUS, frameratecalc);
+        framecounter = framedisplay = 0;
+    }
+    else
+    {
+        if (fpstimer != nullptr)
+        {
+            delete_timer(fpstimer);
+            fpstimer = nullptr;
+        }
+    }
+}
 #define OTHER_BUTTON1 (0b1)
 #define OTHER_BUTTON2 (0b10)
 
@@ -283,7 +309,13 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
             if (pushed & INPUT_BUTTON1)
             {
                 fps_enabled = !fps_enabled;
+                enableordisableTimer();
                 debugf("FPS: %s\n", fps_enabled ? "ON" : "OFF");
+                if (fps_enabled == false)
+                {
+                    hideFrameRate = true;
+                    debugf("Hiding frame rate\n");
+                }
             }
             if (pushed & INPUT_UP)
             {
@@ -330,6 +362,19 @@ void process(void)
         // debugf("Frame %d\n", framecounter);
         processinput(&pdwPad1, &pdwPad2, &pdwSystem, false);
         _dc = display_get();
+        if (hideFrameRate)
+        {
+
+            hideFrameRate = false;
+            // Clear all the framebuffers
+            for (int i = 0; i < FRAMEBUFFERS; i++)
+            {
+                debugf("Clear framebuffer %d\n", i + 1);
+                graphics_fill_screen(_dc, 1);
+                display_show(_dc);
+                _dc = display_get();
+            }
+        }
         sms_frame(0);
         ProcessAfterFrameIsRendered(_dc, false);
         display_show(_dc);
@@ -349,12 +394,7 @@ void process(void)
 #endif
     }
 }
-void frameratecalc(int ovfl)
-{
-    // debugf("FPS: %d\n", framecounter);
-    framedisplay = framecounter;
-    framecounter = 0;
-}
+
 void checkcontrollers()
 {
     controller1IsInserted = controller2IsInserted = false;
@@ -434,7 +474,7 @@ int main()
     // register_VI_handler(vblCallback);
     controller_init();
     timer_init();
-    new_timer(TIMER_TICKS(1000000), TF_CONTINUOUS, frameratecalc);
+    enableordisableTimer();
     struct controller_data output;
     get_accessories_present(&output);
     int x = identify_accessory(0);
@@ -473,7 +513,7 @@ int main()
         strcpy(info.title, GetBuiltinROMName());
 #endif
         /* Initialize display */
-        display_init(RESOLUTION_256x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
+        display_init(RESOLUTION_256x240, DEPTH_16_BPP, FRAMEBUFFERS, GAMMA_NONE, FILTERS_RESAMPLE);
         checkcontrollers();
         if ((isFatalError = !initSDCard()) == false)
         {
