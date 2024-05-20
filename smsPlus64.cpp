@@ -48,6 +48,9 @@
 
 surface_t *_dc;
 
+#define SOUNDISENABLED 0
+int soundEnabled = SOUNDISENABLED;
+
 char *ErrorMessage;
 bool isFatalError = false;
 
@@ -193,10 +196,11 @@ int framedisplay = 0;
 int totalfames = 0;
 int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
 {
-    char buffer[10];
+    char buffer[15];
     if (fps_enabled)
     {
-        sprintf(buffer, "%d", framedisplay);
+        char sound = soundEnabled ? 'S' : 'M';
+        sprintf(buffer, "%c %d", sound, framedisplay);
         // debugf("Frame %d\n", totalfames);
         if (IS_GG && fromMenu == false)
         {
@@ -302,10 +306,7 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
                 reset = true;
                 debugf("Reset pressed\n");
             }
-        }
-        if (p1 & INPUT_START)
-        {
-            // Toggle frame rate display
+             // Toggle frame rate display
             if (pushed & INPUT_BUTTON1)
             {
                 fps_enabled = !fps_enabled;
@@ -317,6 +318,16 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
                     debugf("Hiding frame rate\n");
                 }
             }
+            if (pushed & INPUT_BUTTON2)
+            {
+                 
+                snd.enabled = soundEnabled = !soundEnabled;
+                 debugf("Toggle sound (%d)\n", soundEnabled);
+            }
+        }
+        if (p1 & INPUT_START)
+        {
+           
             if (pushed & INPUT_UP)
             {
                 // screenMode(-1);
@@ -449,27 +460,27 @@ int main()
     debug_init(DEBUG_FEATURE_LOG_ISVIEWER | DEBUG_FEATURE_LOG_USB);
     debugf("Starting SMSPlus64, a Sega Master System emulator for the Nintendo 64 - https://github.com/fhoedemakers/smsplus64\n");
     debugf("Built on %s %s using libdragon - https://github.com/DragonMinded/libdragon\n", __DATE__, __TIME__);
-    debugf("Trying to mount SD card...");
-    if (!init_sdfs("sd:/", -1))
+    debugf("Mounting rom file system...");
+    if (dfs_init(DFS_DEFAULT_LOCATION) == DFS_ESUCCESS)
     {
-        debugf("Error opening SD, trying rom filesystem...");
-        if (dfs_init(DFS_DEFAULT_LOCATION) != DFS_ESUCCESS)
+        debugf("mounted.\nTrying to mount SD card...");
+        if (!init_sdfs("sd:/", -1))
         {
-            debugf("rom filesystem failed to start!\n");
-            debugf("Exit program\n");
-            isFatalError = true;
-            strcpy(ErrorMessage, "Error opening SD card and rom filesystem.");
+            debugf("Error opening SD, using rom filesystem...\n");
+            strcpy(mountPoint, "rom:/");
         }
         else
         {
-            debugf("rom filesystem mounted\n");
-            strcpy(mountPoint, "rom:/");
+            debugf("SD card mounted\n");
+            strcpy(mountPoint, "sd:/smsPlus64");
         }
     }
     else
     {
-        debugf("SD card mounted\n");
-        strcpy(mountPoint, "sd:/smsPlus64");
+        debugf("rom filesystem failed to start!\n");
+        debugf("Exit program\n");
+        isFatalError = true;
+        strcpy(ErrorMessage, "Error opening rom filesystem.");
     }
     // register_VI_handler(vblCallback);
     controller_init();

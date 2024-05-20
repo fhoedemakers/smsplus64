@@ -8,6 +8,13 @@
 #include "menu.h"
 #include "shared.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+sprite_t  *loaddragonsprite();
+#ifdef __cplusplus
+}
+#endif
 #define SCREEN_ROWS 29
 #define SCREEN_COLS 39
 #define STARTROW 2
@@ -26,6 +33,8 @@
 #define DEFAULT_BGCOLOR CWHITE
 
 #define MAXDIRDEPTH 5
+
+sprite_t *dragonsprite = nullptr;
 
 char (*dirstack)[MAX_FILENAME_LEN]; // [MAXDIRDEPTH][MAX_FILENAME_LEN];
 int dirstackindex = 0;
@@ -119,6 +128,10 @@ int DrawScreen(int selectedRow)
             graphics_draw_character(surface, (x << 3) + 4, y << 3, cell.charvalue);
         }
     }
+    if (dragonsprite)
+    {
+        graphics_draw_sprite_trans(surface, 80, 120, dragonsprite);
+    }
     int framecount = ProcessAfterFrameIsRendered(surface, true);
     display_show(surface);
     return framecount;
@@ -196,10 +209,11 @@ void DisplayEmulatorErrorMessage(char *error)
 
 void showSplashScreen()
 {
+    dragonsprite = loaddragonsprite();
     DWORD PAD1_Latch, PAD1_Latch2, pdwSystem;
     const char *s;
     ClearScreen(screenBuffer, bgcolor);
-
+   
     s = "SMSPlus";
     putText(SCREEN_COLS / 2 - (strlen(s) + 4) / 2, 2, s, fgcolor, bgcolor);
 
@@ -230,9 +244,11 @@ void showSplashScreen()
     s = "fhoedemakers/smsplus64";
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 26, s, CLIGHTBLUE, bgcolor);
     int startFrame = -1;
+    
     while (true)
     {
         auto frameCount = DrawScreen(-1);
+          
         if (startFrame == -1)
         {
             startFrame = frameCount;
@@ -241,7 +257,7 @@ void showSplashScreen()
         processinput(&PAD1_Latch, &PAD1_Latch2, &pdwSystem, false);
         if (PAD1_Latch > 0 || (frameCount - startFrame) > 800)
         {
-            return;
+            break;
         }
         if ((frameCount % 30) == 0)
         {
@@ -261,6 +277,7 @@ void showSplashScreen()
             }
         }
     }
+    dragonsprite = nullptr;
 }
 void showLoadScreen()
 {
