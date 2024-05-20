@@ -92,7 +92,7 @@ void sms_audio_init(int rate) {
 //    OPLL_reset_patch(opll,0) ;            /* if use default voice data. */ 
 
     /* Inform other functions that we can use sound */
-    snd.enabled = 1;
+    snd.enabled = soundEnabled;
 }
 
 

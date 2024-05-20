@@ -48,7 +48,7 @@
 
 surface_t *_dc;
 
-#define SOUNDISENABLED 0
+#define SOUNDISENABLED 1
 int soundEnabled = SOUNDISENABLED;
 
 char *ErrorMessage;
