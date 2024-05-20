@@ -244,7 +244,7 @@ void showSplashScreen()
     s = "fhoedemakers/smsplus64";
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 26, s, CLIGHTBLUE, bgcolor);
     int startFrame = -1;
-    
+    putText(SCREEN_COLS - strlen(SWVERSION) - 1, SCREEN_ROWS - 2, SWVERSION, fgcolor, bgcolor);
     while (true)
     {
         auto frameCount = DrawScreen(-1);
