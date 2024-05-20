@@ -7,10 +7,11 @@ Copy smsPlus64.z64 to your Nintendo 64 flash card. Create a folder named `smsPlu
 ## v0.4
 
 ### Features
-- none
+- show program version in splash screen.
 
 ### Fixes
 - Fixed sound toggle bug.
+- Last column in menu was not visible.
 
 ## v0.3
 
