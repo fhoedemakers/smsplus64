@@ -16,7 +16,7 @@ sprite_t  *loaddragonsprite();
 }
 #endif
 #define SCREEN_ROWS 29
-#define SCREEN_COLS 39
+#define SCREEN_COLS 38
 #define STARTROW 2
 #define ENDROW (SCREEN_ROWS - 2)
 #define PAGESIZE (ENDROW - STARTROW + 1)
