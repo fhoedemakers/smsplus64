@@ -8,6 +8,8 @@ Game Gear games run faster than Master System games and are much more playable. 
 
 Built with [Libdragon](https://github.com/DragonMinded/libdragon)
 
+<img src="/assets/libdragon.png" width="200" />
+
 The emulator code is a port of smsPlus.
 
 ## How to use on real hardware using an Everdrive 64 X7.
@@ -32,7 +34,8 @@ Games can be played from the flashcard's SD card. Create a folder named `smsPlus
 - B: Button 1
 - A: Button 2
 - Z + Start: Go back to menu
-- Start + A: Toggle framerate
+- Z + A: Toggle framerate
+- Z + B: Toggle sound (improves framerate somewhat)
 
 ## Building from source
 

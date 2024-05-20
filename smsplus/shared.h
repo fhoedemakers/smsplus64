@@ -39,7 +39,7 @@ extern "C" {
 #include "render.h"
 #include "sn76496.h"
 #include "system.h"
-
+extern int soundEnabled;
 char unalChar(const char *adr);
 uint8_t *getcachestorefromemulator(size_t *size);
 #ifdef __cplusplus
