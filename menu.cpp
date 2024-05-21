@@ -245,6 +245,7 @@ void showSplashScreen()
     putText(SCREEN_COLS / 2 - strlen(s) / 2, 26, s, CLIGHTBLUE, bgcolor);
     int startFrame = -1;
     putText(SCREEN_COLS - strlen(SWVERSION) - 1, SCREEN_ROWS - 2, SWVERSION, fgcolor, bgcolor);
+    bool first = true;
     while (true)
     {
         auto frameCount = DrawScreen(-1);
@@ -259,8 +260,9 @@ void showSplashScreen()
         {
             break;
         }
-        if ((frameCount % 30) == 0)
+        if (first || (frameCount % 30) == 0)
         {
+            first = false;
             for (auto i = 0; i < SCREEN_COLS; i++)
             {
                 auto col = getrandomcolor();
