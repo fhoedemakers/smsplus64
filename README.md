@@ -46,7 +46,7 @@ Games can be played from the flashcard's SD card. Create a folder named `smsPlus
 
 ````bash
 git clone https://github.com/fhoedemakers/smsplus64.git
-cd smsplys64
+cd smsplus64
 chmod +x build*.sh
 ./build.sh
 ````
