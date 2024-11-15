@@ -516,15 +516,26 @@ int main()
         display_init(RESOLUTION_320x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
         RomInfo info = menu(mountPoint, 0, ErrorMessage, isFatalError, reset);
         display_close();
-#else
-        RomInfo info;
-        info.rom = builtinrom;
-        info.size = builtinrom_len;
-        info.isGameGear = builtinrom_isgg;
-        strcpy(info.title, GetBuiltinROMName());
 #endif
         /* Initialize display */
         display_init(RESOLUTION_256x240, DEPTH_16_BPP, FRAMEBUFFERS, GAMMA_NONE, FILTERS_RESAMPLE);
+#ifdef USEEVERDRIVEMENUGG
+        RomInfo info;
+        info.rom =  (uint8_t *) 0x200000;
+        info.size = 262144;  // will change later
+        info.isGameGear = true;
+        strcpy(info.title, "GameGear Game");
+        debugf("Starting GameGear game from flashcart menu\n");
+#endif
+#ifdef USEEVERDRIVEMENUSMS
+        RomInfo info;
+        info.rom =   (uint8_t *) 0x200000;
+        info.size = 262144;
+        info.isGameGear = false;
+        strcpy(info.title, "Master System Game");
+        debugf("Starting Master System game from flashcart menu\n");
+#endif
+      
         checkcontrollers();
         if ((isFatalError = !initSDCard()) == false)
         {
