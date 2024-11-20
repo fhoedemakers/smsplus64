@@ -1,8 +1,3 @@
-/**
- * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
 
 #include "shared.h"
 #include "common.h"
@@ -64,22 +59,6 @@ bool reset = false;
 
 bool controller1IsInserted = false;
 bool controller2IsInserted = false;
-
-// The Sega Master system color palette converted to RGB444
-// so it can be used with the DVI library.
-// from https://segaretro.org/Palette
-
-#if 0
-WORD SMSPaletteRGB444[64] = {
-    0x0, 0x500, 0xA00, 0xF00, 0x50, 0x550, 0xA50, 0xF50,
-    0xA0, 0x5A0, 0xAA0, 0xFA0, 0xF0, 0x5F0, 0xAF0, 0xFF0,
-    0x5, 0x505, 0xA05, 0xF05, 0x55, 0x555, 0xA55, 0xF55,
-    0xA5, 0x5A5, 0xAA5, 0xFA5, 0xF5, 0x5F5, 0xAF5, 0xFF5,
-    0xA, 0x50A, 0xA0A, 0xF0A, 0x5A, 0x55A, 0xA5A, 0xF5A,
-    0xAA, 0x5AA, 0xAAA, 0xFAA, 0xFA, 0x5FA, 0xAFA, 0xFFA,
-    0xF, 0x50F, 0xA0F, 0xF0F, 0x5F, 0x55F, 0xA5F, 0xF5F,
-    0xAF, 0x5AF, 0xAAF, 0xFAF, 0xFF, 0x5FF, 0xAFF, 0xFFF};
-#endif
 
 // Sega header https://www.smspower.org/Development/ROMHeader
 struct SegaHeader
@@ -539,14 +518,16 @@ int main()
             // https://www.smspower.org/Development/ROMHeader
             switch (romsize)
             {
-            case 0:
-                info.size = 512 * 1024; // 256 * 1024;
-                break;
+            case 0:  // 256KB
+                info.size = 512 * 1024; // 512KB and 1MB Roms are reported in the header as 256KB. 
+                                        // Setting Rom size to 512KB also works for 256KB roms.
+                break;                  // Setting rom size to 1MB for 256 or 512KB games does not work.
+                                        // Only a small set of roms are 1MB.
             case 1:
                 info.size = 512 * 1024;
                 break;
             case 2:
-                info.size = 1024 * 1024;
+                info.size = 1024 * 1024; 
                 break;
             case 0xa:
                 info.size = 8 * 1024;
