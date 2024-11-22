@@ -551,6 +551,14 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
                         else
                         {
                             debugf("Allocated %d bytes for rom, reading file\n", size);
+                            // skip possible 512 byte header if size / 512 has the lsb bit set
+                            if ((size / 512) & 1)
+                            {
+                                debugf("Skipping 512 byte header\n");
+                                fseek(pFile, 512, SEEK_SET);
+                                size -= 512;
+                            }
+                            
                             fread(romInfo.rom, 1, size, pFile);
                             fclose(pFile);
                             break;
