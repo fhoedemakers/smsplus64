@@ -453,15 +453,15 @@ extern "C"
 }
 #endif
 
-// create a wrapper for debugf to stdout 
+// create a wrapper for debugf to stdout
 void debugstdout(const char *fmt, ...)
 {
 #ifndef NDEBUG
     va_list args;
     va_start(args, fmt);
     vprintf(fmt, args);
-    //vfprintf(stderr, fmt, args);
-    va_end(args); 
+    // vfprintf(stderr, fmt, args);
+    va_end(args);
 #endif
 }
 // Checks if a rom is injected by the everdrive/N64Flashcart menu
@@ -477,6 +477,7 @@ bool IsRomInjected(RomInfo *info, bool withOffset)
     dma_wait();
     if (strncmp(header.signature, "TMR SEGA", 8) == 0)
     {
+        debugstdout("  --->Sega header found\n");
         info->isGameGear = false;
         uint8_t romsize = header.sizeAndRegion & 0b00001111;
         uint8_t region = (header.sizeAndRegion >> 4) & 0b00001111;
@@ -573,7 +574,7 @@ int main()
     ErrorMessage = errMSG;
     RomInfo info;
 
-    debug_init(DEBUG_FEATURE_LOG_ISVIEWER | DEBUG_FEATURE_LOG_USB );
+    debug_init(DEBUG_FEATURE_LOG_ISVIEWER | DEBUG_FEATURE_LOG_USB);
     debugf("Starting SMSPlus64, a Sega Master System emulator for the Nintendo 64 - https://github.com/fhoedemakers/smsplus64\n");
     debugf("Built on %s %s using libdragon - https://github.com/DragonMinded/libdragon\n", __DATE__, __TIME__);
 
@@ -605,12 +606,12 @@ int main()
     {
         int offset = 0;
         checkcontrollers();
-       
-    #ifndef NDEBUG
+
+#ifndef NDEBUG
         console_init();
         console_set_render_mode(RENDER_MANUAL);
         console_clear();
-    #endif
+#endif
         // Check whether rom is started via Everdrive/N64Flashcartmenu
         // Those roms are injected at 0xB0200000 and have a Sega header
         debugstdout("Check if game is started via Everdrive/FlashCartMenu\n");
@@ -635,6 +636,18 @@ int main()
             debugstdout("Waiting for dma\n");
             dma_wait();
             strcpy(info.title, "Everdrive/Flashcart");
+#ifndef NDEBUG
+            debugstdout("Press A button to continue\n");
+            controller_scan();
+            console_render();
+            while (!get_keys_pressed().c[0].A)
+            {
+                wait_ms(10);
+                controller_scan();
+            }
+
+            console_close();
+#endif
         }
         else
         {
