@@ -8,6 +8,7 @@
 #ifndef USEMENU
 #include "builtinrom.h"
 #endif
+#include <stdarg.h>
 
 #define ERRORMESSAGESIZE 40
 #define GAMESAVEDIR "/SAVES"
@@ -451,6 +452,108 @@ extern "C"
 #ifdef __cplusplus
 }
 #endif
+
+// create a wrapper for debugf to stdout 
+void debugstdout(const char *fmt, ...)
+{
+#ifndef NDEBUG
+    va_list args;
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    //vfprintf(stderr, fmt, args);
+    va_end(args); 
+#endif
+}
+// Checks if a rom is injected by the everdrive/N64Flashcart menu
+// The rom is injected at 0xB0200000 and has a Sega header
+// The Sega header is at 0x7FF0
+// Some roms have a 512 byte header, so we also check at 0x7FF0 + 512
+bool IsRomInjected(RomInfo *info, bool withOffset)
+{
+    bool rval = false;
+    int offset = withOffset ? 512 : 0;
+    debugstdout("Searching for Sega header at %x\n", 0xB0200000 + 0x7FF0 + offset);
+    dma_read_async(&header, 0xB0200000 + 0x7FF0 + offset, sizeof(header));
+    dma_wait();
+    if (strncmp(header.signature, "TMR SEGA", 8) == 0)
+    {
+        info->isGameGear = false;
+        uint8_t romsize = header.sizeAndRegion & 0b00001111;
+        uint8_t region = (header.sizeAndRegion >> 4) & 0b00001111;
+        // https://www.smspower.org/Development/ROMHeader
+        switch (romsize)
+        {
+        case 0:                      // 256KB
+            info->size = 512 * 1024; // 512KB and 1MB Roms are reported in the header as 256KB.
+                                     // Setting Rom size to 512KB also works for 256KB roms.
+            break;                   // Setting rom size to 1MB for 256 or 512KB games does not work.
+                                     // Only a small set of roms are 1MB.
+        case 1:
+            info->size = 512 * 1024;
+            break;
+        case 2:
+            info->size = 1024 * 1024;
+            break;
+        case 0xa:
+            info->size = 8 * 1024;
+            break;
+        case 0xb:
+            info->size = 16 * 1024;
+            break;
+        case 0xc:
+            info->size = 32 * 1024;
+            break;
+        case 0xd:
+            info->size = 48 * 1024;
+            break;
+        case 0xe:
+            info->size = 64 * 1024;
+            break;
+        case 0xf:
+            info->size = 128 * 1024;
+            break;
+        default:
+            debugstdout("Unknown romsize %x\n", romsize);
+            info->size = 0; // unknown size
+            break;
+        }
+        info->isGameGear = false;
+        debugstdout("Romsize %x = %d bytes\n", romsize, info->size);
+        debugstdout("Region: %x - ", region);
+        switch (region)
+        {
+        case 3:
+            debugstdout("SMS Japan\n");
+            info->isGameGear = false;
+            break;
+        case 4:
+            debugstdout("SMS Export\n");
+            info->isGameGear = false;
+            break;
+        case 5:
+            debugstdout("GG USA\n");
+            info->isGameGear = true;
+            break;
+        case 6:
+            debugstdout("GG Export\n");
+            info->isGameGear = true;
+            break;
+        case 7:
+            debugstdout("GG International\n");
+            info->isGameGear = true;
+            break;
+        default:
+            debugstdout("Unknown\n");
+            break;
+        }
+        if (info->size > 0)
+        {
+            rval = true;
+        }
+    }
+    return rval;
+}
+
 // #endif
 /// @brief
 /// Start emulator.
@@ -470,9 +573,7 @@ int main()
     ErrorMessage = errMSG;
     RomInfo info;
 
-    printf("Starting Master System Emulator\n");
-
-    debug_init(DEBUG_FEATURE_LOG_ISVIEWER | DEBUG_FEATURE_LOG_USB);
+    debug_init(DEBUG_FEATURE_LOG_ISVIEWER | DEBUG_FEATURE_LOG_USB );
     debugf("Starting SMSPlus64, a Sega Master System emulator for the Nintendo 64 - https://github.com/fhoedemakers/smsplus64\n");
     debugf("Built on %s %s using libdragon - https://github.com/DragonMinded/libdragon\n", __DATE__, __TIME__);
 
@@ -481,8 +582,8 @@ int main()
     enableordisableTimer();
     struct controller_data output;
     get_accessories_present(&output);
-    int x = identify_accessory(0);
-    switch (x)
+    int accessory = identify_accessory(0);
+    switch (accessory)
     {
     case ACCESSORY_MEMPAK:
         debugf("Accessory: Memory Pak\n");
@@ -502,139 +603,93 @@ int main()
     }
     while (true)
     {
+        int offset = 0;
         checkcontrollers();
+       
+    #ifndef NDEBUG
+        console_init();
+        console_set_render_mode(RENDER_MANUAL);
+        console_clear();
+    #endif
         // Check whether rom is started via Everdrive/N64Flashcartmenu
         // Those roms are injected at 0xB0200000 and have a Sega header
-        debugf("Check if game is started via Everdrive or FlashCartMenu\n");
-        debugf("Searching for Sega header at 0xB0207FF0\n");
-        dma_read_async(&header, 0xB0200000 + 0x7FF0, sizeof(header));
-        dma_wait();
-        if (strncmp(header.signature, "TMR SEGA", 8) == 0)
+        debugstdout("Check if game is started via Everdrive/FlashCartMenu\n");
+        if ((startedFromEverDriveMenu = IsRomInjected(&info, false)) == false)
         {
-            startedFromEverDriveMenu = true;
-            debugf("Found Sega header\n");
-            uint8_t romsize = header.sizeAndRegion & 0b00001111;
-            uint8_t region = (header.sizeAndRegion >> 4) & 0b00001111;
-            // https://www.smspower.org/Development/ROMHeader
-            switch (romsize)
+            if ((startedFromEverDriveMenu = IsRomInjected(&info, true)) == true)
             {
-            case 0:  // 256KB
-                info.size = 512 * 1024; // 512KB and 1MB Roms are reported in the header as 256KB. 
-                                        // Setting Rom size to 512KB also works for 256KB roms.
-                break;                  // Setting rom size to 1MB for 256 or 512KB games does not work.
-                                        // Only a small set of roms are 1MB.
-            case 1:
-                info.size = 512 * 1024;
-                break;
-            case 2:
-                info.size = 1024 * 1024; 
-                break;
-            case 0xa:
-                info.size = 8 * 1024;
-                break;
-            case 0xb:
-                info.size = 16 * 1024;
-                break;
-            case 0xc:
-                info.size = 32 * 1024;
-                break;
-            case 0xd:
-                info.size = 48 * 1024;
-                break;
-            case 0xe:
-                info.size = 64 * 1024;
-                break;
-            case 0xf:
-                info.size = 128 * 1024;
-                break;
-            default:
-                startedFromEverDriveMenu = false;
-                debugf("Unknown rom size: %x\n", romsize);
-                info.size = 0; // unknown size
-                break;
+                offset = 512;
             }
-
-            debugf("Romsize %x = %d bytes\n", romsize, info.size);
-            debugf("Region: %x - ", region);
-            switch (region)
+            else
             {
-            case 3:
-                debugf("SMS Japan\n");
-                info.isGameGear = false;
-                break;
-            case 4:
-                debugf("SMS Export\n");
-                info.isGameGear = false;
-                break;
-            case 5:
-                debugf("GG USA\n");
-                info.isGameGear = true;
-                break;
-            case 6:
-                debugf("GG Export\n");
-                info.isGameGear = true;
-                break;
-            case 7:
-                debugf("GG International\n");
-                info.isGameGear = true;
-                break;
-            default:
-                debugf("Unknown\n");
-                break;
-            }
-            if (info.size > 0)
-            {
-                debugf("Allocating memory for rom\n");
-                info.rom = (uint8_t *)malloc(info.size);
-                debugf("Reading rom at 0xB0200000\n");
-                dma_read_async(info.rom, 0xB0200000, info.size);
-                debugf("Waiting for dma\n");
-                dma_wait();
-                strcpy(info.title, "Everdrive/Flashcart");
+                debugstdout("No Sega header found\n");
             }
         }
-        if (startedFromEverDriveMenu == false)
+
+        if (startedFromEverDriveMenu)
         {
-            debugf("No Sega header found, starting menu\n");
+            debugstdout("Allocating memory for rom\n");
+            info.rom = (uint8_t *)malloc(info.size);
+            debugstdout("Reading rom at 0xB0200000\n");
+            dma_read_async(info.rom, 0xB0200000 + offset, info.size);
+            debugstdout("Waiting for dma\n");
+            dma_wait();
+            strcpy(info.title, "Everdrive/Flashcart");
+        }
+        else
+        {
+            debugstdout("Will start menu\n");
             if (dfsStarted == false)
             {
-                debugf("Mounting rom file system...");
+                debugstdout("Mounting rom file system...");
                 if (dfs_init(DFS_DEFAULT_LOCATION) == DFS_ESUCCESS)
                 {
                     dfsStarted = true;
-                    debugf("mounted.\nTrying to mount SD card...");
+                    debugstdout("mounted.\nTrying to mount SD card...");
                     if (!init_sdfs("sd:/", -1))
                     {
-                        debugf("Error opening SD, using rom filesystem...\n");
+                        debugstdout("Error opening SD, using rom:/ filesystem...\n");
                         strcpy(mountPoint, "rom:/");
                     }
                     else
                     {
-                        debugf("SD card mounted\n");
+                        debugstdout("SD card mounted\n");
                         strcpy(mountPoint, "sd:/smsPlus64");
                     }
                 }
                 else
                 {
-                    debugf("rom filesystem failed to start!\n");
-                    debugf("Exit program\n");
+                    debugstdout("rom filesystem failed to start!\n");
+                    debugstdout("Exit program\n");
                     isFatalError = true;
                     strcpy(ErrorMessage, "Error opening rom filesystem.");
                 }
             }
+#ifndef NDEBUG
+            debugstdout("Press A button to continue\n");
+            controller_scan();
+            console_render();
+            while (!get_keys_pressed().c[0].A)
+            {
+                wait_ms(10);
+                controller_scan();
+            }
+
+            console_close();
+#endif
 #ifdef USEMENU
             display_init(RESOLUTION_320x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
             info = menu(mountPoint, 0, ErrorMessage, isFatalError, reset);
             display_close();
 #else
-           
+
             info.rom = builtinrom;
             info.size = builtinrom_len;
             info.isGameGear = builtinrom_isgg;
             strcpy(info.title, GetBuiltinROMName());
 #endif
         }
-           /* Initialize display */
+        /* Initialize display */
         display_init(RESOLUTION_256x240, DEPTH_16_BPP, FRAMEBUFFERS, GAMMA_NONE, FILTERS_RESAMPLE);
         checkcontrollers();
         // dump info
