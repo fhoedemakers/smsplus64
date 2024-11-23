@@ -612,6 +612,35 @@ int main()
         console_set_render_mode(RENDER_MANUAL);
         console_clear();
 #endif
+#ifndef NDEBUG
+        // allocate MB of memory for the rom
+        int size = 2 * 1024 * 1024;
+        uint8_t *rom = (uint8_t *)malloc(size);
+        if (rom == nullptr)
+        {
+            debugstdout("Error allocating memory for rom\n");
+            strcpy(ErrorMessage, "Error allocating memory for rom");
+            console_render();
+            break;
+        }
+        // read the rom from the filesystem
+        debugstdout("Searching for rom at range 0xB0200000 - %x\n", 0xB0200000 + size);
+        dma_read_async(rom, 0xB0200000, size);
+        dma_wait();
+        debugstdout("Rom read\n");
+        // check if the rom is a game gear rom);
+        int offs = 0; 
+        if ((offs =find_sequence(rom, size, "TMR SEGA")) != -1)
+        {
+            debugstdout("Rom found at offset %x, (%x) \n", offs, 0xB0200000 + offs);
+        }
+        else
+        {
+            debugstdout("Rom not found\n");
+        }
+        free(rom);
+
+#endif
         // Check whether rom is started via Everdrive/N64Flashcartmenu
         // Those roms are injected at 0xB0200000 and have a Sega header
         debugstdout("Check if game is started via Everdrive/FlashCartMenu\n");
