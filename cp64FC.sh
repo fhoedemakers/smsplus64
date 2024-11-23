@@ -11,6 +11,7 @@ z64file=smsPlus64.z64
 echo "Copying $z64file to Nintendo 64"
 ./usb64.exe -cp $z64file sd:menu/emulators/$z64file
 ./usb64.exe -cp $z64file sd:$z64file
-./usb64.exe -cp $z64file sd:ED64/emu/nes.v64
-
+#./usb64.exe -cp $z64file sd:ED64/emu/nes.v64
+./usb64.exe -cp $z64file sd:ED64/emu/gen.v64
+./usb64.exe -cp N64FlashcartMenu.n64 sd:NetworkFusion/N64FlashcartMenu.n64
 # End of run64.sh
