@@ -457,15 +457,13 @@ extern "C"
 uint32_t GetRomAddress() {
     switch(cart_type) {
         case CART_CI:
-            return 0x10200000;
-        case CART_EDX:
-            return 0xB0200000;
-        case CART_ED:
-            return 0xB0200000;
         case CART_SC:
             return 0x10200000;
+        case CART_EDX:
+        case CART_ED:
+            return 0xB0200000;
         default:
-            return 0;
+            return 0; // This is an emulator or something else, load the built in ROM.
     }
 }
 // create a wrapper for debugf to stdout
@@ -601,7 +599,7 @@ int main()
     bool isGameGear = false;
     char mountPoint[20];
     size_t tmpSize;
-    bool startedFromEverDriveMenu = false;
+    bool loadedFromFlashcartMenu = false;
     bool dfsStarted = false;
     ErrorMessage = errMSG;
     RomInfo info;
@@ -684,10 +682,10 @@ int main()
         debugstdout("Cart ROM address: %x\n", GetRomAddress());
         cart_exit();
         debugstdout("Check if game is started via Everdrive/FlashCartMenu\n");
-        startedFromEverDriveMenu = false;
-        if (cart_type != CART_NULL && ( startedFromEverDriveMenu = IsRomInjected(&info, false)) == false)
+        loadedFromFlashcartMenu = false;
+        if (cart_type != CART_NULL && ( loadedFromFlashcartMenu = IsRomInjected(&info, false)) == false)
         {
-            if ((startedFromEverDriveMenu = IsRomInjected(&info, true)) == true)
+            if ((loadedFromFlashcartMenu = IsRomInjected(&info, true)) == true)
             {
                 offset = 512;
             }
@@ -697,7 +695,7 @@ int main()
             }
         }
 
-        if (startedFromEverDriveMenu)
+        if (loadedFromFlashcartMenu)
         {
             debugstdout("Allocating memory for rom\n");
             info.rom = (uint8_t *)malloc(info.size);
