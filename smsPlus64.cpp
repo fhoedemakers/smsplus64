@@ -585,11 +585,7 @@ static const char *format_cart_type () {
             return "Emulator?";
     }
 }
-// #endif
-/// @brief
-/// Start emulator.
-/// RelWithDebugInfo mode.
-/// @return
+
 int main()
 {
 
