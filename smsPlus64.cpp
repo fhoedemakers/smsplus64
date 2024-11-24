@@ -10,6 +10,7 @@
 #endif
 #include <stdarg.h>
 
+#include "libcart/cart.h"
 #define ERRORMESSAGESIZE 40
 #define GAMESAVEDIR "/SAVES"
 
@@ -453,6 +454,20 @@ extern "C"
 }
 #endif
 
+uint32_t GetRomAddress() {
+    switch(cart_type) {
+        case CART_CI:
+            return 0x10200000;
+        case CART_EDX:
+            return 0xB0200000;
+        case CART_ED:
+            return 0xB0200000;
+        case CART_SC:
+            return 0x10200000;
+        default:
+            return 0;
+    }
+}
 // create a wrapper for debugf to stdout
 void debugstdout(const char *fmt, ...)
 {
@@ -465,15 +480,15 @@ void debugstdout(const char *fmt, ...)
 #endif
 }
 // Checks if a rom is injected by the everdrive/N64Flashcart menu
-// The rom is injected at 0xB0200000 and has a Sega header
+// The rom is injected at GetRomAddress() and has a Sega header
 // The Sega header is at 0x7FF0
 // Some roms have a 512 byte header, so we also check at 0x7FF0 + 512
 bool IsRomInjected(RomInfo *info, bool withOffset)
 {
     bool rval = false;
     int offset = withOffset ? 512 : 0;
-    debugstdout("Searching for Sega header at %x\n", 0xB0200000 + 0x7FF0 + offset);
-    dma_read_async(&header, 0xB0200000 + 0x7FF0 + offset, sizeof(header));
+    debugstdout("Searching for Sega header at %x\n", GetRomAddress() + 0x7FF0 + offset);
+    dma_read_async(&header, GetRomAddress() + 0x7FF0 + offset, sizeof(header));
     dma_wait();
     if (strncmp(header.signature, "TMR SEGA", 8) == 0)
     {
@@ -554,7 +569,24 @@ bool IsRomInjected(RomInfo *info, bool withOffset)
     }
     return rval;
 }
+static const char *format_cart_type () {
+    switch (cart_type) {
+        case CART_CI:
+            return "64drive";
 
+        case CART_EDX:
+            return "Series X EverDrive-64";
+
+        case CART_ED:
+            return "Series V EverDrive-64";
+
+        case CART_SC:
+            return "SummerCart64";
+
+        default:        // Probably emulator
+            return "Emulator?";
+    }
+}
 // #endif
 /// @brief
 /// Start emulator.
@@ -578,6 +610,7 @@ int main()
     debugf("Starting SMSPlus64, a Sega Master System emulator for the Nintendo 64 - https://github.com/fhoedemakers/smsplus64\n");
     debugf("Built on %s %s using libdragon - https://github.com/DragonMinded/libdragon\n", __DATE__, __TIME__);
 
+  
     controller_init();
     timer_init();
     enableordisableTimer();
@@ -613,6 +646,7 @@ int main()
         console_clear();
 #endif
 #ifndef NDEBUG
+#if 0
         // allocate MB of memory for the rom
         int size = 2 * 1024 * 1024;
         uint8_t *rom = (uint8_t *)malloc(size);
@@ -624,27 +658,34 @@ int main()
             break;
         }
         // read the rom from the filesystem
-        debugstdout("Searching for rom at range 0xB0200000 - %x\n", 0xB0200000 + size);
-        dma_read_async(rom, 0xB0200000, size);
+        debugstdout("Searching for rom at range GetRomAddress() - %x\n", GetRomAddress() + size);
+        dma_read_async(rom, GetRomAddress(), size);
         dma_wait();
         debugstdout("Rom read\n");
         // check if the rom is a game gear rom);
         int offs = 0; 
         if ((offs =find_sequence(rom, size, "TMR SEGA")) != -1)
         {
-            debugstdout("Rom found at offset %x, (%x) \n", offs, 0xB0200000 + offs);
+            debugstdout("Rom found at offset %x, (%x) \n", offs, GetRomAddress() + offs);
         }
         else
         {
             debugstdout("Rom not found\n");
         }
         free(rom);
-
+#endif
 #endif
         // Check whether rom is started via Everdrive/N64Flashcartmenu
-        // Those roms are injected at 0xB0200000 and have a Sega header
+        // Those roms are injected at GetRomAddress() and have a Sega header
+        debugstdout("Detecting flash cart type\n");
+        cart_init();
+        debugstdout("Cart type: %s\n", format_cart_type());
+        debugstdout("Cart size: %d\n", cart_size);
+        debugstdout("Cart ROM address: %x\n", GetRomAddress());
+        cart_exit();
         debugstdout("Check if game is started via Everdrive/FlashCartMenu\n");
-        if ((startedFromEverDriveMenu = IsRomInjected(&info, false)) == false)
+        startedFromEverDriveMenu = false;
+        if (cart_type != CART_NULL && ( startedFromEverDriveMenu = IsRomInjected(&info, false)) == false)
         {
             if ((startedFromEverDriveMenu = IsRomInjected(&info, true)) == true)
             {
@@ -660,8 +701,8 @@ int main()
         {
             debugstdout("Allocating memory for rom\n");
             info.rom = (uint8_t *)malloc(info.size);
-            debugstdout("Reading rom at 0xB0200000\n");
-            dma_read_async(info.rom, 0xB0200000 + offset, info.size);
+            debugstdout("Reading rom at %x\n", GetRomAddress() + offset);
+            dma_read_async(info.rom, GetRomAddress() + offset, info.size);
             debugstdout("Waiting for dma\n");
             dma_wait();
             strcpy(info.title, "Everdrive/Flashcart");
