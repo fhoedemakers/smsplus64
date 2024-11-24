@@ -10,7 +10,7 @@ Copy smsPlus64.z64 to your Nintendo 64 flash card. Create a folder named `smsPlu
 
 Using a flashcart, Master system and GameGear roms can be started directly from [N64FlashCartmenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu).
 
-For this to work with N64FlashCartmenu, copy smsPlus64.z64 to the menu/emulators folder of your SD-card. More info in the N64FlashcartMenu [Getting Started Guide]([https://github.com/Polprzewodnikowy/N64FlashcartMenu/blob/main/](https://github.com/Polprzewodnikowy/N64FlashcartMenu/tree/develop/docs/00_getting_started_sd.md)
+For this to work with N64FlashCartmenu, copy smsPlus64.z64 to the menu/emulators folder of your SD-card. More info in the N64FlashcartMenu [Getting Started Guide](https://github.com/Polprzewodnikowy/N64FlashcartMenu/tree/develop/docs/00_getting_started_sd.md)
 
 >[!NOTE]
 > For the moment, you need to download the N64FlashcartMenu from the [rolling pre-release](https://github.com/Polprzewodnikowy/N64FlashcartMenu/releases/tag/rolling-release), as the current release does not support this yet.
