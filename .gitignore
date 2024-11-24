@@ -1,11 +1,14 @@
 fh.log
 **/*.z64
+**/*.n64
 # you need to provide your own roms
 assets/sonic_gg.c
 assets/aladdin_gg.c
 assets/sonic_sms.c
 **/*.gg
 **/*.sms
+**/*.gen
+**/*.nes
 #
 /pimoroni-pico/
 # Prerequisites

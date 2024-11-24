@@ -1,8 +1,3 @@
-/**
- * Copyright (c) 2020 Raspberry Pi (Trading) Ltd.
- *
- * SPDX-License-Identifier: BSD-3-Clause
- */
 
 #include "shared.h"
 #include "common.h"
@@ -13,7 +8,9 @@
 #ifndef USEMENU
 #include "builtinrom.h"
 #endif
+#include <stdarg.h>
 
+#include "libcart/cart.h"
 #define ERRORMESSAGESIZE 40
 #define GAMESAVEDIR "/SAVES"
 
@@ -65,28 +62,22 @@ bool reset = false;
 bool controller1IsInserted = false;
 bool controller2IsInserted = false;
 
-// The Sega Master system color palette converted to RGB444
-// so it can be used with the DVI library.
-// from https://segaretro.org/Palette
-
-#if 0
-WORD SMSPaletteRGB444[64] = {
-    0x0, 0x500, 0xA00, 0xF00, 0x50, 0x550, 0xA50, 0xF50,
-    0xA0, 0x5A0, 0xAA0, 0xFA0, 0xF0, 0x5F0, 0xAF0, 0xFF0,
-    0x5, 0x505, 0xA05, 0xF05, 0x55, 0x555, 0xA55, 0xF55,
-    0xA5, 0x5A5, 0xAA5, 0xFA5, 0xF5, 0x5F5, 0xAF5, 0xFF5,
-    0xA, 0x50A, 0xA0A, 0xF0A, 0x5A, 0x55A, 0xA5A, 0xF5A,
-    0xAA, 0x5AA, 0xAAA, 0xFAA, 0xFA, 0x5FA, 0xAFA, 0xFFA,
-    0xF, 0x50F, 0xA0F, 0xF0F, 0x5F, 0x55F, 0xA5F, 0xF5F,
-    0xAF, 0x5AF, 0xAAF, 0xFAF, 0xFF, 0x5FF, 0xAFF, 0xFFF};
-#endif
-
-bool initSDCard()
+// Sega header https://www.smspower.org/Development/ROMHeader
+struct SegaHeader
 {
-    printf("Mounting SDcard");
-    return true;
-}
-
+    // 0x7FF0
+    char signature[8];
+    // 0x7FF8
+    uint16_t reserverd;
+    // 0x7FFA
+    uint16_t checksum;
+    // 0x7FFC
+    uint8_t product_code[2];
+    // 0x7FFE
+    uint8_t ProductCodeAndVersion;
+    // 0x7FFF
+    uint8_t sizeAndRegion;
+} header;
 extern "C" void sms_palette_syncGG(int index)
 {
     // The GG has a different palette format
@@ -306,7 +297,7 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
                 reset = true;
                 debugf("Reset pressed\n");
             }
-             // Toggle frame rate display
+            // Toggle frame rate display
             if (pushed & INPUT_BUTTON1)
             {
                 fps_enabled = !fps_enabled;
@@ -320,14 +311,14 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
             }
             if (pushed & INPUT_BUTTON2)
             {
-                 
+
                 snd.enabled = soundEnabled = !soundEnabled;
-                 debugf("Toggle sound (%d)\n", soundEnabled);
+                debugf("Toggle sound (%d)\n", soundEnabled);
             }
         }
         if (p1 & INPUT_START)
         {
-           
+
             if (pushed & INPUT_UP)
             {
                 // screenMode(-1);
@@ -422,6 +413,30 @@ void checkcontrollers()
     }
 }
 
+size_t find_sequence(uint8_t *buffer, size_t buffer_size, const char *sequence)
+{
+    size_t seq_len = strlen(sequence);
+    debugf("Finding Sequence: %s\n", sequence);
+    // Iterate through each position in the buffer
+    for (size_t i = 0; i <= buffer_size - seq_len; i++)
+    {
+        // Compare the current part of the buffer with the sequence
+        if (memcmp(buffer + i, sequence, seq_len) == 0)
+        {
+            // print found sequence in hex  at offset
+            debugf("Found sequence at offset %x: ", i);
+
+            for (size_t j = 0; j < seq_len; j++)
+            {
+                debugf("%c", buffer[i + j]);
+            }
+            debugf("\n");
+            return i; // Return the starting index of the match
+        }
+    }
+    return -1; // Return -1 if not found
+}
+
 // debug_init_sdfs is only available when NDEBUG is not defined
 // We need sdfs to access the everdrive SD filesystem. So make it also available when NDEBUG is defined.
 // #ifdef 	NDEBUG
@@ -438,11 +453,139 @@ extern "C"
 #ifdef __cplusplus
 }
 #endif
-// #endif
-/// @brief
-/// Start emulator. Emulator does not run well in DEBUG mode, lots of red screen flicker. In order to keep it running fast enough, we need to run it in release mode or in
-/// RelWithDebugInfo mode.
-/// @return
+
+uint32_t GetRomAddress() {
+    switch(cart_type) {
+        case CART_CI:
+        case CART_SC:
+            return 0x10200000;
+        case CART_EDX:
+        case CART_ED:
+            return 0xB0200000;
+        default:
+            return 0; // This is an emulator or something else, load the built in ROM.
+    }
+}
+// create a wrapper for debugf to stdout
+void debugstdout(const char *fmt, ...)
+{
+#ifndef NDEBUG
+    va_list args;
+    va_start(args, fmt);
+    vprintf(fmt, args);
+    // vfprintf(stderr, fmt, args);
+    va_end(args);
+#endif
+}
+// Checks if a rom is injected by the everdrive/N64Flashcart menu
+// The rom is injected at GetRomAddress() and has a Sega header
+// The Sega header is at 0x7FF0
+// Some roms have a 512 byte header, so we also check at 0x7FF0 + 512
+bool IsRomInjected(RomInfo *info, bool withOffset)
+{
+    bool rval = false;
+    int offset = withOffset ? 512 : 0;
+    debugstdout("Searching for Sega header at %x\n", GetRomAddress() + 0x7FF0 + offset);
+    dma_read_async(&header, GetRomAddress() + 0x7FF0 + offset, sizeof(header));
+    dma_wait();
+    if (strncmp(header.signature, "TMR SEGA", 8) == 0)
+    {
+        debugstdout("  --->Sega header found\n");
+        info->isGameGear = false;
+        uint8_t romsize = header.sizeAndRegion & 0b00001111;
+        uint8_t region = (header.sizeAndRegion >> 4) & 0b00001111;
+        // https://www.smspower.org/Development/ROMHeader
+        switch (romsize)
+        {
+        case 0:                      // 256KB
+            info->size = 512 * 1024; // 512KB and 1MB Roms are reported in the header as 256KB.
+                                     // Setting Rom size to 512KB also works for 256KB roms.
+            break;                   // Setting rom size to 1MB for 256 or 512KB games does not work.
+                                     // Only a small set of roms are 1MB.
+        case 1:
+            info->size = 512 * 1024;
+            break;
+        case 2:
+            info->size = 1024 * 1024;
+            break;
+        case 0xa:
+            info->size = 8 * 1024;
+            break;
+        case 0xb:
+            info->size = 16 * 1024;
+            break;
+        case 0xc:
+            info->size = 32 * 1024;
+            break;
+        case 0xd:
+            info->size = 48 * 1024;
+            break;
+        case 0xe:
+            info->size = 64 * 1024;
+            break;
+        case 0xf:
+            info->size = 128 * 1024;
+            break;
+        default:
+            debugstdout("Unknown romsize %x\n", romsize);
+            info->size = 0; // unknown size
+            break;
+        }
+        info->isGameGear = false;
+        debugstdout("Romsize %x = %d bytes\n", romsize, info->size);
+        debugstdout("Region: %x - ", region);
+        switch (region)
+        {
+        case 3:
+            debugstdout("SMS Japan\n");
+            info->isGameGear = false;
+            break;
+        case 4:
+            debugstdout("SMS Export\n");
+            info->isGameGear = false;
+            break;
+        case 5:
+            debugstdout("GG USA\n");
+            info->isGameGear = true;
+            break;
+        case 6:
+            debugstdout("GG Export\n");
+            info->isGameGear = true;
+            break;
+        case 7:
+            debugstdout("GG International\n");
+            info->isGameGear = true;
+            break;
+        default:
+            debugstdout("Unknown\n");
+            break;
+        }
+        if (info->size > 0)
+        {
+            rval = true;
+        }
+    }
+    return rval;
+}
+static const char *format_cart_type () {
+    switch (cart_type) {
+        case CART_CI:
+            return "64drive";
+
+        case CART_EDX:
+            return "Series X EverDrive-64";
+
+        case CART_ED:
+            return "Series V EverDrive-64";
+
+        case CART_SC:
+            return "SummerCart64";
+
+        default:        // Probably emulator
+            return "Emulator?";
+    }
+}
+
 int main()
 {
 
@@ -452,44 +595,23 @@ int main()
     bool isGameGear = false;
     char mountPoint[20];
     size_t tmpSize;
-
+    bool loadedFromFlashcartMenu = false;
+    bool dfsStarted = false;
     ErrorMessage = errMSG;
-
-    printf("Starting Master System Emulator\n");
+    RomInfo info;
 
     debug_init(DEBUG_FEATURE_LOG_ISVIEWER | DEBUG_FEATURE_LOG_USB);
     debugf("Starting SMSPlus64, a Sega Master System emulator for the Nintendo 64 - https://github.com/fhoedemakers/smsplus64\n");
     debugf("Built on %s %s using libdragon - https://github.com/DragonMinded/libdragon\n", __DATE__, __TIME__);
-    debugf("Mounting rom file system...");
-    if (dfs_init(DFS_DEFAULT_LOCATION) == DFS_ESUCCESS)
-    {
-        debugf("mounted.\nTrying to mount SD card...");
-        if (!init_sdfs("sd:/", -1))
-        {
-            debugf("Error opening SD, using rom filesystem...\n");
-            strcpy(mountPoint, "rom:/");
-        }
-        else
-        {
-            debugf("SD card mounted\n");
-            strcpy(mountPoint, "sd:/smsPlus64");
-        }
-    }
-    else
-    {
-        debugf("rom filesystem failed to start!\n");
-        debugf("Exit program\n");
-        isFatalError = true;
-        strcpy(ErrorMessage, "Error opening rom filesystem.");
-    }
-    // register_VI_handler(vblCallback);
+
+  
     controller_init();
     timer_init();
     enableordisableTimer();
     struct controller_data output;
     get_accessories_present(&output);
-    int x = identify_accessory(0);
-    switch (x)
+    int accessory = identify_accessory(0);
+    switch (accessory)
     {
     case ACCESSORY_MEMPAK:
         debugf("Accessory: Memory Pak\n");
@@ -509,31 +631,150 @@ int main()
     }
     while (true)
     {
-
+        int offset = 0;
         checkcontrollers();
 
-#ifdef USEMENU
-        display_init(RESOLUTION_320x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
-        RomInfo info = menu(mountPoint, 0, ErrorMessage, isFatalError, reset);
-        display_close();
-#else
-        RomInfo info;
-        info.rom = builtinrom;
-        info.size = builtinrom_len;
-        info.isGameGear = builtinrom_isgg;
-        strcpy(info.title, GetBuiltinROMName());
+#ifndef NDEBUG
+        console_init();
+        console_set_render_mode(RENDER_MANUAL);
+        console_clear();
 #endif
+#ifndef NDEBUG
+#if 0
+        // allocate MB of memory for the rom
+        int size = 2 * 1024 * 1024;
+        uint8_t *rom = (uint8_t *)malloc(size);
+        if (rom == nullptr)
+        {
+            debugstdout("Error allocating memory for rom\n");
+            strcpy(ErrorMessage, "Error allocating memory for rom");
+            console_render();
+            break;
+        }
+        // read the rom from the filesystem
+        debugstdout("Searching for rom at range GetRomAddress() - %x\n", GetRomAddress() + size);
+        dma_read_async(rom, GetRomAddress(), size);
+        dma_wait();
+        debugstdout("Rom read\n");
+        // check if the rom is a game gear rom);
+        int offs = 0; 
+        if ((offs =find_sequence(rom, size, "TMR SEGA")) != -1)
+        {
+            debugstdout("Rom found at offset %x, (%x) \n", offs, GetRomAddress() + offs);
+        }
+        else
+        {
+            debugstdout("Rom not found\n");
+        }
+        free(rom);
+#endif
+#endif
+        // Check whether rom is started via Everdrive/N64Flashcartmenu
+        // Those roms are injected at GetRomAddress() and have a Sega header
+        debugstdout("Detecting flash cart type\n");
+        cart_init();
+        debugstdout("Cart type: %s\n", format_cart_type());
+        debugstdout("Cart size: %d\n", cart_size);
+        debugstdout("Cart ROM address: %x\n", GetRomAddress());
+        cart_exit();
+        debugstdout("Check if game is started via Everdrive/FlashCartMenu\n");
+        loadedFromFlashcartMenu = false;
+        if (cart_type != CART_NULL && ( loadedFromFlashcartMenu = IsRomInjected(&info, false)) == false)
+        {
+            if ((loadedFromFlashcartMenu = IsRomInjected(&info, true)) == true)
+            {
+                offset = 512;
+            }
+            else
+            {
+                debugstdout("No Sega header found\n");
+            }
+        }
+
+        if (loadedFromFlashcartMenu)
+        {
+            debugstdout("Allocating memory for rom\n");
+            info.rom = (uint8_t *)malloc(info.size);
+            debugstdout("Reading rom at %x\n", GetRomAddress() + offset);
+            dma_read_async(info.rom, GetRomAddress() + offset, info.size);
+            debugstdout("Waiting for dma\n");
+            dma_wait();
+            strcpy(info.title, "Everdrive/Flashcart");
+#ifndef NDEBUG
+            debugstdout("Press A button to continue\n");
+            controller_scan();
+            console_render();
+            while (!get_keys_pressed().c[0].A)
+            {
+                wait_ms(10);
+                controller_scan();
+            }
+
+            console_close();
+#endif
+        }
+        else
+        {
+            debugstdout("Will start menu\n");
+            if (dfsStarted == false)
+            {
+                debugstdout("Mounting rom file system...");
+                if (dfs_init(DFS_DEFAULT_LOCATION) == DFS_ESUCCESS)
+                {
+                    dfsStarted = true;
+                    debugstdout("mounted.\nTrying to mount SD card...");
+                    if (!init_sdfs("sd:/", -1))
+                    {
+                        debugstdout("Error opening SD, using rom:/ filesystem...\n");
+                        strcpy(mountPoint, "rom:/");
+                    }
+                    else
+                    {
+                        debugstdout("SD card mounted\n");
+                        strcpy(mountPoint, "sd:/smsPlus64");
+                    }
+                }
+                else
+                {
+                    debugstdout("rom filesystem failed to start!\n");
+                    debugstdout("Exit program\n");
+                    isFatalError = true;
+                    strcpy(ErrorMessage, "Error opening rom filesystem.");
+                }
+            }
+#ifndef NDEBUG
+            debugstdout("Press A button to continue\n");
+            controller_scan();
+            console_render();
+            while (!get_keys_pressed().c[0].A)
+            {
+                wait_ms(10);
+                controller_scan();
+            }
+
+            console_close();
+#endif
+#ifdef USEMENU
+            display_init(RESOLUTION_320x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
+            info = menu(mountPoint, 0, ErrorMessage, isFatalError, reset);
+            display_close();
+#else
+
+            info.rom = builtinrom;
+            info.size = builtinrom_len;
+            info.isGameGear = builtinrom_isgg;
+            strcpy(info.title, GetBuiltinROMName());
+#endif
+        }
         /* Initialize display */
         display_init(RESOLUTION_256x240, DEPTH_16_BPP, FRAMEBUFFERS, GAMMA_NONE, FILTERS_RESAMPLE);
         checkcontrollers();
-        if ((isFatalError = !initSDCard()) == false)
-        {
-        }
         // dump info
-        debugf("Now loading:\n");
-        debugf("    ROM: %s\n", info.title);
-        debugf("    Size: %d\n", info.size);
-        debugf("    isGameGear: %d\n", info.isGameGear);
+        debugf("Starting game:\n");
+        debugf("- ROM: %s\n", info.title);
+        debugf("- Size: %d\n", info.size);
+        debugf("- Address: %p\n", info.rom);
+        debugf("- isGameGear: %d\n", info.isGameGear);
         reset = false;
         debugf("Init audio\n");
         audio_init(44100, 4);
