@@ -19,7 +19,7 @@ To try the emulator, download smsPlus64.z64 from the [releases](https://github.c
 
 Games can be played from the flashcard's SD card. Create a folder named `smsPlus64` in the root of your flashcard's SD card and copy your .sms or .gg ROMs there. You can organize your games in subfolders. The emulator shows a menu whith a list of games.
 
-## How to use on real hardware using N64Flashcartmenu
+## How to use on real hardware using N64Flashcartmenu on a flashcart.
 
 For this to work with  [N64FlashCartmenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu), copy smsPlus64.z64 to the menu/emulators folder of your SD-card. More info in the N64FlashcartMenu [Getting Started Guide](https://github.com/Polprzewodnikowy/N64FlashcartMenu/blob/main/docs/00_getting_started_sd.md)
 
