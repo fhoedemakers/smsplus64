@@ -14,6 +14,7 @@ For this to work with N64FlashCartmenu, copy smsPlus64.z64 to the menu/emulators
 
 >[!NOTE]
 > For the moment, you need to download the N64FlashcartMenu from the [rolling pre-release](https://github.com/Polprzewodnikowy/N64FlashcartMenu/releases/tag/rolling-release), as the current release does not support this yet.
+> Also, 1MB games will not load using this method. There are only a few games with this size.
 
 > [!NOTE]
 > According to the Everdrive manual, roms could also be run this way via the Everdrive menu by saving smsPlus64.z64 as ED64/emu/gg.z64 and ED64/emu/sms.z64. This does not work however.
