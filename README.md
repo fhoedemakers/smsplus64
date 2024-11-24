@@ -24,7 +24,7 @@ Games can be played from the flashcard's SD card. Create a folder named `smsPlus
 For this to work with  [N64FlashCartMenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu), copy smsPlus64.z64 to the menu/emulators folder of your SD-card. More info in the N64FlashcartMenu [Getting Started Guide](https://github.com/Polprzewodnikowy/N64FlashcartMenu/blob/develop/docs/00_getting_started_sd.md)
 
 >[!NOTE]
-> For the moment, you need to download the N64FlashcartMenu from the [rolling pre-release](https://github.com/Polprzewodnikowy/N64FlashcartMenu/releases/tag/rolling-release), as the current release does not support this yet.
+> For the moment, you need to download the N64FlashcartMenu from the [rolling pre-release](https://github.com/Polprzewodnikowy/N64FlashcartMenu/releases/tag/rolling_pre-release), as the current release does not support this yet.
 > Also, 1MB games will not load using this method. There are only a few games with this size.
 
 > [!NOTE]
