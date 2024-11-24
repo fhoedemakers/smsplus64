@@ -8,9 +8,14 @@ Copy smsPlus64.z64 to your Nintendo 64 flash card. Create a folder named `smsPlu
 
 ### Features
 
-Master system and GameGear roms can be started directly from the [N64FlashCartmenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu).
+Master system and GameGear roms can be started directly from [N64FlashCartmenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu).
 
 For this to work on N64FlashCartmenu, copy smsPlus64.z64 to the menu/emulators folder of your SD-card. More info in the N64FlashcartMenu [Getting Started Guide](https://github.com/Polprzewodnikowy/N64FlashcartMenu/blob/main/docs/00_getting_started_sd.md)
+
+> [!NOTE]
+> According to the Everdrive manual, roms could also be run this way via the Everdrive menu by saving smsPlus64.z64 as ED64/emu/gg.z64 and ED64/emu/sms.z64. This does not work however.
+> As a workaround, you can rename your .sms .gg roms to have the .gen extension and then copy smsPlus64.z64 to ED64/emu/gen.z64
+
 
 ### Fixes
 
