@@ -21,6 +21,8 @@ Games can be played from the flashcard's SD card. Create a folder named `smsPlus
 
 ## How to use on real hardware using a N64Flashcartmenu
 
+For this to work on N64FlashCartmenu, copy smsPlus64.z64 to the menu/emulators folder of your SD-card. More info in the N64FlashcartMenu [Getting Started Guide](https://github.com/Polprzewodnikowy/N64FlashcartMenu/blob/main/docs/00_getting_started_sd.md)
+
 
 ## Controls
 
