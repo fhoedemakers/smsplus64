@@ -50,6 +50,9 @@ For this to work with  [N64FlashCartMenu](https://github.com/Polprzewodnikowy/N6
 - Z + A: Toggle framerate
 - Z + B: Toggle sound (improves framerate somewhat)
 
+>[!NOTE]
+> Holding Z after starting the emulator will force to load the built-in menu. 
+
 ## Building from source
 
 1. Install the Libdragon SDK. For more info and instructions, see https://github.com/DragonMinded/libdragon
