@@ -790,9 +790,7 @@ int main()
             console_close();
 #endif
 #ifdef USEMENU
-            display_init(RESOLUTION_320x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
-            info = menu(mountPoint, 0, ErrorMessage, isFatalError, reset);
-            display_close();
+           
             header.signature[0] = 0;
             header.signature[1] = 0;    
             header.signature[2] = 0;
@@ -807,6 +805,9 @@ int main()
             dma_write_raw_async(&header, GetRomAddress() + 0x7FF0 + 512, sizeof(header));
             dma_wait();
             debugf("Killed\n");
+            display_init(RESOLUTION_320x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
+            info = menu(mountPoint, 0, ErrorMessage, isFatalError, reset);
+            display_close();
 #else
 
             info.rom = builtinrom;
