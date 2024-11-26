@@ -17,9 +17,9 @@ N64_CXXFLAGS := $(shell echo $(N64_CXXFLAGS) | sed 's/-Werror//g' | sed 's/-Wall
 # add current folder and infones subfolder to include path
 INCDIR = -I. -Ismsplus -Iassets
 # add INCDIR to CFLAGS
-CFLAGS += $(INCDIR) -DUSEMENU # -DLSB_FIRST=0
+CFLAGS += $(INCDIR) -DUSEMENU=1 # -DLSB_FIRST=0
 # add INCDIR to CXXFLAGS
-CXXFLAGS += $(INCDIR) -DUSEMENU #-DLSB_FIRST=0
+CXXFLAGS += $(INCDIR) -DUSEMENU=1 #-DLSB_FIRST=0
 
 SUBDIRS = $(SOURCE_DIR) $(SOURCE_DIR)/smsplus $(SOURCE_DIR)/assets
 
