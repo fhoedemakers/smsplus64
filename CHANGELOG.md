@@ -15,6 +15,7 @@ Copy smsPlus64.z64 to your Nintendo 64 flash card. Create a folder named `smsPlu
 - Fixed corrupt framerate display when starting from N64FlashcartMenu.
 - Disabled Start + Z when game is started from N64FlashcartMenu.
 - When starting emulator, holding Z will force to load the built-in menu.
+- Fixed libcart preventing internal menu to list roms.
 
 ## v0.6
 
