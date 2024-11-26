@@ -16,6 +16,10 @@
 
 #define FRAMEBUFFERS 3
 
+#ifndef USEMENU
+#define USEMENU 1
+#endif
+
 /* hardware definitions */
 // Pad buttons
 #define A_BUTTON(a) ((a) & 0x8000)
@@ -648,12 +652,12 @@ int main()
         int offset = 0;
         checkcontrollers();
 
-//#ifndef NDEBUG
-        // console must be initialized for the user to press Z to skip to menu
+        // #ifndef NDEBUG
+        //  console must be initialized for the user to press Z to skip to menu
         console_init();
         console_set_render_mode(RENDER_MANUAL);
         console_clear();
-//#endif
+// #endif
 #ifndef NDEBUG
 #if 0
         // allocate MB of memory for the rom
@@ -704,10 +708,15 @@ int main()
         if (!zPressed)
         {
             debugstdout("Detecting flash cart type\n");
-            debugstdout("Cart type: %s\n", format_cart_type());
-            debugstdout("Cart size: %d\n", cart_size);
-            debugstdout("Cart ROM address: %x\n", GetRomAddress());
-            debugstdout("Check if game is started via Everdrive/FlashCartMenu\n");
+            if (cart_type != CART_NULL)
+            {
+                debugstdout("Cart type: %s\n", format_cart_type());
+                debugstdout("Cart size: %d\n", cart_size);
+                debugstdout("Cart ROM address: %x\n", GetRomAddress());
+                debugstdout("Check if game is started via Everdrive/FlashCartMenu\n");
+            } else {
+                debugstdout("No flash cart detected\n");
+            }
         }
         else
         {
@@ -746,7 +755,6 @@ int main()
             }
 #endif
             console_close();
-
         }
         else
         {
@@ -789,10 +797,10 @@ int main()
 
             console_close();
 #endif
-#ifdef USEMENU
-           
+#if USEMENU == 1
+
             header.signature[0] = 0;
-            header.signature[1] = 0;    
+            header.signature[1] = 0;
             header.signature[2] = 0;
             header.signature[3] = 0;
             header.signature[4] = 0;
