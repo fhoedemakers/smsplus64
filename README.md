@@ -29,7 +29,7 @@ For this to work with  [N64FlashCartMenu](https://github.com/Polprzewodnikowy/N6
 
 > [!NOTE]
 > According to the Everdrive manual, roms could also be run this way via the Everdrive menu by saving smsPlus64.z64 as ED64/emu/gg.v64 and ED64/emu/sms.v64. This does not work however.
-> As a workaround, you can rename your .sms .gg roms to have the .gen extension and then copy smsPlus64.v64 to ED64/emu/gen.v64
+> As a workaround, you can rename your .sms .gg roms to have the .gen extension and then copy smsPlus64.z64 to ED64/emu/gen.v64
 
 ## Controls
 
