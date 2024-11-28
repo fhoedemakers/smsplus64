@@ -16,6 +16,10 @@
 
 #define FRAMEBUFFERS 3
 
+#ifndef USEMENU
+#define USEMENU 1
+#endif
+
 /* hardware definitions */
 // Pad buttons
 #define A_BUTTON(a) ((a) & 0x8000)
@@ -61,6 +65,8 @@ bool reset = false;
 
 bool controller1IsInserted = false;
 bool controller2IsInserted = false;
+
+bool loadedFromFlashcartMenu = false;
 
 // Sega header https://www.smspower.org/Development/ROMHeader
 struct SegaHeader
@@ -191,8 +197,9 @@ int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
     if (fps_enabled)
     {
         char sound = soundEnabled ? 'S' : 'M';
-        sprintf(buffer, "%c %d", sound, framedisplay);
+        sprintf(buffer, "%c %04d", sound, framedisplay);
         // debugf("Frame %d\n", totalfames);
+        graphics_set_color(CBLACK, CWHITE);
         if (IS_GG && fromMenu == false)
         {
             graphics_draw_text(display, 48, 24, buffer);
@@ -294,8 +301,15 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
         {
             if (pushedsystem & INPUT_START)
             {
-                reset = true;
-                debugf("Reset pressed\n");
+                if (!loadedFromFlashcartMenu)
+                {
+                    reset = true;
+                    debugf("Reset pressed\n");
+                }
+                else
+                {
+                    debugf("Reset ignored\n");
+                }
             }
             // Toggle frame rate display
             if (pushed & INPUT_BUTTON1)
@@ -454,16 +468,18 @@ extern "C"
 }
 #endif
 
-uint32_t GetRomAddress() {
-    switch(cart_type) {
-        case CART_CI:
-        case CART_SC:
-            return 0x10200000;
-        case CART_EDX:
-        case CART_ED:
-            return 0xB0200000;
-        default:
-            return 0; // This is an emulator or something else, load the built in ROM.
+uint32_t GetRomAddress()
+{
+    switch (cart_type)
+    {
+    case CART_CI:
+    case CART_SC:
+        return 0x10200000;
+    case CART_EDX:
+    case CART_ED:
+        return 0xB0200000;
+    default:
+        return 0; // This is an emulator or something else, load the built in ROM.
     }
 }
 // create a wrapper for debugf to stdout
@@ -567,22 +583,24 @@ bool IsRomInjected(RomInfo *info, bool withOffset)
     }
     return rval;
 }
-static const char *format_cart_type () {
-    switch (cart_type) {
-        case CART_CI:
-            return "64drive";
+static const char *format_cart_type()
+{
+    switch (cart_type)
+    {
+    case CART_CI:
+        return "64drive";
 
-        case CART_EDX:
-            return "Series X EverDrive-64";
+    case CART_EDX:
+        return "Series X EverDrive-64";
 
-        case CART_ED:
-            return "Series V EverDrive-64";
+    case CART_ED:
+        return "Series V EverDrive-64";
 
-        case CART_SC:
-            return "SummerCart64";
+    case CART_SC:
+        return "SummerCart64";
 
-        default:        // Probably emulator
-            return "Emulator?";
+    default: // Probably emulator
+        return "Emulator?";
     }
 }
 
@@ -595,7 +613,7 @@ int main()
     bool isGameGear = false;
     char mountPoint[20];
     size_t tmpSize;
-    bool loadedFromFlashcartMenu = false;
+
     bool dfsStarted = false;
     ErrorMessage = errMSG;
     RomInfo info;
@@ -604,7 +622,7 @@ int main()
     debugf("Starting SMSPlus64, a Sega Master System emulator for the Nintendo 64 - https://github.com/fhoedemakers/smsplus64\n");
     debugf("Built on %s %s using libdragon - https://github.com/DragonMinded/libdragon\n", __DATE__, __TIME__);
 
-  
+    cart_init();
     controller_init();
     timer_init();
     enableordisableTimer();
@@ -634,11 +652,12 @@ int main()
         int offset = 0;
         checkcontrollers();
 
-#ifndef NDEBUG
+        // #ifndef NDEBUG
+        //  console must be initialized for the user to press Z to skip to menu
         console_init();
         console_set_render_mode(RENDER_MANUAL);
         console_clear();
-#endif
+// #endif
 #ifndef NDEBUG
 #if 0
         // allocate MB of memory for the rom
@@ -669,17 +688,42 @@ int main()
         free(rom);
 #endif
 #endif
+        // Wait for Z button to be pressed until counter is reached
+        bool zPressed = false;
+        debugstdout("Press Z button to skip to menu\n");
+        int counter = 0;
+        while (counter < 10)
+        {
+            zPressed = get_keys_pressed().c[0].Z;
+            if (zPressed)
+            {
+                break;
+            }
+            wait_ms(10);
+            controller_scan();
+            counter++;
+        }
         // Check whether rom is started via Everdrive/N64Flashcartmenu
         // Those roms are injected at GetRomAddress() and have a Sega header
-        debugstdout("Detecting flash cart type\n");
-        cart_init();
-        debugstdout("Cart type: %s\n", format_cart_type());
-        debugstdout("Cart size: %d\n", cart_size);
-        debugstdout("Cart ROM address: %x\n", GetRomAddress());
-        cart_exit();
-        debugstdout("Check if game is started via Everdrive/FlashCartMenu\n");
+        if (!zPressed)
+        {
+            debugstdout("Detecting flash cart type\n");
+            if (cart_type != CART_NULL)
+            {
+                debugstdout("Cart type: %s\n", format_cart_type());
+                debugstdout("Cart size: %d\n", cart_size);
+                debugstdout("Cart ROM address: %x\n", GetRomAddress());
+                debugstdout("Check if game is started via Everdrive/FlashCartMenu\n");
+            } else {
+                debugstdout("No flash cart detected\n");
+            }
+        }
+        else
+        {
+            debugstdout("Z button pressed, skipping to menu\n");
+        }
         loadedFromFlashcartMenu = false;
-        if (cart_type != CART_NULL && ( loadedFromFlashcartMenu = IsRomInjected(&info, false)) == false)
+        if (!zPressed && cart_type != CART_NULL && (loadedFromFlashcartMenu = IsRomInjected(&info, false)) == false)
         {
             if ((loadedFromFlashcartMenu = IsRomInjected(&info, true)) == true)
             {
@@ -709,9 +753,8 @@ int main()
                 wait_ms(10);
                 controller_scan();
             }
-
-            console_close();
 #endif
+            console_close();
         }
         else
         {
@@ -754,7 +797,22 @@ int main()
 
             console_close();
 #endif
-#ifdef USEMENU
+#if USEMENU == 1
+
+            header.signature[0] = 0;
+            header.signature[1] = 0;
+            header.signature[2] = 0;
+            header.signature[3] = 0;
+            header.signature[4] = 0;
+            header.signature[5] = 0;
+            header.signature[6] = 0;
+            header.signature[7] = 0;
+            debugf("Killing header\n");
+            dma_write_raw_async(&header, GetRomAddress() + 0x7FF0, sizeof(header));
+            dma_wait();
+            dma_write_raw_async(&header, GetRomAddress() + 0x7FF0 + 512, sizeof(header));
+            dma_wait();
+            debugf("Killed\n");
             display_init(RESOLUTION_320x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
             info = menu(mountPoint, 0, ErrorMessage, isFatalError, reset);
             display_close();

@@ -4,6 +4,19 @@
 
 Copy smsPlus64.z64 to your Nintendo 64 flash card. Create a folder named `smsPlus64` in the root of your flashcard's SD card and copy your .sms or .gg ROMs there. 
 
+## v0.7 (To be released)
+
+### Features
+
+- none
+
+### Fixes
+
+- Fixed corrupt framerate display when starting from N64FlashcartMenu.
+- Disabled Start + Z when game is started from N64FlashcartMenu.
+- When starting emulator, holding Z will force to load the built-in menu.
+- Fixed libcart preventing internal menu to list roms.
+
 ## v0.6
 
 ### Features

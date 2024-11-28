@@ -1,5 +1,5 @@
 #pragma once
-#ifndef USEMENU
+#if USEMENU == 0
 // Specify the name of the built-in ROM to include
 #define BUILTINROM_SONIC_GG
 extern unsigned char builtinrom[];
