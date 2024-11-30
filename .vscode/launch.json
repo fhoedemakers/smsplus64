@@ -10,7 +10,7 @@
             "name": "Attach to gdbserver",
             "gdbpath": "/usr/bin/gdb-multiarch",
             "executable": "./build/smsPlus64.elf",
-            "target": "localhost:9123",
+            "target": "192.168.2.104:9123",
             "remote": true,
             "printCalls": true,
             "cwd": "${workspaceRoot}",
