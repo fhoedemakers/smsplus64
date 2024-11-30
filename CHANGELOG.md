@@ -30,8 +30,8 @@ For this to work with N64FlashCartmenu, copy smsPlus64.z64 to the menu/emulators
 > Also, 1MB games will not load using this method. There are only a few games with this size.
 
 > [!NOTE]
-> According to the Everdrive manual, roms could also be run this way via the Everdrive menu by saving smsPlus64.z64 as ED64/emu/gg.z64 and ED64/emu/sms.z64. This does not work however.
-> As a workaround, you can rename your .sms .gg roms to have the .gen extension and then copy smsPlus64.z64 to ED64/emu/gen.z64
+> According to the Everdrive manual, roms could also be run this way via the Everdrive menu by saving smsPlus64.z64 as ED64/emu/gg.v64 and ED64/emu/sms.v64. This does not work however.
+> As a workaround, you can rename your .sms .gg roms to have the .gen extension and then copy smsPlus64.z64 to ED64/emu/gen.v64
 
 
 ### Fixes
