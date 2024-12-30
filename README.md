@@ -1,6 +1,6 @@
 # smsPlus64
 
-A Sega Master System and Game Gear Emulator running on the Nintendo 64. Use it on real hardware with  flashcart. Tested with the [EverDrive-64 X7](https://krikzz.com/our-products/cartridges/ed64x7.html) and [SummerCart64](https://summercart64.dev/) on both an NTSC and PAL Nintendo 64.
+A Sega Master System and Game Gear Emulator running on the Nintendo 64. Use it on real hardware with a flashcart. Tested with the [EverDrive-64 X7](https://krikzz.com/our-products/cartridges/ed64x7.html) and [SummerCart64](https://summercart64.dev/) on both an NTSC and PAL Nintendo 64.
 
 > [!NOTE]
 > This project is more of a fun thing for me to try if it works. Help for improvement is always welcome. 
