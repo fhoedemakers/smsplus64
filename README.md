@@ -15,9 +15,9 @@ The emulator code is a port of smsPlus.
 
 ## How to use on real hardware using an Everdrive 64 X7.
 
-To try the emulator, download smsPlus64.z64 from the [releases](https://github.com/fhoedemakers/smsplus64/releases/latest) page and copy it to your flashcart.
+To try the emulator, download smsPlus64.z64 from the [releases](https://github.com/fhoedemakers/smsplus64/releases/latest) page and copy it to your flashcart. When smsPLus.z64 is started in the Everdrive Menu, the emulator shows a builtin menu.
 
-Games can be played from the flashcart's SD card. Create a folder named `smsPlus64` in the root of your flashcart's SD card and copy your .sms or .gg ROMs there. You can organize your games in subfolders. The emulator shows a menu whith a list of games.
+Games can then be played from the flashcart's SD card. Create a folder named `smsPlus64` in the root of your flashcart's SD card and copy your .sms or .gg ROMs there. You can organize your games in subfolders. The builtin menu reads the flashcart SD contents from that folder and below.
 
 ## How to use on real hardware using a SummerCart64 flashcart and N64FlashcartMenu.
 
