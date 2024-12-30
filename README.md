@@ -21,7 +21,7 @@ Games can be played from the flashcard's SD card. Create a folder named `smsPlus
 
 ## How to use on real hardware using N64Flashcartmenu on a flashcart.
 
-For this to work with  [N64FlashCartMenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu), copy smsPlus64.z64 to the menu/emulators folder of your SD-card. More info in the N64FlashcartMenu [Getting Started Guide](https://github.com/Polprzewodnikowy/N64FlashcartMenu/blob/develop/docs/00_getting_started_sd.md)
+For this to work with  [N64FlashCartMenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu), copy smsPlus64.z64 to the menu/emulators folder of your SD-card. More info in the N64FlashcartMenu [Getting Started Guide](https://github.com/Polprzewodnikowy/N64FlashcartMenu/blob/main/docs/00_getting_started_sd.md)
 
 > [!NOTE]
 > According to the Everdrive manual, roms could also be run this way via the Everdrive menu by saving smsPlus64.z64 as ED64/emu/gg.v64 and ED64/emu/sms.v64. This does not work however.
