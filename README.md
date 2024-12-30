@@ -20,8 +20,8 @@ Create a folder named `smsPlus64` in the root of your flashcart's SD card and co
 
 ## How to use on real hardware using a SummerCart64 flashcart and N64FlashcartMenu.
 
-Games can be started directly from the N64FlashcartMenu instead of the builtin menu.
-For this to work with  [N64FlashCartMenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu) on a [SummerCart64](https://github.com/Polprzewodnikowy/SummerCart64) flashcart, copy smsPlus64.z64 to the menu/emulators folder of your SD-card. More info in the N64FlashcartMenu [Getting Started Guide](https://github.com/Polprzewodnikowy/N64FlashcartMenu/blob/main/docs/00_getting_started_sd.md)
+Games can be started directly from the [N64FlashCartMenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu) using a [SummerCart64](https://github.com/Polprzewodnikowy/SummerCart64).
+For this to work, copy smsPlus64.z64 to the menu/emulators folder of your SD-card. More info in the N64FlashcartMenu [Getting Started Guide](https://github.com/Polprzewodnikowy/N64FlashcartMenu/blob/main/docs/00_getting_started_sd.md)
 
 
 > [!NOTE]
