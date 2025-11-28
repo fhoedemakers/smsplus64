@@ -15,23 +15,44 @@ The emulator code is a port of smsPlus.
 
 Download smsPlus64.z64 from the [releases](https://github.com/fhoedemakers/smsplus64/releases/latest) page and copy it to your flashcart.
 
-## How to use on real hardware using an Everdrive 64 X7.
+## How to use on real hardware with an Everdrive 64 X7
 
-You can start roms directly from the Everdrive menu by by saving [smsPlus64.z64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/smsPlus64.z64) as ED64/emu/gg.v64 and ED64/emu/sms.v64.
+You can launch ROMs directly from the Everdrive menu by saving [smsPlus64.z64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/smsPlus64.z64) as:
 
-> [!NOTE]
-> Everdrive OS V3.09 or higher is reuired. See https://krikzz.com/pub/support/everdrive-64/x-series/OS/ for downloads
+- `ED64/emu/gg.v64`  
+- `ED64/emu/sms.v64`
 
-## How to use on real hardware using a SummerCart64 flashcart and N64FlashcartMenu.
+> [!NOTE]  
+> Everdrive OS **v3.09 or higher** is required.  
+> Downloads: https://krikzz.com/pub/support/everdrive-64/x-series/OS/
 
-Games can be started directly from the [N64FlashCartMenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu) using a [SummerCart64](https://github.com/Polprzewodnikowy/SummerCart64).
-For this to work, copy [smsPlus64.z64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/smsPlus64.z64) to the menu/emulators folder of your SD-card. More info in the N64FlashcartMenu [Getting Started Guide](https://github.com/Polprzewodnikowy/N64FlashcartMenu/blob/main/docs/00_getting_started_sd.md)
+---
+
+## How to use on real hardware with a SummerCart64 and N64FlashcartMenu
+
+Games can be started directly from the [N64FlashCartMenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu) when using a [SummerCart64](https://github.com/Polprzewodnikowy/SummerCart64).
+
+To set this up:
+
+1. Copy [smsPlus64.z64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/smsPlus64.z64)  to the `menu/emulators` folder on your SD card.
+2. Launch the menu; the emulator will appear automatically.
+
+More details can be found in the N64FlashcartMenu  
+[Getting Started Guide](https://github.com/Polprzewodnikowy/N64FlashcartMenu/blob/main/docs/00_getting_started_sd.md).
+
+---
 
 ## Run the emulator standalone
 
-To run the emulator standalone, download [smsPlus64.z64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/smsPlus64.z64) from the [releases](https://github.com/fhoedemakers/smsplus64/releases/latest) page and copy it to your flashcart. When smsPLus.z64 is started from the Everdrive or Summercart menu, the emulator shows a builtin menu with a list of games that can be started.
-Create a folder named `smsPlus64` in the root of your flashcart's SD card and copy your .sms or .gg ROMs there. You can organize your games in subfolders. The menu reads the contents of this folder.
+To run the emulator as a standalone ROM:
 
+1. Download [smsPlus64.z64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/smsPlus64.z64) from the [releases page](https://github.com/fhoedemakers/smsplus64/releases/latest).
+2. Copy it to your flashcart.
+3. Launch **smsPlus64.z64** from the Everdrive or SummerCart menu.  
+   The emulator will display its built-in game browser.
+4. On the root of your SD card, create a folder named `smsPlus64`.
+5. Place your `.sms` and `.gg` ROMs in this folder.  
+   Subfolders are supported; the menu will scan them automatically.
 
 ## Controls
 
