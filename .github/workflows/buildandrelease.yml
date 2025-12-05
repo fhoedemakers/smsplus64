@@ -9,6 +9,7 @@ on:
           - "v*.*-alpha"
           - "v*.*.*"
           - "v*.*"
+    workflow_dispatch: # Allow manual triggering of the workflow
     #     branches: [ main ]
     # pull_request:
     #     branches: [ main ] 
@@ -50,7 +51,7 @@ jobs:
                      grep SWVERSION menu.h
           - name: Build the files
             run: |            
-                 export N64_INST=$HOME/libdragon && \
+                 export N64_INST=/datalocal/libdragon && \
                  chmod +x ./build.sh && \
                  ./build.sh && \
                  ls -l ${{ env.APP_NAME }}.z64
