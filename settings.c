@@ -14,6 +14,7 @@ void settings_setdefaults(void)
     settings.sound = 1;
     settings.showFps = 1;
     settings.showProfiler = 0;
+    settings.autostart = 1;
 }
 
 const char *settings_frameskip_name(int frameskip)
@@ -65,6 +66,8 @@ bool settings_load(const char *mountPoint)
             settings.showFps = (value != 0);
         else if (sscanf(line, "profiler=%d", &value) == 1)
             settings.showProfiler = (value != 0);
+        else if (sscanf(line, "autostart=%d", &value) == 1)
+            settings.autostart = (value != 0);
     }
     fclose(file);
     return true;
@@ -87,6 +90,8 @@ bool settings_save(const char *mountPoint)
     fprintf(file, "sound=%d\n", settings.sound);
     fprintf(file, "fps=%d\n", settings.showFps);
     fprintf(file, "profiler=%d\n", settings.showProfiler);
+    fprintf(file, "# autostart: 1 run a game launched from the flashcart menu, 0 always show our own menu\n");
+    fprintf(file, "autostart=%d\n", settings.autostart);
     fclose(file);
     return true;
 }

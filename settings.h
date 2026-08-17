@@ -16,6 +16,7 @@ extern "C"
         int sound;        /* 0 muted, 1 on */
         int showFps;      /* 0 hidden, 1 shown */
         int showProfiler; /* 0 hidden, 1 shown */
+        int autostart;    /* 1 start a rom injected by the flashcart menu, 0 always show our menu */
     } Settings;
 
     extern Settings settings;

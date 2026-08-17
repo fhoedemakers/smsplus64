@@ -149,9 +149,18 @@ void displayRoms(Frens::RomLister romlister, int startIndex)
     auto y = STARTROW;
     auto entries = romlister.GetEntries();
     ClearScreen(screenBuffer, bgcolor);
-    putText(1, 0, "Choose a rom to play:", fgcolor, bgcolor);
+    // Show where we are actually looking. An empty list is otherwise silent
+    // about whether the SD card mounted or the folder simply has no roms.
+    putText(1, 0, dirstack[dirstackindex], fgcolor, bgcolor);
     putText(1, SCREEN_ROWS - 1, "A:Select B:Back START:Settings", fgcolor, bgcolor);
     putText(SCREEN_COLS - strlen(SWVERSION), SCREEN_ROWS - 1, SWVERSION, fgcolor, bgcolor);
+    if (romlister.Count() == 0)
+    {
+        putText(1, STARTROW, "No .sms or .gg files here.", fgcolor, bgcolor);
+        putText(1, STARTROW + 2, "Put roms in smsPlus64 on the SD", fgcolor, bgcolor);
+        putText(1, STARTROW + 3, "card. rom:/ means the SD card did", fgcolor, bgcolor);
+        putText(1, STARTROW + 4, "not mount.", fgcolor, bgcolor);
+    }
     for (auto index = startIndex; index < romlister.Count(); index++)
     {
         if (y <= ENDROW)
@@ -324,7 +333,7 @@ void clearinput()
         }
     }
 }
-#define NUMSETTINGS 4
+#define NUMSETTINGS 5
 
 // Settings screen, so the in-game button combinations do not have to be
 // remembered. Reachable with START from the rom browser.
@@ -353,11 +362,13 @@ static void settingsScreen(const char *mountPoint)
         putText(1, STARTROW + 2, line, fgcolor, bgcolor);
         snprintf(line, sizeof(line), "Profiler   : %s", settings.showProfiler ? "Shown" : "Hidden");
         putText(1, STARTROW + 3, line, fgcolor, bgcolor);
+        snprintf(line, sizeof(line), "Autostart  : %s", settings.autostart ? "On" : "Off");
+        putText(1, STARTROW + 4, line, fgcolor, bgcolor);
 
-        putText(1, STARTROW + 5, "Auto frameskip keeps the game at", fgcolor, bgcolor);
-        putText(1, STARTROW + 6, "full speed when the N64 cannot", fgcolor, bgcolor);
-        putText(1, STARTROW + 7, "draw every frame.", fgcolor, bgcolor);
-        putText(1, STARTROW + 9, "Saved to the SD card on exit.", fgcolor, bgcolor);
+        putText(1, STARTROW + 6, "Autostart runs the game picked in", fgcolor, bgcolor);
+        putText(1, STARTROW + 7, "the flashcart menu. Turn it off if", fgcolor, bgcolor);
+        putText(1, STARTROW + 8, "the last game keeps restarting.", fgcolor, bgcolor);
+        putText(1, STARTROW + 10, "Saved to the SD card on exit.", fgcolor, bgcolor);
 
         putText(1, SCREEN_ROWS - 1, "Left/Right: change, B: Back", fgcolor, bgcolor);
         DrawScreen(STARTROW + row);
@@ -388,6 +399,7 @@ static void settingsScreen(const char *mountPoint)
             case 1: settings.sound = !settings.sound; break;
             case 2: settings.showFps = !settings.showFps; break;
             case 3: settings.showProfiler = !settings.showProfiler; break;
+            case 4: settings.autostart = !settings.autostart; break;
             }
             changed = true;
         }

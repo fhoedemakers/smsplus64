@@ -566,7 +566,7 @@ static void inGameSettings()
 {
     DWORD pad1, pad2, sys;
     char line[40];
-    const int rows = 4;
+    const int rows = 5;
     int row = 0;
     bool changed = false;
 
@@ -596,8 +596,11 @@ static void inGameSettings()
             case 2:
                 sprintf(line, "Frame rate %s", settings.showFps ? "Shown" : "Hidden");
                 break;
-            default:
+            case 3:
                 sprintf(line, "Profiler   %s", settings.showProfiler ? "Shown" : "Hidden");
+                break;
+            default:
+                sprintf(line, "Autostart  %s", settings.autostart ? "On" : "Off");
                 break;
             }
             // Selected row is inverted.
@@ -637,7 +640,8 @@ static void inGameSettings()
                 break;
             case 1: settings.sound = !settings.sound; break;
             case 2: settings.showFps = !settings.showFps; break;
-            default: settings.showProfiler = !settings.showProfiler; break;
+            case 3: settings.showProfiler = !settings.showProfiler; break;
+            default: settings.autostart = !settings.autostart; break;
             }
             changed = true;
         }
@@ -1056,6 +1060,49 @@ static void killInjectedRomHeader()
     dma_wait();
 }
 
+// Mount the rom filesystem and the SD card, then read the saved settings from
+// beside the roms. Runs before the injected-rom check so that settings are in
+// effect however the emulator was started, and so the autostart setting can be
+// honoured at all.
+static void mountFilesystemsAndLoadSettings(bool *dfsStarted, char *mountPoint)
+{
+    if (*dfsStarted)
+    {
+        return;
+    }
+    debugstdout("Mounting rom file system...");
+    if (dfs_init(DFS_DEFAULT_LOCATION) != DFS_ESUCCESS)
+    {
+        debugstdout("rom filesystem failed to start!\n");
+        isFatalError = true;
+        strcpy(ErrorMessage, "Error opening rom filesystem.");
+        return;
+    }
+    *dfsStarted = true;
+    debugstdout("mounted.\nTrying to mount SD card...");
+    if (!init_sdfs("sd:/", -1))
+    {
+        debugstdout("Error opening SD, using rom:/ filesystem...\n");
+        strcpy(mountPoint, "rom:/");
+    }
+    else
+    {
+        debugstdout("SD card mounted\n");
+        strcpy(mountPoint, "sd:/smsPlus64");
+    }
+    // Saved settings live beside the roms. Defaults are used when there is no
+    // file yet, or when running from the read-only rom:/ filesystem.
+    if (settings_load(mountPoint))
+    {
+        debugstdout("Loaded settings from %s\n", mountPoint);
+    }
+    else
+    {
+        debugstdout("No saved settings, using defaults\n");
+    }
+    settings_apply();
+}
+
 int main()
 {
 
@@ -1174,8 +1221,18 @@ int main()
         {
             debugstdout("Z button pressed, skipping to menu\n");
         }
+        // Mount the filesystems and read the settings before deciding whether
+        // to start an injected rom, because whether to do that at all is one of
+        // the settings. This also means settings apply when a game is launched
+        // straight from the flashcart menu, not only via our own browser.
+        mountFilesystemsAndLoadSettings(&dfsStarted, mountPoint);
+
         loadedFromFlashcartMenu = false;
-        if (!zPressed && cart_type != CART_NULL && (loadedFromFlashcartMenu = IsRomInjected(&info, false)) == false)
+        if (!settings.autostart)
+        {
+            debugstdout("Autostart disabled, going to the menu\n");
+        }
+        else if (!zPressed && cart_type != CART_NULL && (loadedFromFlashcartMenu = IsRomInjected(&info, false)) == false)
         {
             if ((loadedFromFlashcartMenu = IsRomInjected(&info, true)) == true)
             {
@@ -1215,43 +1272,6 @@ int main()
         else
         {
             debugstdout("Will start menu\n");
-            if (dfsStarted == false)
-            {
-                debugstdout("Mounting rom file system...");
-                if (dfs_init(DFS_DEFAULT_LOCATION) == DFS_ESUCCESS)
-                {
-                    dfsStarted = true;
-                    debugstdout("mounted.\nTrying to mount SD card...");
-                    if (!init_sdfs("sd:/", -1))
-                    {
-                        debugstdout("Error opening SD, using rom:/ filesystem...\n");
-                        strcpy(mountPoint, "rom:/");
-                    }
-                    else
-                    {
-                        debugstdout("SD card mounted\n");
-                        strcpy(mountPoint, "sd:/smsPlus64");
-                    }
-                    // Saved settings live beside the ROMs. Defaults are used
-                    // when there is no file yet, or when running from rom:/.
-                    if (settings_load(mountPoint))
-                    {
-                        debugstdout("Loaded settings from %s\n", mountPoint);
-                    }
-                    else
-                    {
-                        debugstdout("No saved settings, using defaults\n");
-                    }
-                    settings_apply();
-                }
-                else
-                {
-                    debugstdout("rom filesystem failed to start!\n");
-                    debugstdout("Exit program\n");
-                    isFatalError = true;
-                    strcpy(ErrorMessage, "Error opening rom filesystem.");
-                }
-            }
 #ifndef NDEBUG
             debugstdout("Press A button to continue\n");
             controller_scan();

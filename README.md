@@ -69,6 +69,10 @@ Press Start in the menu to change frameskip, sound, the frame rate display and t
 profiler overlay without having to remember the in-game button combinations. Use
 Up/Down to pick a setting, Left/Right to change it and B to go back.
 
+`Autostart` controls whether a game chosen in the flashcart menu starts straight
+away. Turn it off if the emulator keeps replaying the last game instead of showing
+its own menu.
+
 Settings are written to `settings.cfg` in the same folder as your ROMs on the SD
 card, and are restored the next time the emulator starts. It is a small text file
 and can be edited on a PC. If you are running without an SD card the settings still
