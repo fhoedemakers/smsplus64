@@ -200,8 +200,12 @@ int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
     if (fps_enabled)
     {
         char sound = soundEnabled ? 'S' : 'M';
-        int x = (IS_GG && fromMenu == false) ? 48 : 10;
-        int y = (IS_GG && fromMenu == false) ? 24 : 5;
+        // Same spot for both consoles. The emulated picture starts at row 24
+        // (Master System) or row 48 (Game Gear), so rows 5..21 are clear
+        // either way. Game Gear used to draw at (48, 24) instead, which was
+        // not visible on hardware.
+        int x = 10;
+        int y = 5;
         graphics_set_color(CBLACK, CWHITE);
         if (fromMenu)
         {
