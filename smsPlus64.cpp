@@ -1238,18 +1238,8 @@ int main()
         {
             debugstdout("Z button pressed, skipping to menu\n");
         }
-        // Mount the filesystems and read the settings before deciding whether
-        // to start an injected rom, because whether to do that at all is one of
-        // the settings. This also means settings apply when a game is launched
-        // straight from the flashcart menu, not only via our own browser.
-        mountFilesystemsAndLoadSettings(&dfsStarted, mountPoint);
-
         loadedFromFlashcartMenu = false;
-        if (!settings.autostart)
-        {
-            debugstdout("Autostart disabled, going to the menu\n");
-        }
-        else if (!zPressed && cart_type != CART_NULL && (loadedFromFlashcartMenu = IsRomInjected(&info, false)) == false)
+        if (!zPressed && cart_type != CART_NULL && (loadedFromFlashcartMenu = IsRomInjected(&info, false)) == false)
         {
             if ((loadedFromFlashcartMenu = IsRomInjected(&info, true)) == true)
             {
@@ -1258,6 +1248,21 @@ int main()
             else
             {
                 debugstdout("No Sega header found\n");
+            }
+        }
+
+        // Mount early only when there is an injected rom to make a decision
+        // about, because autostart is a saved setting. Otherwise leave mounting
+        // where it has always been, in the menu branch below: doing it earlier
+        // stopped the SD card mounting on an EverDrive X7, though a SummerCart64
+        // was unaffected.
+        if (loadedFromFlashcartMenu)
+        {
+            mountFilesystemsAndLoadSettings(&dfsStarted, mountPoint);
+            if (!settings.autostart)
+            {
+                debugstdout("Autostart disabled, going to the menu\n");
+                loadedFromFlashcartMenu = false;
             }
         }
 
@@ -1289,6 +1294,7 @@ int main()
         else
         {
             debugstdout("Will start menu\n");
+            mountFilesystemsAndLoadSettings(&dfsStarted, mountPoint);
 #ifndef NDEBUG
             debugstdout("Press A button to continue\n");
             controller_scan();
