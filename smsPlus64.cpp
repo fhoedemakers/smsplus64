@@ -63,7 +63,16 @@ uint8_t *sms_line_target = ci8_frame[0];
 
 // 32-entry palette replicated 8 times so any random 8-bit CI8 index maps
 // to a valid RGBA5551 color in TMEM. Avoids per-pixel masking on the CPU.
+// This is the live copy, updated by the emulator as it writes CRAM.
 static __attribute__((aligned(16))) uint16_t tlut[256];
+
+// Snapshot of the palette handed to the RDP, double buffered alongside the CI8
+// frames. The RDP is still executing the queued LOAD_TLUT after
+// rdpq_detach_show() returns, while the CPU has already moved on to emulating
+// the next frame - and on a skipped frame nothing waits for it. Pointing the
+// RDP straight at the live tlut let it read a palette that was being rewritten
+// underneath it, which showed up as wrong colours on Game Gear.
+static __attribute__((aligned(16))) uint16_t tlut_dma[2][256];
 
 // Profiler accumulators, declared in profile.h and written from the emulator core.
 uint32_t prof_acc[PROF_COUNT];
@@ -458,11 +467,15 @@ static void auto_frameskip_tune()
     uint32_t skip_cost = auto_skip_n ? (auto_skip_ticks / (uint32_t)auto_skip_n) : 0;
 
     // Cheapest cadence whose predicted average frame cost fits in the budget.
+    // Stepping up halves the frames drawn, so it needs to buy more than a
+    // rounding error: a game running at 58fps is 3% short of the budget and is
+    // far better left alone than cut to 29.
+    uint32_t step_up_limit = FRAME_TICKS + (FRAME_TICKS / 16);
     int level = 0;
     while (level < FS_AUTO_MAX)
     {
         uint32_t avg = (render_cost + (uint32_t)level * skip_cost) / (uint32_t)(level + 1);
-        if (avg <= FRAME_TICKS)
+        if (avg <= step_up_limit)
             break;
         level++;
     }
@@ -571,19 +584,20 @@ void process(void)
             // the RDP reads via DMA.
             data_cache_hit_writeback(frame, CI8_FRAME_BYTES);
 
-            // Same for the palette. rdpq_tex_upload_tlut() issues an RDP
-            // LOAD_TLUT that DMAs straight out of RDRAM and does no writeback
-            // of its own, so without this the RDP sees whatever stale copy
-            // happens to be in memory while the real entries sit dirty in the
-            // d-cache. Only 512 bytes, so flushing unconditionally is cheaper
-            // than tracking whether the palette changed.
-            data_cache_hit_writeback(tlut, sizeof(tlut));
+            // Snapshot the palette for the RDP. It has to be a copy, not the
+            // live tlut, because the emulator keeps writing CRAM while the RDP
+            // is still reading. rdpq_tex_upload_tlut() issues a LOAD_TLUT that
+            // DMAs straight out of RDRAM and does no writeback of its own, so
+            // the snapshot has to be flushed by hand. Only 512 bytes.
+            uint16_t *palette = tlut_dma[ci8_back];
+            __builtin_memcpy(palette, tlut, sizeof(tlut));
+            data_cache_hit_writeback(palette, sizeof(tlut));
 
             surface_t ci8_surface = surface_make_linear(frame, FMT_CI8, SMS_WIDTH, SMS_HEIGHT);
             rdpq_attach(_dc, NULL);
             rdpq_set_mode_copy(false);
             rdpq_mode_tlut(TLUT_RGBA16);
-            rdpq_tex_upload_tlut(tlut, 0, 256);
+            rdpq_tex_upload_tlut(palette, 0, 256);
 
             if (IS_GG)
             {
