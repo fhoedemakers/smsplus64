@@ -434,6 +434,17 @@ void process(void)
     __builtin_memset(ci8_frame, 0, sizeof(ci8_frame));
     ci8_back = 0;
     sms_line_target = ci8_frame[0];
+
+    // Clear every framebuffer once. The RDP only ever draws the emulated
+    // picture - rows 24..215 for the Master System, and a 160x144 window for
+    // the Game Gear - so the border around it keeps whatever the menu or the
+    // previous game left in memory.
+    for (int i = 0; i < FRAMEBUFFERS; i++)
+    {
+        surface_t *clear = display_get();
+        graphics_fill_screen(clear, CBLACK);
+        display_show(clear);
+    }
     skip_phase = consecutive_skips = 0;
     frame_backlog = 0;
     frame_deadline = TICKS_READ();
@@ -498,6 +509,14 @@ void process(void)
             // CPU writes to the frame went through the d-cache; flush before
             // the RDP reads via DMA.
             data_cache_hit_writeback(frame, CI8_FRAME_BYTES);
+
+            // Same for the palette. rdpq_tex_upload_tlut() issues an RDP
+            // LOAD_TLUT that DMAs straight out of RDRAM and does no writeback
+            // of its own, so without this the RDP sees whatever stale copy
+            // happens to be in memory while the real entries sit dirty in the
+            // d-cache. Only 512 bytes, so flushing unconditionally is cheaper
+            // than tracking whether the palette changed.
+            data_cache_hit_writeback(tlut, sizeof(tlut));
 
             surface_t ci8_surface = surface_make_linear(frame, FMT_CI8, SMS_WIDTH, SMS_HEIGHT);
             rdpq_attach(_dc, NULL);
