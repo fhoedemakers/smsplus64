@@ -347,6 +347,14 @@ extern "C" void settings_capture(void)
 
 #define OTHER_BUTTON1 (0b1)
 #define OTHER_BUTTON2 (0b10)
+#define OTHER_BUTTON3 (0b100)
+
+// Where saved settings live. Kept at file scope so the in-game overlay can
+// write them too, not just the menu.
+char mountPoint[24] = "";
+
+// Set by the Z + C-Right combination, acted on by the main loop.
+static bool settingsRequested = false;
 
 static DWORD prevButtons[2]{};
 static DWORD prevButtonssystem[2]{};
@@ -383,7 +391,8 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
                          (A_BUTTON(gp) ? INPUT_BUTTON1 : 0) |
                          (B_BUTTON(gp) ? INPUT_BUTTON2 : 0) | 0;
         int otherButtons = (CL_BUTTON(gp) ? OTHER_BUTTON1 : 0) |
-                           (CU_BUTTON(gp) ? OTHER_BUTTON2 : 0) | 0;
+                           (CU_BUTTON(gp) ? OTHER_BUTTON2 : 0) |
+                           (CR_BUTTON(gp) ? OTHER_BUTTON3 : 0) | 0;
         smssystem[i] =
             (Z_BUTTON(gp) ? INPUT_PAUSE : 0) |
             (START_BUTTON(gp) ? INPUT_START : 0) |
@@ -459,6 +468,12 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
             {
                 prof_enabled = !prof_enabled;
                 debugf("Profiler: %s\n", prof_enabled ? "ON" : "OFF");
+            }
+            // Open the settings overlay. Handled by the main loop rather than
+            // here, so it does not run from inside input processing.
+            if (pushedother & OTHER_BUTTON3)
+            {
+                settingsRequested = true;
             }
         }
         if (p1 & INPUT_START)
@@ -543,6 +558,101 @@ static void auto_frameskip_tune()
     auto_render_n = auto_skip_n = 0;
 }
 
+// In-game settings overlay. The menu's settings screen uses a 38 column text
+// grid that does not fit the 256 pixel wide framebuffer a game runs in, so this
+// is a compact version of the same four settings. Emulation is paused while it
+// is open.
+static void inGameSettings()
+{
+    DWORD pad1, pad2, sys;
+    char line[40];
+    const int rows = 4;
+    int row = 0;
+    bool changed = false;
+
+    // The RDP may still be blitting the last frame into a buffer we are about
+    // to draw over.
+    rspq_wait();
+    settings_capture();
+
+    while (true)
+    {
+        surface_t *dc = display_get();
+        graphics_fill_screen(dc, CBLACK);
+
+        graphics_set_color(CWHITE, CBLACK);
+        graphics_draw_text(dc, 24, 32, "SETTINGS");
+
+        for (int i = 0; i < rows; i++)
+        {
+            switch (i)
+            {
+            case 0:
+                sprintf(line, "Frameskip  %s", settings_frameskip_name(settings.frameskip));
+                break;
+            case 1:
+                sprintf(line, "Sound      %s", settings.sound ? "On" : "Off");
+                break;
+            case 2:
+                sprintf(line, "Frame rate %s", settings.showFps ? "Shown" : "Hidden");
+                break;
+            default:
+                sprintf(line, "Profiler   %s", settings.showProfiler ? "Shown" : "Hidden");
+                break;
+            }
+            // Selected row is inverted.
+            graphics_set_color(i == row ? CBLACK : CWHITE, i == row ? CWHITE : CBLACK);
+            graphics_draw_text(dc, 24, 56 + i * 12, line);
+        }
+
+        graphics_set_color(CWHITE, CBLACK);
+        graphics_draw_text(dc, 24, 124, "Up/Down     select");
+        graphics_draw_text(dc, 24, 136, "Left/Right  change");
+        graphics_draw_text(dc, 24, 148, "B           close");
+
+        display_show(dc);
+        processinput(&pad1, &pad2, &sys, false);
+
+        if (pad1 & INPUT_UP)
+        {
+            row = (row + rows - 1) % rows;
+        }
+        else if (pad1 & INPUT_DOWN)
+        {
+            row = (row + 1) % rows;
+        }
+        else if (pad1 & INPUT_BUTTON2)
+        {
+            break;
+        }
+        else if (pad1 & (INPUT_LEFT | INPUT_RIGHT | INPUT_BUTTON1))
+        {
+            int direction = (pad1 & INPUT_LEFT) ? -1 : 1;
+            switch (row)
+            {
+            case 0:
+                settings.frameskip += direction;
+                if (settings.frameskip > 3) settings.frameskip = -1;
+                if (settings.frameskip < -1) settings.frameskip = 3;
+                break;
+            case 1: settings.sound = !settings.sound; break;
+            case 2: settings.showFps = !settings.showFps; break;
+            default: settings.showProfiler = !settings.showProfiler; break;
+            }
+            changed = true;
+        }
+    }
+
+    settings_apply();
+    if (changed && !settings_save(mountPoint))
+    {
+        debugf("Could not save settings to '%s'\n", mountPoint);
+    }
+    // This drew over framebuffers the emulator only partly repaints, so have
+    // the main loop clear them before resuming.
+    hideFrameRate = true;
+}
+
 void process(void)
 {
     DWORD pdwPad1, pdwPad2, pdwSystem; // have only meaning in menu
@@ -574,6 +684,14 @@ void process(void)
     while (reset == false)
     {
         processinput(&pdwPad1, &pdwPad2, &pdwSystem, false);
+
+        if (settingsRequested)
+        {
+            settingsRequested = false;
+            inGameSettings();
+            frame_deadline = TICKS_READ(); // do not try to catch up on the pause
+            continue;
+        }
 
         bool render_frame = (skip_phase == 0);
 
@@ -922,6 +1040,22 @@ static const char *format_cart_type()
     }
 }
 
+// Blank the "TMR SEGA" signature the flashcart menu leaves in cartridge space
+// when it injects a rom. It survives a reset, so without this the same game is
+// detected and started again on every boot and the menu is unreachable except
+// by holding Z. Called as soon as the rom has been copied to RAM, so the next
+// boot comes up in the menu; picking a game from the flashcart menu writes a
+// fresh header and works as before.
+static void killInjectedRomHeader()
+{
+    __builtin_memset(&header, 0, sizeof(header));
+    debugf("Clearing injected rom header\n");
+    dma_write_raw_async(&header, GetRomAddress() + 0x7FF0, sizeof(header));
+    dma_wait();
+    dma_write_raw_async(&header, GetRomAddress() + 0x7FF0 + 512, sizeof(header));
+    dma_wait();
+}
+
 int main()
 {
 
@@ -929,7 +1063,6 @@ int main()
     errMSG[0] = romName[0] = 0;
     int fileSize = 0;
     bool isGameGear = false;
-    char mountPoint[20];
     size_t tmpSize;
 
     bool dfsStarted = false;
@@ -1063,6 +1196,10 @@ int main()
             debugstdout("Waiting for dma\n");
             dma_wait();
             strcpy(info.title, "Everdrive/Flashcart");
+            // The rom is safely in RAM now, so drop the header that got us here
+            // and the next boot will come up in the menu instead of replaying
+            // this game.
+            killInjectedRomHeader();
 #ifndef NDEBUG
             debugstdout("Press A button to continue\n");
             controller_scan();
@@ -1129,20 +1266,7 @@ int main()
 #endif
 #if USEMENU == 1
 
-            header.signature[0] = 0;
-            header.signature[1] = 0;
-            header.signature[2] = 0;
-            header.signature[3] = 0;
-            header.signature[4] = 0;
-            header.signature[5] = 0;
-            header.signature[6] = 0;
-            header.signature[7] = 0;
-            debugf("Killing header\n");
-            dma_write_raw_async(&header, GetRomAddress() + 0x7FF0, sizeof(header));
-            dma_wait();
-            dma_write_raw_async(&header, GetRomAddress() + 0x7FF0 + 512, sizeof(header));
-            dma_wait();
-            debugf("Killed\n");
+            killInjectedRomHeader();
             display_init(RESOLUTION_320x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
             info = menu(mountPoint, 0, ErrorMessage, isFatalError, reset);
             display_close();

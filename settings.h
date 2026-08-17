@@ -22,6 +22,10 @@ extern "C"
 
     void settings_setdefaults(void);
 
+    /* Display name for a frameskip value, shared by the menu screen and the
+       in-game overlay so they cannot describe the same setting differently. */
+    const char *settings_frameskip_name(int frameskip);
+
     /* Reads the settings file, falling back to defaults. A missing file or an
        unrecognised line is not an error - it just leaves that default in
        place, so a partly hand-edited file still works. */

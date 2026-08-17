@@ -16,6 +16,19 @@ void settings_setdefaults(void)
     settings.showProfiler = 0;
 }
 
+const char *settings_frameskip_name(int frameskip)
+{
+    switch (frameskip)
+    {
+    case -1: return "Auto";
+    case 0:  return "Off";
+    case 1:  return "1 frame";
+    case 2:  return "2 frames";
+    case 3:  return "3 frames";
+    }
+    return "?";
+}
+
 static void settings_path(char *out, size_t size, const char *mountPoint)
 {
     snprintf(out, size, "%s/%s", mountPoint, SETTINGS_FILE);

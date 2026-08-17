@@ -74,8 +74,9 @@ card, and are restored the next time the emulator starts. It is a small text fil
 and can be edited on a PC. If you are running without an SD card the settings still
 apply, they just cannot be saved.
 
-Changes made in-game with the button combinations below are temporary; open the
-settings screen to make them stick.
+The same screen is available in-game with Z + C-Right, so you do not have to
+return to the menu to change something. Changes made with the individual button
+combinations below are temporary; opening the settings screen is what saves them.
 
 ### In Game
 
@@ -86,6 +87,7 @@ settings screen to make them stick.
 - Z + Start: Go back to menu
 - Z + A: Toggle framerate display
 - Z + B: Toggle sound (improves framerate somewhat)
+- Z + C-Right: Open the settings screen
 - Z + C-Left: Cycle frameskip: AUTO -> off -> 1 -> 2 -> 3 -> AUTO
 - Z + C-Up: Toggle the phase profiler overlay
 

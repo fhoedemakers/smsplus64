@@ -326,19 +326,6 @@ void clearinput()
 }
 #define NUMSETTINGS 4
 
-static const char *frameskipName(int frameskip)
-{
-    switch (frameskip)
-    {
-    case -1: return "Auto";
-    case 0:  return "Off";
-    case 1:  return "1 frame";
-    case 2:  return "2 frames";
-    case 3:  return "3 frames";
-    }
-    return "?";
-}
-
 // Settings screen, so the in-game button combinations do not have to be
 // remembered. Reachable with START from the rom browser.
 static void settingsScreen(const char *mountPoint)
@@ -358,7 +345,7 @@ static void settingsScreen(const char *mountPoint)
         ClearScreen(screenBuffer, bgcolor);
         putText(1, 0, "Settings", fgcolor, bgcolor);
 
-        snprintf(line, sizeof(line), "Frameskip  : %s", frameskipName(settings.frameskip));
+        snprintf(line, sizeof(line), "Frameskip  : %s", settings_frameskip_name(settings.frameskip));
         putText(1, STARTROW + 0, line, fgcolor, bgcolor);
         snprintf(line, sizeof(line), "Sound      : %s", settings.sound ? "On" : "Off");
         putText(1, STARTROW + 1, line, fgcolor, bgcolor);
