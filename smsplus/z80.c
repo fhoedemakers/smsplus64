@@ -1,4 +1,7 @@
-#pragma GCC optimize ("O2")
+/* The optimization level for this file is set by the Makefile (Z80OPT), not
+   by a #pragma here. It used to carry a #pragma GCC optimize ("O2"), which
+   silently overrode the command line and made the level unselectable - see
+   the Makefile for why the choice matters and what the measured sizes are. */
 
 
 /*****************************************************************************

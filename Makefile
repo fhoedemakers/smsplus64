@@ -31,15 +31,27 @@ OBJS = $(BUILD_DIR)/smsPlus64.o $(BUILD_DIR)/libdragonsprite.o $(BUILD_DIR)/load
 
 # Lift the per-scanline renderer and sound hotspots to -O3. Keep the rest at
 # the libdragon default (-O2) so libdragon-facing code is unaffected.
-# z80.c and vdp.c are deliberately absent: both carry a
-# #pragma GCC optimize ("O2") that overrides any -O3 given here, so listing
-# them only made the flag look like it was doing something. z80_execute() is
-# already ~14K against the VR4300's 16K direct-mapped instruction cache, so
-# more inlining there is as likely to hurt as help - measure with the
-# on-screen profiler (Z + C-Up) before removing that pragma.
+# vdp.c is deliberately absent: it carries a #pragma GCC optimize ("O2") that
+# overrides any -O3 given here, so listing it only made the flag look like it
+# was doing something.
 HOT_OBJS = $(BUILD_DIR)/render.o $(BUILD_DIR)/sn76496.o \
            $(BUILD_DIR)/sms.o $(BUILD_DIR)/system.o
 $(HOT_OBJS): N64_CFLAGS := $(patsubst -O2,-O3,$(N64_CFLAGS))
+
+# The Z80 interpreter is the largest single CPU cost (~43% of frame time,
+# measured on hardware), and it is bound by the VR4300's 16K direct-mapped
+# instruction cache as much as by instruction count. z80.c used to pin itself
+# to -O2 with a #pragma, which silently overrode the command line; the level
+# now comes from here so the trade-off can actually be measured.
+#
+#   Os   z80_execute =  4176 bytes, .text =  68656   opcodes become calls,
+#                                                    but far better cache fit
+#   O2   z80_execute = 10992 bytes, .text = 118880   default, known good
+#   O3   z80_execute = 13900 bytes, .text = 122112   more inlining, worst fit
+#
+# Build a variant to compare with:  make RELEASE=1 Z80OPT=Os
+Z80OPT ?= O2
+$(BUILD_DIR)/z80.o: N64_CFLAGS := $(patsubst -O2,-$(Z80OPT),$(N64_CFLAGS))
 
 smsPlus64.z64: N64_ROM_TITLE = "SMSPlus emulator"
 smsPlus64.z64: $(BUILD_DIR)/smsPlus64.dfs
