@@ -242,8 +242,14 @@ int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
         }
         else
         {
-            // emulated fps / displayed fps / frameskip mode
-            sprintf(buffer, "%c %03d/%02d %s", sound, framedisplay, drawndisplay, frameskip_label());
+            // console / sound / emulated fps / displayed fps / frameskip mode.
+            // The console character is what the emulator actually decided the
+            // cartridge is, which decides the CRAM format among other things -
+            // a Master System ROM run as Game Gear has its palette read two
+            // bytes per colour instead of one and comes out completely wrong.
+            char console = IS_GG ? 'G' : 'S';
+            sprintf(buffer, "%c%c %03d/%02d %s", console, sound,
+                    framedisplay, drawndisplay, frameskip_label());
         }
         graphics_draw_text(display, x, y, buffer);
 
