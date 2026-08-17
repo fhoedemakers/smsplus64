@@ -74,13 +74,16 @@ To run the emulator as a standalone ROM:
 - Z + C-Left: Cycle frameskip: AUTO -> off -> 1 -> 2 -> 3 -> AUTO
 - Z + C-Up: Toggle the phase profiler overlay
 
-The framerate overlay reads `S 060/30 A`: sound on (`S`) or muted (`M`), emulated
-frames per second, displayed frames per second, and the frameskip mode (`A` for
-automatic, otherwise the number of frames skipped between drawn ones).
+The framerate overlay reads `S 060/30 A1`: sound on (`S`) or muted (`M`), emulated
+frames per second, displayed frames per second, and the frameskip mode. `A1` means
+automatic, currently skipping 1 frame between drawn ones; a bare digit means that
+level was set by hand.
 
 Frameskip defaults to AUTO, which keeps the game running at the right speed by
-dropping drawn frames only when the N64 cannot keep up. Set it to `0` if you would
-rather have every frame drawn and accept the game running slow.
+skipping drawn frames when the N64 cannot keep up. It settles on a level and holds
+it rather than deciding frame by frame, because a steady cadence looks smoother
+than a higher but uneven frame rate. Set it to `0` if you would rather have every
+frame drawn and accept the game running slow.
 
 >[!NOTE]
 > Holding Z after starting the emulator will force to load the built-in menu. 

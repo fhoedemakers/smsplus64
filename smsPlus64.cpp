@@ -90,14 +90,24 @@ static bool hideFrameRate = false;
 
 static int frameskip_mode = FS_AUTO;
 static int skip_phase = 0;
-static int consecutive_skips = 0;
 
-// How far behind a 60Hz schedule the emulator has fallen, in ticks. This sums
-// only the *work* done per frame and ignores time spent waiting to be paced,
-// which keeps it free of drift: the audio clock actually runs at 44096.7Hz,
-// not 44100, so an absolute wall-clock deadline would slowly slide behind and
-// end up skipping frames forever even at full speed.
-static int32_t frame_backlog = 0;
+// AUTO picks a skip level and holds it, rather than deciding frame by frame.
+// Deciding per frame gives an irregular cadence - a mix of drawing every frame
+// and every other frame - and uneven pacing reads as judder even when the
+// average frame rate is higher. A steady 1-in-2 looks better than a jittery
+// 1.7-in-2, so AUTO settles on a level and runs the same fixed cadence the
+// manual modes do.
+//
+// The level is re-chosen a couple of times a second from the measured cost of
+// a rendered frame and a skipped one, which is drift-free by construction: it
+// times only work, never the waits that pace the emulator.
+#define FS_TUNE_INTERVAL 30
+static int auto_level = 0;
+static uint32_t auto_render_ticks = 0;
+static uint32_t auto_skip_ticks = 0;
+static int auto_render_n = 0;
+static int auto_skip_n = 0;
+static int auto_tune_countdown = FS_TUNE_INTERVAL;
 
 // Deadline for the busy-wait speed limiter, used only when sound is off and
 // there is no audio queue to pace against.
@@ -186,12 +196,22 @@ int framedisplay = 0;    // emulated frames per second, last full second
 int drawndisplay = 0;    // rendered frames per second, last full second
 int totalfames = 0;
 
-// Frameskip mode as a single OSD character.
-static char frameskip_char()
+// Frameskip mode for the OSD. AUTO also reports the level it settled on.
+static const char *frameskip_label()
 {
+    static char label[4];
+    int n = 0;
     if (frameskip_mode == FS_AUTO)
-        return 'A';
-    return (char)('0' + frameskip_mode);
+    {
+        label[n++] = 'A';
+        label[n++] = (char)('0' + auto_level);
+    }
+    else
+    {
+        label[n++] = (char)('0' + frameskip_mode);
+    }
+    label[n] = '\0';
+    return label;
 }
 
 int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
@@ -214,7 +234,7 @@ int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
         else
         {
             // emulated fps / displayed fps / frameskip mode
-            sprintf(buffer, "%c %03d/%02d %c", sound, framedisplay, drawndisplay, frameskip_char());
+            sprintf(buffer, "%c %03d/%02d %s", sound, framedisplay, drawndisplay, frameskip_label());
         }
         graphics_draw_text(display, x, y, buffer);
 
@@ -370,10 +390,12 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
                     frameskip_mode = FS_AUTO;
                 else
                     frameskip_mode++;
-                skip_phase = consecutive_skips = 0;
-                frame_backlog = 0;
+                skip_phase = 0;
+                auto_render_ticks = auto_skip_ticks = 0;
+                auto_render_n = auto_skip_n = 0;
+                auto_tune_countdown = FS_TUNE_INTERVAL;
                 frame_deadline = TICKS_READ();
-                debugf("Frameskip: %c\n", frameskip_char());
+                debugf("Frameskip: %s\n", frameskip_label());
             }
             // Toggle the phase profiler overlay
             if (pushedother & OTHER_BUTTON2)
@@ -411,19 +433,53 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
     }
 }
 
-// Decide whether the frame about to be emulated should also be rendered.
-static bool should_render_frame()
+// Frames skipped between drawn ones, for whichever mode is active.
+static int frameskip_level()
 {
-    if (frameskip_mode == 0)
-        return true;
-    if (frameskip_mode > 0)
-        return skip_phase == 0;
+    return (frameskip_mode == FS_AUTO) ? auto_level : frameskip_mode;
+}
 
-    // AUTO: drop rendering once we have fallen a whole frame behind, but never
-    // freeze the picture for more than FS_AUTO_MAX frames in a row.
-    if (consecutive_skips >= FS_AUTO_MAX)
-        return true;
-    return frame_backlog < (int32_t)FRAME_TICKS;
+// Re-choose the AUTO level from what rendering and skipping actually cost.
+// Called once per frame; does its work every FS_TUNE_INTERVAL frames.
+static void auto_frameskip_tune()
+{
+    if (--auto_tune_countdown > 0)
+        return;
+    auto_tune_countdown = FS_TUNE_INTERVAL;
+
+    if (auto_render_n == 0)
+        return;
+
+    uint32_t render_cost = auto_render_ticks / (uint32_t)auto_render_n;
+    // At level 0 there are no skipped frames to measure. Treating them as free
+    // makes the estimate optimistic, so AUTO may step up one level too eagerly
+    // - but that immediately produces real samples and the next pass corrects
+    // it, so it settles either way.
+    uint32_t skip_cost = auto_skip_n ? (auto_skip_ticks / (uint32_t)auto_skip_n) : 0;
+
+    // Cheapest cadence whose predicted average frame cost fits in the budget.
+    int level = 0;
+    while (level < FS_AUTO_MAX)
+    {
+        uint32_t avg = (render_cost + (uint32_t)level * skip_cost) / (uint32_t)(level + 1);
+        if (avg <= FRAME_TICKS)
+            break;
+        level++;
+    }
+
+    // Stepping down needs clear headroom, otherwise a level sitting right on
+    // the budget oscillates against the one above it every tuning pass, which
+    // is exactly the judder this is meant to avoid.
+    if (level < auto_level)
+    {
+        uint32_t avg = (render_cost + (uint32_t)level * skip_cost) / (uint32_t)(level + 1);
+        if (avg > FRAME_TICKS - (FRAME_TICKS / 16))
+            level = auto_level;
+    }
+
+    auto_level = level;
+    auto_render_ticks = auto_skip_ticks = 0;
+    auto_render_n = auto_skip_n = 0;
 }
 
 void process(void)
@@ -445,15 +501,20 @@ void process(void)
         graphics_fill_screen(clear, CBLACK);
         display_show(clear);
     }
-    skip_phase = consecutive_skips = 0;
-    frame_backlog = 0;
+    // Start by drawing every frame and let the tuner settle from there, so a
+    // game that can keep up never skips.
+    skip_phase = 0;
+    auto_level = 0;
+    auto_render_ticks = auto_skip_ticks = 0;
+    auto_render_n = auto_skip_n = 0;
+    auto_tune_countdown = FS_TUNE_INTERVAL;
     frame_deadline = TICKS_READ();
 
     while (reset == false)
     {
         processinput(&pdwPad1, &pdwPad2, &pdwSystem, false);
 
-        bool render_frame = should_render_frame();
+        bool render_frame = (skip_phase == 0);
 
         if (render_frame)
         {
@@ -586,27 +647,23 @@ void process(void)
             PROF_END(PROF_IDLE);
         }
 
-        // Track how far behind a 60Hz schedule we are. Never bank credit for
-        // running fast, and cap the backlog so a slow patch cannot queue up a
-        // long burst of skipped frames afterwards.
-        frame_backlog += work - (int32_t)FRAME_TICKS;
-        if (frame_backlog < 0)
-            frame_backlog = 0;
-        else if (frame_backlog > (int32_t)(FRAME_TICKS * 4))
-            frame_backlog = FRAME_TICKS * 4;
-
+        // Feed the AUTO tuner what this frame actually cost.
         if (render_frame)
         {
-            consecutive_skips = 0;
+            auto_render_ticks += (uint32_t)work;
+            auto_render_n++;
         }
         else
         {
-            consecutive_skips++;
+            auto_skip_ticks += (uint32_t)work;
+            auto_skip_n++;
         }
-        if (frameskip_mode > 0)
+        if (frameskip_mode == FS_AUTO)
         {
-            skip_phase = (skip_phase + 1) % (frameskip_mode + 1);
+            auto_frameskip_tune();
         }
+
+        skip_phase = (skip_phase + 1) % (frameskip_level() + 1);
     }
 }
 
