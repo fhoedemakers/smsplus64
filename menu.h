@@ -14,5 +14,6 @@ typedef struct RomInfo
 RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool isFatalError, bool reset);
 char getcharslicefrom8x8font(char c, int rowInChar);
 int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu);
+extern char sdStatus[48];
 
 #endif

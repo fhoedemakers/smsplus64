@@ -157,9 +157,10 @@ void displayRoms(Frens::RomLister romlister, int startIndex)
     if (romlister.Count() == 0)
     {
         putText(1, STARTROW, "No .sms or .gg files here.", fgcolor, bgcolor);
-        putText(1, STARTROW + 2, "Put roms in smsPlus64 on the SD", fgcolor, bgcolor);
-        putText(1, STARTROW + 3, "card. rom:/ means the SD card did", fgcolor, bgcolor);
-        putText(1, STARTROW + 4, "not mount.", fgcolor, bgcolor);
+        putText(1, STARTROW + 2, sdStatus, fgcolor, bgcolor);
+        putText(1, STARTROW + 4, "Roms go in a smsPlus64 folder on", fgcolor, bgcolor);
+        putText(1, STARTROW + 5, "the SD card. rom:/ above means the", fgcolor, bgcolor);
+        putText(1, STARTROW + 6, "card did not mount.", fgcolor, bgcolor);
     }
     for (auto index = startIndex; index < romlister.Count(); index++)
     {

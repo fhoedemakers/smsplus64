@@ -356,6 +356,10 @@ char mountPoint[24] = "";
 // Set by the Z + C-Right combination, acted on by the main loop.
 static bool settingsRequested = false;
 
+// Why the browser is looking where it is. Shown when it has nothing to list, so
+// a failed SD card is distinguishable from an empty folder.
+char sdStatus[48] = "";
+
 static DWORD prevButtons[2]{};
 static DWORD prevButtonssystem[2]{};
 static DWORD prevOtherButtons[2]{};
@@ -1080,15 +1084,28 @@ static void mountFilesystemsAndLoadSettings(bool *dfsStarted, char *mountPoint)
     }
     *dfsStarted = true;
     debugstdout("mounted.\nTrying to mount SD card...");
-    if (!init_sdfs("sd:/", -1))
+    // -1 asks for the first usable partition. Some cards only come up when a
+    // partition is named explicitly, so fall back to trying the first two
+    // before giving up.
+    bool sdMounted = init_sdfs("sd:/", -1);
+    for (int part = 0; !sdMounted && part < 2; part++)
+    {
+        debugstdout("Retrying SD with partition %d\n", part);
+        sdMounted = init_sdfs("sd:/", part);
+    }
+    if (!sdMounted)
     {
         debugstdout("Error opening SD, using rom:/ filesystem...\n");
         strcpy(mountPoint, "rom:/");
+        // The browser shows this when it has nothing to list. Without it, a
+        // failed card is indistinguishable from an empty folder.
+        snprintf(sdStatus, sizeof(sdStatus), "SD not mounted. Cart: %s", format_cart_type());
     }
     else
     {
         debugstdout("SD card mounted\n");
         strcpy(mountPoint, "sd:/smsPlus64");
+        snprintf(sdStatus, sizeof(sdStatus), "SD ok. Cart: %s", format_cart_type());
     }
     // Saved settings live beside the roms. Defaults are used when there is no
     // file yet, or when running from the read-only rom:/ filesystem.
