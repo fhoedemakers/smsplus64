@@ -56,21 +56,6 @@ surface_t *_dc;
 // VR4300. Double buffered so the CPU can emulate and render the next frame
 // while the RDP is still blitting this one. 16-byte aligned for RDP's DMA
 // requirements; cache writeback runs before each blit.
-// The Game Gear's visible window inside the Master System sized frame the
-// renderer always produces: 160x144 starting at column 48, row 24.
-#define SMS_GG_WIDTH 160
-#define SMS_GG_HEIGHT 144
-#define SMS_GG_X 48
-#define SMS_GG_Y 24
-
-// The framebuffer is sized to the emulated picture rather than padded out to
-// 256x240, and the VI stretches it to the screen during scanout. That scaling
-// happens whether or not it is used, so filling the screen this way costs no
-// CPU and no RDP time - it just stops us blitting a small picture into the
-// middle of a large buffer and letting the VI magnify the black borders too.
-static const resolution_t RESOLUTION_SMS = {SMS_WIDTH, SMS_HEIGHT, false};
-static const resolution_t RESOLUTION_GG = {SMS_GG_WIDTH, SMS_GG_HEIGHT, false};
-
 #define CI8_FRAME_BYTES (SMS_WIDTH * SMS_HEIGHT)
 static __attribute__((aligned(16))) uint8_t ci8_frame[2][CI8_FRAME_BYTES];
 static int ci8_back = 0;
@@ -244,12 +229,12 @@ int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
     if (fps_enabled)
     {
         char sound = soundEnabled ? 'S' : 'M';
-        // The framebuffer is now exactly the picture, so there is no longer a
-        // border to tuck this into and it sits over the top left of the image.
-        // x is kept small enough that the 19 character profiler line still fits
-        // across a 160 pixel wide Game Gear framebuffer.
-        int x = 4;
-        int y = 4;
+        // Same spot for both consoles. The emulated picture starts at row 24
+        // (Master System) or row 48 (Game Gear), so rows 5..21 are clear
+        // either way. Game Gear used to draw at (48, 24) instead, which was
+        // not visible on hardware.
+        int x = 10;
+        int y = 5;
         graphics_set_color(CBLACK, CWHITE);
         if (fromMenu)
         {
@@ -620,22 +605,22 @@ void process(void)
             rdpq_mode_tlut(TLUT_RGBA16);
             rdpq_tex_upload_tlut(palette, 0, 256);
 
-            // The framebuffer is exactly the size of the picture, so both
-            // consoles blit to the origin and the VI does the magnifying.
             if (IS_GG)
             {
-                // Only the Game Gear's window out of the Master System sized
-                // frame the renderer produces.
+                // GG visible window: cols 48..207, rows 24..167, blitted to fb at
+                // (48, 48) so the 160x144 image is centered horizontally and
+                // vertically inside the 256x240 framebuffer.
                 rdpq_blitparms_t parms = {};
-                parms.s0 = SMS_GG_X;
-                parms.t0 = SMS_GG_Y;
-                parms.width = SMS_GG_WIDTH;
-                parms.height = SMS_GG_HEIGHT;
-                rdpq_tex_blit(&ci8_surface, 0, 0, &parms);
+                parms.s0 = 48;
+                parms.t0 = 24;
+                parms.width = 160;
+                parms.height = 144;
+                rdpq_tex_blit(&ci8_surface, 48, 48, &parms);
             }
             else
             {
-                rdpq_tex_blit(&ci8_surface, 0, 0, NULL);
+                // SMS: full 256x192 image at fb (0, 24).
+                rdpq_tex_blit(&ci8_surface, 0, 24, NULL);
             }
 
             // Schedules display_show() to happen once the RDP is done, instead
@@ -1116,6 +1101,8 @@ int main()
             strcpy(info.title, GetBuiltinROMName());
 #endif
         }
+        /* Initialize display */
+        display_init(RESOLUTION_256x240, DEPTH_16_BPP, FRAMEBUFFERS, GAMMA_NONE, FILTERS_RESAMPLE);
         checkcontrollers();
         // dump info
         debugf("Starting game:\n");
@@ -1126,14 +1113,7 @@ int main()
         reset = false;
         debugf("Init audio\n");
         audio_init(44100, 4);
-        // Must come before display_init(): load_rom() settles the console type,
-        // and that decides the framebuffer size.
         load_rom(info.rom, info.size, info.isGameGear);
-        /* Initialize display, sized to the emulated picture - see RESOLUTION_SMS */
-        display_init(IS_GG ? RESOLUTION_GG : RESOLUTION_SMS, DEPTH_16_BPP,
-                     FRAMEBUFFERS, GAMMA_NONE, FILTERS_RESAMPLE);
-        debugf("- Framebuffer: %dx%d\n", IS_GG ? SMS_GG_WIDTH : SMS_WIDTH,
-               IS_GG ? SMS_GG_HEIGHT : SMS_HEIGHT);
         // Initialize all systems and power on
         system_init(SMS_AUD_RATE);
         // load state if any
