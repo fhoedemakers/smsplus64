@@ -69,8 +69,18 @@ To run the emulator as a standalone ROM:
 - B: Button 1
 - A: Button 2
 - Z + Start: Go back to menu
-- Z + A: Toggle framerate
+- Z + A: Toggle framerate display
 - Z + B: Toggle sound (improves framerate somewhat)
+- Z + C-Left: Cycle frameskip: AUTO -> off -> 1 -> 2 -> 3 -> AUTO
+- Z + C-Up: Toggle the phase profiler overlay
+
+The framerate overlay reads `S 060/30 A`: sound on (`S`) or muted (`M`), emulated
+frames per second, displayed frames per second, and the frameskip mode (`A` for
+automatic, otherwise the number of frames skipped between drawn ones).
+
+Frameskip defaults to AUTO, which keeps the game running at the right speed by
+dropping drawn frames only when the N64 cannot keep up. Set it to `0` if you would
+rather have every frame drawn and accept the game running slow.
 
 >[!NOTE]
 > Holding Z after starting the emulator will force to load the built-in menu. 

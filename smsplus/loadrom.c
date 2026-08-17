@@ -95,14 +95,23 @@ typedef struct
 
 //     return 1;
 // }
+/* Writes to ROM space land here. cpu_writemem16() indexes a page with the low
+   13 bits of the address, so this has to be a full 8K page - it used to alias
+   the 256-byte line buffer, which meant such writes ran 8K past the end of it
+   and scribbled over the scanline being rendered. */
+static uint8_t dummy_page[0x2000];
+
 int load_rom(uint8_t *rom, int size, bool isGameGear)
 {
     uint8_t *start = (uint8_t *)rom;
     sms.use_fm = 0;
     sms.country = TYPE_OVERSEAS;
     sms.sram = sram;
-    sms.dummy = smsBufferLine;
-    bitmap.data = smsBufferLine;
+    sms.dummy = dummy_page;
+    /* The renderer writes scanlines straight into sms_line_target, which flips
+       between two buffers, so there is no single bitmap to point at any more.
+       The geometry below is kept because it describes the emulated display. */
+    bitmap.data = NULL;
     bitmap.width = BMP_WIDTH;
     bitmap.height = BMP_HEIGHT;
     bitmap.pitch = BMP_WIDTH;

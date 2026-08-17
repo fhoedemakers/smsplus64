@@ -1,5 +1,6 @@
 
 #include "shared.h"
+#include "profile.h"
 
 /* SMS context */
 t_sms sms;
@@ -32,41 +33,25 @@ void (sms_frame)(int skip_render) {
         vdp_run();
 
         /* Draw the current frame */
-        if (!skip_render) render_line(vdp.line);
+        if (!skip_render) {
+            PROF_BEGIN(PROF_RENDER);
+            render_line(vdp.line);
+            PROF_END(PROF_RENDER);
+        }
 
         /* Run the Z80 for a line */
-        z80_execute(227);
+        {
+            PROF_BEGIN(PROF_Z80);
+            z80_execute(227);
+            PROF_END(PROF_Z80);
+        }
     }
 
     /* Update the emulated sound stream */
-    if (snd.enabled) {
-/*
-        int count;
-
-        SN76496Update(0, snd.psg_buffer, snd.bufsize, sms.psg_mask);
-
-//        if(sms.use_fm)
-//        {
-//            int i;
-//            for(i = 0; i < snd.bufsize; i++)
-//            {
-//                snd.fm_buffer[i] = OPLL_calc(opll);
-//            }
-//        }
-
-        for(count = 0; count < snd.bufsize; count += 1)
-        {
-            signed short left   = 0;
-            signed short right  = 0;
-//            left = right = snd.fm_buffer[count];
-			left=0;
-            left  += snd.psg_buffer[0][count];
-            right += snd.psg_buffer[1][count];
-            snd.buffer[0][count] = left;
-            snd.buffer[1][count] = right;
-        }
-*/
-        SN76496Update(0, snd.bufsize, sms.psg_mask);
+    if (snd.enabled && snd.buffer) {
+        PROF_BEGIN(PROF_AUDIO);
+        SN76496Update(0, snd.buffer, snd.bufsize, sms.psg_mask);
+        PROF_END(PROF_AUDIO);
     }
 }
 

@@ -47,8 +47,8 @@ typedef struct {
 /* Sound emulation structure */
 typedef struct {
     int enabled;
-    int bufsize;
-    //signed short *buffer[2];
+    int bufsize;                    /* samples per frame, per channel */
+    signed short *buffer;           /* stereo interleaved: bufsize*2 shorts */
     signed short *fm_buffer;        /* internal use only */
     signed short *psg_buffer[2];    /* internal use only */
     int log;

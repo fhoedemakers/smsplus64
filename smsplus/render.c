@@ -12,7 +12,6 @@ uint8 *linebuf;
 
 // Each tile takes up 8*8=64 bytes. We have 512 tiles * 4 attribs, so 2K tiles max.
 #define CACHEDTILES 512
-#define ALIGN_DWORD 1 // esp doesn't support unaligned word writes
 
 int16 cachePtr[512 * 4];            //(tile+attr<<9) -> cache tile store index (i<<6); -1 if not cached
 uint8 cacheStore[CACHEDTILES * 64]; // Tile store
@@ -29,9 +28,25 @@ uint8 is_vram_dirty;
 int cacheKillPtr = 0;
 int freePtr = 0;
 
-/* Pixel look-up table */
-// uint8 lut[0x10000];
-#include "lut.h"
+/* Sprite/background priority resolution.
+   This replaces the old 65536-byte `lut` table (lut.h): a scattered read into
+   64K against the VR4300's 8K data cache missed on nearly every sprite pixel.
+   The table was pure combinational logic, reproduced here:
+
+     bg & 0x40          -> a sprite was already drawn here, it stays on top
+     bg & 0x20 and      -> background pixel has priority and is not transparent
+       bg & 0x0F
+     otherwise          -> the sprite pixel wins, tagged 0x10 (sprite palette)
+                           and 0x40 (marks the pixel as sprite-occupied)
+
+   Only ever called with sp != 0, which is why the transparent-sprite case of
+   the original table does not appear. */
+static __inline__ uint8 (sprite_mix)(uint8 bg, uint8 sp)
+{
+    if (bg & 0x40) return (bg & 0x7F);
+    if ((bg & 0x20) && (bg & 0x0F)) return (bg & 0x7F);
+    return (sp | 0x50);
+}
 
 /* Attribute expansion table */
 uint32 atex[4] =
@@ -77,18 +92,17 @@ void (vramMarkTileDirty)(int index)
 }
 
 
-uint8 *(getCache)(int tile, int attr)
+// Slow path: the tile is not expanded yet. Kept out of line so the hit path
+// below stays a handful of instructions - this is called ~6000 times per frame
+// and the old single function saved and restored nine registers on every hit.
+static uint8 *(getCacheSlow)(int tile, int attr)
 {
     int n, i, x, y, c;
     int b0, b1, b2, b3;
     int i0, i1, i2, i3;
-    int p;
     static bool isoverFlowed = false;
-    // See if we have this in cache.
-    if (cachePtr[tile + (attr << 9)] != -1)
-        return &cacheStore[cachePtr[tile + (attr << 9)]];
 
-    // Nope! Generate cache tile.
+    // Generate cache tile.
     // Find free cache idx first.
     do
     {
@@ -149,102 +163,47 @@ uint8 *(getCache)(int tile, int attr)
     return &cacheStore[i << 6];
 }
 
-/* Macros to access memory 32-bits at a time (from MAME's drawgfx.c) */
-
-#ifdef ALIGN_DWORD
-
-static __inline__ uint32 (read_dword)(void *address)
+// Fast path: the tile is already expanded in the pattern cache, which is the
+// overwhelmingly common case. Inlines to a load, a test and an add.
+static __inline__ uint8 *(getCache)(int tile, int attr)
 {
-    if ((uint32)address & 3)
-    {
-#ifdef LSB_FIRST /* little endian version */
-        return (*((uint8 *)address) +
-                (*((uint8 *)address + 1) << 8) +
-                (*((uint8 *)address + 2) << 16) +
-                (*((uint8 *)address + 3) << 24));
-#else /* big endian version */
-        return (*((uint8 *)address + 3) +
-                (*((uint8 *)address + 2) << 8) +
-                (*((uint8 *)address + 1) << 16) +
-                (*((uint8 *)address) << 24));
-#endif
-    }
-    else
-        return *(uint32 *)address;
+    int idx = cachePtr[tile + (attr << 9)];
+    if (__builtin_expect(idx >= 0, 1))
+        return &cacheStore[idx];
+    return getCacheSlow(tile, attr);
+}
+
+/* Access memory 32-bits at a time (from MAME's drawgfx.c).
+   The line buffer is written at a horizontal-scroll offset, so these are
+   potentially unaligned. Going through a byte-aligned type makes the compiler
+   emit MIPS lwl/lwr and swl/swr, which handle any alignment in two
+   instructions - the previous version tested alignment at runtime and
+   branched into a byte-wise fallback twice per background column.
+
+   Note the callers hand these a uint32*, so the alignment has to be spelled
+   out here: without it the compiler infers 4-byte alignment from the pointer
+   type and emits a plain sw, which faults on a horizontal scroll that is not
+   a multiple of four. */
+
+typedef struct { uint32 v; } __attribute__((packed, aligned(1))) unaligned_dword;
+
+static __inline__ uint32 (read_dword)(const void *address)
+{
+    return ((const unaligned_dword *)address)->v;
 }
 
 static __inline__ void (write_dword)(void *address, uint32 data)
 {
-    if ((uint32)address & 3)
-    {
-#ifdef LSB_FIRST
-        *((uint8 *)address) = data;
-        *((uint8 *)address + 1) = (data >> 8);
-        *((uint8 *)address + 2) = (data >> 16);
-        *((uint8 *)address + 3) = (data >> 24);
-#else
-        *((uint8 *)address + 3) = data;
-        *((uint8 *)address + 2) = (data >> 8);
-        *((uint8 *)address + 1) = (data >> 16);
-        *((uint8 *)address) = (data >> 24);
-#endif
-        return;
-    }
-    else
-        *(uint32 *)address = data;
+    ((unaligned_dword *)address)->v = data;
 }
-
-#else
-#define read_dword(address) *(uint32 *)address
-#define write_dword(address, data) *(uint32 *)address = data
-#endif
 
 /****************************************************************************/
 
 /* Initialize the rendering data */
 void render_init(void)
 {
-#if 0
-    int bx, sx, b, s, bp, bf, sf, c;
-
-    /* Generate 64k of data for the look up table */
-    for(bx = 0; bx < 0x100; bx += 1)
-    {
-        for(sx = 0; sx < 0x100; sx += 1)
-        {
-            /* Background pixel */
-            b  = (bx & 0x0F);
-
-            /* Background priority */
-            bp = (bx & 0x20) ? 1 : 0;
-
-            /* Full background pixel + priority + sprite marker */
-            bf = (bx & 0x7F);
-
-            /* Sprite pixel */
-            s  = (sx & 0x0F);
-
-            /* Full sprite pixel, w/ palette and marker bits added */
-            sf = (sx & 0x0F) | 0x10 | 0x40;
-
-            /* Overwriting a sprite pixel ? */
-            if(bx & 0x40)
-            {
-                /* Return the input */
-                c = bf;
-            }
-            else
-            {
-                /* Work out priority and transparency for both pixels */
-                c = bp ? b ? bf : s ? sf : bf : s ? sf : bf;
-            }
-
-            /* Store result */
-            lut[(bx << 8) | (sx)] = c;
-        }
-    }
-
-#endif
+    /* The 64K priority look-up table this used to build now lives as
+       arithmetic in sprite_mix(). */
     render_reset();
 }
 
@@ -253,9 +212,9 @@ void (render_reset)(void)
 {
     int i;
 
-    /* Clear display bitmap */
-    // memset(bitmap.data, 0, bitmap.pitch * bitmap.height);
-    __builtin_memset(bitmap.data, 0, bitmap.pitch);
+    /* Clear the CI8 frame the renderer draws into, so a reset does not leave
+       the previous game's image on screen. */
+    __builtin_memset(sms_line_target, 0, SMS_WIDTH * SMS_HEIGHT);
 
     /* Clear palette */
     for (i = 0; i < PALETTE_SIZE; i += 1)
@@ -289,21 +248,19 @@ void (render_reset)(void)
     render_bg = IS_GG ? render_bg_gg : render_bg_sms;
 }
 
-extern void sms_render_line(int line, const uint8_t *buffer);
-
 /* Draw a line of the display */
 void (render_line)(int line)
 {
-    /* Ensure we're within the viewport range */
-    if ((line < vp_vstart) || (line >= vp_vend)) {
-        // Hack to render emulator display center correctly vertically by drawing black lines on top and bottom.
-        sms_render_line(line, 0);
+    /* Ensure we're within the viewport range. Lines outside it fall outside
+       the rectangle the RDP blits to the framebuffer, so there is nothing to
+       draw for them. */
+    if ((line < vp_vstart) || (line >= vp_vend))
         return;
-    }
 
-    /* Point to current line in output buffer */
-    // linebuf = &bitmap.data[(line * bitmap.pitch)];
-    linebuf = &bitmap.data[0];
+    /* Point straight at this line inside the CI8 frame the RDP will read.
+       Rendering here directly removes the 256-byte copy per scanline that
+       the old scratch line buffer needed. */
+    linebuf = sms_line_target + (line * SMS_WIDTH);
 
     /* Blank line */
     if ((!(vdp.reg[1] & 0x40)) || (((vdp.reg[2] & 1) == 0) && (IS_SMS)))
@@ -324,14 +281,6 @@ void (render_line)(int line)
             __builtin_memset(linebuf, BACKDROP_COLOR, 8);
         }
     }
-
-    sms_render_line(line, linebuf);
-    // if ( line == 191) {
-    //     __builtin_memset(linebuf, 0, SMS_WIDTH);
-    //     for (int i = line ; i <= 192 ; i++) {
-    //         sms_render_line(i, linebuf);
-    //     }
-    // }
 }
 
 /* Draw the Master System background */
@@ -574,8 +523,8 @@ void (render_obj)(int line)
                         /* Background pixel from line buffer */
                         uint8 bg = linebuf_ptr[x];
 
-                        /* Look up result */
-                        linebuf_ptr[x] = lut[(bg << 8) | (sp)];
+                        /* Resolve sprite against background */
+                        linebuf_ptr[x] = sprite_mix(bg, sp);
 
                         /* Set sprite collision flag */
                         if (bg & 0x40)
@@ -601,8 +550,8 @@ void (render_obj)(int line)
                         /* Background pixel from line buffer */
                         uint8 bg = linebuf_ptr[x];
 
-                        /* Look up result */
-                        linebuf_ptr[x] = lut[(bg << 8) | (sp)];
+                        /* Resolve sprite against background */
+                        linebuf_ptr[x] = sprite_mix(bg, sp);
 
                         /* Set sprite collision flag */
                         if (bg & 0x40)

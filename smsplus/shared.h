@@ -40,6 +40,10 @@ extern "C" {
 #include "sn76496.h"
 #include "system.h"
 extern int soundEnabled;
+/* Base of the SMS_WIDTH x SMS_HEIGHT CI8 frame the renderer writes scanlines
+   into. Owned by smsPlus64.cpp, which flips it between two buffers so the RDP
+   can still be reading the previous frame. */
+extern uint8_t *sms_line_target;
 char unalChar(const char *adr);
 uint8_t *getcachestorefromemulator(size_t *size);
 #ifdef __cplusplus

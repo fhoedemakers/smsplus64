@@ -50,6 +50,10 @@ void system_init(int rate) {
 }
 
 void sms_audio_init(int rate) {
+    /* Free any buffer left over from a previous game before clearing snd. */
+    if (snd.buffer) {
+        free(snd.buffer);
+    }
     /* Clear sound context */
     __builtin_memset(&snd, 0, sizeof(t_snd));
 
@@ -60,27 +64,13 @@ void sms_audio_init(int rate) {
     /* Oops.. sound is disabled */
     if (!rate) return;
 
-    /* Calculate buffer size in samples */
+    /* Calculate buffer size in samples (per channel, per frame) */
     snd.bufsize = (rate / 60);
 
-    /* Sound output */
-    // snd.buffer[0] = (signed short int *) malloc(snd.bufsize * 2);
-    // snd.buffer[1] = (signed short int *) malloc(snd.bufsize * 2);
-    // if (!snd.buffer[0] || !snd.buffer[1]) return;
-    // __builtin_memset(snd.buffer[0], 0, snd.bufsize * 2);
-    // __builtin_memset(snd.buffer[1], 0, snd.bufsize * 2);
-
-    /* YM2413 sound stream */
-//    snd.fm_buffer = (signed short int *)malloc(snd.bufsize * 2);
-//    if(!snd.fm_buffer) return;
-//    memset(snd.fm_buffer, 0, snd.bufsize * 2);
-
-    /* SN76489 sound stream */
-//    snd.psg_buffer[0] = (signed short int *)malloc(snd.bufsize * 2);
-//    snd.psg_buffer[1] = (signed short int *)malloc(snd.bufsize * 2);
-//    if(!snd.psg_buffer[0] || !snd.psg_buffer[1]) return;
-//    memset(snd.psg_buffer[0], 0, snd.bufsize * 2);
-//    memset(snd.psg_buffer[1], 0, snd.bufsize * 2);
+    /* Stereo interleaved S16 output buffer: bufsize stereo pairs = bufsize*2 shorts */
+    snd.buffer = (signed short *) malloc(snd.bufsize * 2 * sizeof(short));
+    if (!snd.buffer) return;
+    __builtin_memset(snd.buffer, 0, snd.bufsize * 2 * sizeof(short));
 
     /* Set up SN76489 emulation */
     SN76496_init(0, MASTER_CLOCK, 255, rate);

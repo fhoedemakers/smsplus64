@@ -4,6 +4,7 @@
 #include "libdragon.h"
 #include "menu.h"
 #include "FrensHelpers.h"
+#include "profile.h"
 
 #ifndef USEMENU
 #include "builtinrom.h"
@@ -49,6 +50,26 @@
 
 surface_t *_dc;
 
+// CI8 frames that the SMS+ renderer writes scanlines into directly (see
+// render_line). The RDP reads one via DMA at end-of-frame and TLUTs it into
+// the N64 framebuffer, off-loading the per-pixel palette lookup from the
+// VR4300. Double buffered so the CPU can emulate and render the next frame
+// while the RDP is still blitting this one. 16-byte aligned for RDP's DMA
+// requirements; cache writeback runs before each blit.
+#define CI8_FRAME_BYTES (SMS_WIDTH * SMS_HEIGHT)
+static __attribute__((aligned(16))) uint8_t ci8_frame[2][CI8_FRAME_BYTES];
+static int ci8_back = 0;
+uint8_t *sms_line_target = ci8_frame[0];
+
+// 32-entry palette replicated 8 times so any random 8-bit CI8 index maps
+// to a valid RGBA5551 color in TMEM. Avoids per-pixel masking on the CPU.
+static __attribute__((aligned(16))) uint16_t tlut[256];
+
+// Profiler accumulators, declared in profile.h and written from the emulator core.
+uint32_t prof_acc[PROF_COUNT];
+uint8_t prof_shown[PROF_COUNT];
+static bool prof_enabled = false;
+
 #define SOUNDISENABLED 1
 int soundEnabled = SOUNDISENABLED;
 
@@ -57,9 +78,30 @@ bool isFatalError = false;
 
 char romName[256];
 
-static bool fps_enabled = false;
+static bool fps_enabled = true;
 timer_link_t *fpstimer = nullptr;
 static bool hideFrameRate = false;
+
+// Frameskip. FS_AUTO adapts to keep emulation running at 60 frames per second;
+// 0 renders every frame, 1..3 skip that many frames between rendered ones.
+#define FS_AUTO (-1)
+#define FS_AUTO_MAX 3       // never skip more than this many frames in a row
+#define FRAME_TICKS (TICKS_PER_SECOND / 60)
+
+static int frameskip_mode = FS_AUTO;
+static int skip_phase = 0;
+static int consecutive_skips = 0;
+
+// How far behind a 60Hz schedule the emulator has fallen, in ticks. This sums
+// only the *work* done per frame and ignores time spent waiting to be paced,
+// which keeps it free of drift: the audio clock actually runs at 44096.7Hz,
+// not 44100, so an absolute wall-clock deadline would slowly slide behind and
+// end up skipping frames forever even at full speed.
+static int32_t frame_backlog = 0;
+
+// Deadline for the busy-wait speed limiter, used only when sound is off and
+// there is no audio queue to pace against.
+static uint32_t frame_deadline = 0;
 
 bool reset = false;
 
@@ -84,84 +126,34 @@ struct SegaHeader
     // 0x7FFF
     uint8_t sizeAndRegion;
 } header;
+static inline void tlut_mirror(int index)
+{
+    // Replicate one palette slot across all 8 TLUT copies so any 8-bit
+    // CI8 index resolves to a valid color without CPU-side masking.
+    uint16_t v = (uint16_t)palette444[index & 31];
+    uint16_t *dst = tlut + (index & 31);
+    for (int rep = 0; rep < 8; rep++, dst += 32) {
+        *dst = v;
+    }
+}
+
 extern "C" void sms_palette_syncGG(int index)
 {
     // The GG has a different palette format
     int r = ((vdp.cram[(index << 1) | 0] >> 1) & 7) << 5;
     int g = ((vdp.cram[(index << 1) | 0] >> 5) & 7) << 5;
     int b = ((vdp.cram[(index << 1) | 1] >> 1) & 7) << 5;
-#if 0
-    int r444 = ((r << 4) + 127) >> 8; // equivalent to (r888 * 15 + 127) / 255
-    int g444 = ((g << 4) + 127) >> 8; // equivalent to (g888 * 15 + 127) / 255
-    int b444 = ((b << 4) + 127) >> 8;
-    palette444[index] = (r444 << 8) | (g444 << 4) | b444;
-#endif
     palette444[index] = RGB888_TO_RGB5551(r, g, b);
-    return;
+    tlut_mirror(index);
 }
 
 extern "C" void sms_palette_sync(int index)
 {
-#if 0
-    // Get SMS palette color index from CRAM
-    WORD r = ((vdp.cram[index] >> 0) & 3);
-    WORD g = ((vdp.cram[index] >> 2) & 3);
-    WORD b = ((vdp.cram[index] >> 4) & 3);
-    WORD tableIndex = b << 4 | g << 2 | r;
-    // Get the RGB444 color from the SMS RGB444 palette
-    palette444[index] = SMSPaletteRGB444[tableIndex];
-#endif
-
-#if 1
-    // Alternative color rendering below
     WORD r = ((vdp.cram[index] >> 0) & 3) << 6;
     WORD g = ((vdp.cram[index] >> 2) & 3) << 6;
     WORD b = ((vdp.cram[index] >> 4) & 3) << 6;
-#if 0
-    int r444 = ((r << 4) + 127) >> 8; // equivalent to (r888 * 15 + 127) / 255
-    int g444 = ((g << 4) + 127) >> 8; // equivalent to (g888 * 15 + 127) / 255
-    int b444 = ((b << 4) + 127) >> 8;
-    palette444[index] = (r444 << 8) | (g444 << 4) | b444;
-#endif
     palette444[index] = RGB888_TO_RGB5551(r, g, b);
-#endif
-    return;
-}
-
-extern "C" void sms_render_line(int line, const uint8_t *buffer)
-{
-    // SMS has 192 lines
-    // GG  has 144 lines
-    // gg : Line starts at line 24
-    // sms: Line starts at line 0
-    // Emulator loops from scanline 0 to 261
-    if (IS_GG)
-    {
-        if (line < 24 || line >= 168)
-        {
-            return;
-        }
-    }
-    else
-    {
-        if (line >= 192)
-        {
-            return;
-        }
-    }
-    // center more or less screen
-    line += 24;
-
-    // debugf("\tLine %d, ISGG: %d\n", line, IS_GG);
-
-    if (buffer)
-    {
-        WORD *framebufferline = ((WORD *)(_dc)->buffer) + (line << 8) + (IS_GG ? 48 : 0);
-        for (int i = screenCropX; i < BMP_WIDTH - screenCropX; i++)
-        {
-            framebufferline[i - screenCropX] = palette444[(buffer[i + BMP_X_OFFSET]) & 31];
-        }
-    }
+    tlut_mirror(index);
 }
 
 void system_load_sram(void)
@@ -188,44 +180,80 @@ void system_save_state()
     // TODO
 }
 
-int framecounter = 0;
-int framedisplay = 0;
+int framecounter = 0;    // emulated frames this second
+int drawncounter = 0;    // frames actually rendered and shown this second
+int framedisplay = 0;    // emulated frames per second, last full second
+int drawndisplay = 0;    // rendered frames per second, last full second
 int totalfames = 0;
+
+// Frameskip mode as a single OSD character.
+static char frameskip_char()
+{
+    if (frameskip_mode == FS_AUTO)
+        return 'A';
+    return (char)('0' + frameskip_mode);
+}
+
 int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
 {
-    char buffer[15];
+    char buffer[40];
     if (fps_enabled)
     {
         char sound = soundEnabled ? 'S' : 'M';
-        sprintf(buffer, "%c %04d", sound, framedisplay);
-        // debugf("Frame %d\n", totalfames);
+        int x = (IS_GG && fromMenu == false) ? 48 : 10;
+        int y = (IS_GG && fromMenu == false) ? 24 : 5;
         graphics_set_color(CBLACK, CWHITE);
-        if (IS_GG && fromMenu == false)
+        if (fromMenu)
         {
-            graphics_draw_text(display, 48, 24, buffer);
+            sprintf(buffer, "%c %04d", sound, framedisplay);
         }
         else
         {
-            graphics_draw_text(display, 10, 5, buffer);
+            // emulated fps / displayed fps / frameskip mode
+            sprintf(buffer, "%c %03d/%02d %c", sound, framedisplay, drawndisplay, frameskip_char());
         }
-        // Frame rate calculation
+        graphics_draw_text(display, x, y, buffer);
+
+        if (prof_enabled && fromMenu == false)
+        {
+            // Percentage of wall clock spent in each phase over the last second.
+            sprintf(buffer, "Z%02d R%02d B%02d A%02d I%02d",
+                    prof_shown[PROF_Z80], prof_shown[PROF_RENDER],
+                    prof_shown[PROF_BLIT], prof_shown[PROF_AUDIO],
+                    prof_shown[PROF_IDLE]);
+            graphics_draw_text(display, x, y + 9, buffer);
+        }
     }
-    framecounter++;
+    drawncounter++;
     return totalfames++;
 }
 
 void frameratecalc(int ovfl)
 {
-    // debugf("FPS: %d\n", framecounter);
     framedisplay = framecounter;
-    framecounter = 0;
+    drawndisplay = drawncounter;
+    framecounter = drawncounter = 0;
+
+    // Fold the tick accumulators into whole percent of the elapsed second.
+    for (int i = 0; i < PROF_COUNT; i++)
+    {
+        uint32_t pct = prof_acc[i] / (TICKS_PER_SECOND / 100);
+        prof_shown[i] = (uint8_t)(pct > 99 ? 99 : pct);
+        prof_acc[i] = 0;
+    }
 }
 void enableordisableTimer()
 {
     if (fps_enabled)
     {
         fpstimer = new_timer(TIMER_TICKS(1000000), TF_CONTINUOUS, frameratecalc);
-        framecounter = framedisplay = 0;
+        framecounter = framedisplay = drawncounter = drawndisplay = 0;
+        // frameratecalc() is what drains these; start from a clean slate so the
+        // first second is not inflated by whatever piled up while it was off.
+        for (int i = 0; i < PROF_COUNT; i++)
+        {
+            prof_acc[i] = 0;
+        }
     }
     else
     {
@@ -329,6 +357,26 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
                 snd.enabled = soundEnabled = !soundEnabled;
                 debugf("Toggle sound (%d)\n", soundEnabled);
             }
+            // Cycle frameskip: AUTO -> off -> 1 -> 2 -> 3 -> AUTO
+            if (pushedother & OTHER_BUTTON1)
+            {
+                if (frameskip_mode == FS_AUTO)
+                    frameskip_mode = 0;
+                else if (frameskip_mode >= FS_AUTO_MAX)
+                    frameskip_mode = FS_AUTO;
+                else
+                    frameskip_mode++;
+                skip_phase = consecutive_skips = 0;
+                frame_backlog = 0;
+                frame_deadline = TICKS_READ();
+                debugf("Frameskip: %c\n", frameskip_char());
+            }
+            // Toggle the phase profiler overlay
+            if (pushedother & OTHER_BUTTON2)
+            {
+                prof_enabled = !prof_enabled;
+                debugf("Profiler: %s\n", prof_enabled ? "ON" : "OFF");
+            }
         }
         if (p1 & INPUT_START)
         {
@@ -350,17 +398,6 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
         {
             dst = smsbuttons;
         }
-        if (pushedother)
-        {
-            if (pushedother & OTHER_BUTTON1)
-            {
-                debugf("Other 1\n");
-            }
-            if (pushedother & OTHER_BUTTON2)
-            {
-                debugf("Other 2\n");
-            }
-        }
     }
     input.system = *pdwSystem = smssystem[0] | smssystem[1];
     // return only on first push
@@ -370,44 +407,183 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
     }
 }
 
+// Decide whether the frame about to be emulated should also be rendered.
+static bool should_render_frame()
+{
+    if (frameskip_mode == 0)
+        return true;
+    if (frameskip_mode > 0)
+        return skip_phase == 0;
+
+    // AUTO: drop rendering once we have fallen a whole frame behind, but never
+    // freeze the picture for more than FS_AUTO_MAX frames in a row.
+    if (consecutive_skips >= FS_AUTO_MAX)
+        return true;
+    return frame_backlog < (int32_t)FRAME_TICKS;
+}
+
 void process(void)
 {
     DWORD pdwPad1, pdwPad2, pdwSystem; // have only meaning in menu
+
+    // Start both CI8 frames blank so nothing from a previous game shows through.
+    __builtin_memset(ci8_frame, 0, sizeof(ci8_frame));
+    ci8_back = 0;
+    sms_line_target = ci8_frame[0];
+    skip_phase = consecutive_skips = 0;
+    frame_backlog = 0;
+    frame_deadline = TICKS_READ();
+
     while (reset == false)
     {
-        // debugf("Frame %d\n", framecounter);
         processinput(&pdwPad1, &pdwPad2, &pdwSystem, false);
-        _dc = display_get();
-        if (hideFrameRate)
-        {
 
-            hideFrameRate = false;
-            // Clear all the framebuffers
-            for (int i = 0; i < FRAMEBUFFERS; i++)
+        bool render_frame = should_render_frame();
+
+        if (render_frame)
+        {
+            PROF_BEGIN(PROF_IDLE);
+
+            _dc = display_get();
+
+            if (hideFrameRate)
             {
-                debugf("Clear framebuffer %d\n", i + 1);
-                graphics_fill_screen(_dc, 1);
-                display_show(_dc);
-                _dc = display_get();
+                hideFrameRate = false;
+                // Clear all the framebuffers
+                for (int i = 0; i < FRAMEBUFFERS; i++)
+                {
+                    debugf("Clear framebuffer %d\n", i + 1);
+                    graphics_fill_screen(_dc, 1);
+                    display_show(_dc);
+                    _dc = display_get();
+                }
             }
-        }
-        sms_frame(0);
-        ProcessAfterFrameIsRendered(_dc, false);
-        display_show(_dc);
 
-        //
-#if 0
-       
-        short *p = audio_write_begin();
-        //debugf("Audio buffer length: %d\n",  snd.bufsize );
-        int i = 0;
-        for (int x = 0; x < snd.bufsize; x++)
-        {
-            // audio_buffer[x] = (snd.buffer[0][x] << 16) + snd.buffer[1][x];
-            *p++ = (snd.buffer[0][x] << 16) + snd.buffer[1][x];
+            // Make sure the RDP is done before we start overwriting a CI8
+            // buffer it might still be reading. In the steady state it is
+            // reading the *other* buffer, so this costs nothing; it only bites
+            // if a blit somehow ran over a whole frame.
+            //
+            // This is a full sync because there is no cheap way to wait on just
+            // the RDP's texture DMA: rspq syncpoints track the RSP, which runs
+            // ahead of the RDP. Watch PROF_IDLE - if this turns out to cost
+            // real time, the fix is a per-buffer rdpq_detach_cb() completion
+            // flag rather than a global wait.
+            rspq_wait();
+
+            PROF_END(PROF_IDLE);
         }
-        audio_write_end();
-#endif
+
+        // Everything from here to the end of the blit is the frame's real
+        // work; the waits around it are pacing, not cost.
+        uint32_t work_start = TICKS_READ();
+
+        sms_frame(render_frame ? 0 : 1);
+
+        if (render_frame)
+        {
+            PROF_BEGIN(PROF_BLIT);
+
+            uint8_t *frame = ci8_frame[ci8_back];
+
+            // Draw the overlay before handing the framebuffer to the RDP, so
+            // CPU and RDP never touch it at the same time.
+            ProcessAfterFrameIsRendered(_dc, false);
+
+            // RDP TLUTs the CI8 emulator output into the RGBA5551 framebuffer.
+            // CPU writes to the frame went through the d-cache; flush before
+            // the RDP reads via DMA.
+            data_cache_hit_writeback(frame, CI8_FRAME_BYTES);
+
+            surface_t ci8_surface = surface_make_linear(frame, FMT_CI8, SMS_WIDTH, SMS_HEIGHT);
+            rdpq_attach(_dc, NULL);
+            rdpq_set_mode_copy(false);
+            rdpq_mode_tlut(TLUT_RGBA16);
+            rdpq_tex_upload_tlut(tlut, 0, 256);
+
+            if (IS_GG)
+            {
+                // GG visible window: cols 48..207, rows 24..167, blitted to fb at
+                // (48, 48) so the 160x144 image is centered horizontally and
+                // vertically inside the 256x240 framebuffer.
+                rdpq_blitparms_t parms = {};
+                parms.s0 = 48;
+                parms.t0 = 24;
+                parms.width = 160;
+                parms.height = 144;
+                rdpq_tex_blit(&ci8_surface, 48, 48, &parms);
+            }
+            else
+            {
+                // SMS: full 256x192 image at fb (0, 24).
+                rdpq_tex_blit(&ci8_surface, 0, 24, NULL);
+            }
+
+            // Schedules display_show() to happen once the RDP is done, instead
+            // of parking the VR4300 on rspq_wait() for the whole blit.
+            rdpq_detach_show();
+
+            // Flip: the next frame renders into the other buffer while the RDP
+            // reads this one.
+            ci8_back ^= 1;
+            sms_line_target = ci8_frame[ci8_back];
+
+            PROF_END(PROF_BLIT);
+        }
+
+        // How much of the frame budget this frame actually consumed.
+        int32_t work = TICKS_SINCE(work_start);
+
+        framecounter++;
+
+        /* Push one frame of stereo samples. Blocking, so the audio queue
+           draining at 44.1kHz is what paces the emulator to 60 frames per
+           second - skipped frames never reach display_get(), so the
+           framebuffer backpressure alone no longer regulates speed. */
+        if (snd.enabled && snd.buffer)
+        {
+            PROF_BEGIN(PROF_IDLE);
+            audio_push(snd.buffer, snd.bufsize, true);
+            PROF_END(PROF_IDLE);
+        }
+        else
+        {
+            // No audio queue to pace against; hold the frame here instead.
+            PROF_BEGIN(PROF_IDLE);
+            frame_deadline += FRAME_TICKS;
+            if (TICKS_DISTANCE(frame_deadline, TICKS_READ()) > (int32_t)(FRAME_TICKS * 4))
+            {
+                // Fell a long way behind (menu, ROM load, reset): resync rather
+                // than trying to catch up on a backlog we cannot make up.
+                frame_deadline = TICKS_READ();
+            }
+            while (TICKS_BEFORE(TICKS_READ(), frame_deadline))
+            {
+            }
+            PROF_END(PROF_IDLE);
+        }
+
+        // Track how far behind a 60Hz schedule we are. Never bank credit for
+        // running fast, and cap the backlog so a slow patch cannot queue up a
+        // long burst of skipped frames afterwards.
+        frame_backlog += work - (int32_t)FRAME_TICKS;
+        if (frame_backlog < 0)
+            frame_backlog = 0;
+        else if (frame_backlog > (int32_t)(FRAME_TICKS * 4))
+            frame_backlog = FRAME_TICKS * 4;
+
+        if (render_frame)
+        {
+            consecutive_skips = 0;
+        }
+        else
+        {
+            consecutive_skips++;
+        }
+        if (frameskip_mode > 0)
+        {
+            skip_phase = (skip_phase + 1) % (frameskip_mode + 1);
+        }
     }
 }
 
@@ -625,6 +801,7 @@ int main()
     cart_init();
     controller_init();
     timer_init();
+    rdpq_init();
     enableordisableTimer();
     struct controller_data output;
     get_accessories_present(&output);

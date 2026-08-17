@@ -27,11 +27,28 @@ vpath %.cpp $(SUBDIRS)
 vpath %.c $(SUBDIRS)
 # 
 
-OBJS = $(BUILD_DIR)/smsPlus64.o $(BUILD_DIR)/libdragonsprite.o $(BUILD_DIR)/loadrom.o $(BUILD_DIR)/render.o $(BUILD_DIR)/sms.o $(BUILD_DIR)/builtinrom.o  $(BUILD_DIR)/sn76496.o $(BUILD_DIR)/system.o $(BUILD_DIR)/vdp.o $(BUILD_DIR)/z80.o $(BUILD_DIR)/menu.o $(BUILD_DIR)/RomLister.o $(BUILD_DIR)/FrensHelpers.o 
+OBJS = $(BUILD_DIR)/smsPlus64.o $(BUILD_DIR)/libdragonsprite.o $(BUILD_DIR)/loadrom.o $(BUILD_DIR)/render.o $(BUILD_DIR)/sms.o $(BUILD_DIR)/builtinrom.o  $(BUILD_DIR)/sn76496.o $(BUILD_DIR)/system.o $(BUILD_DIR)/vdp.o $(BUILD_DIR)/z80.o $(BUILD_DIR)/menu.o $(BUILD_DIR)/RomLister.o $(BUILD_DIR)/FrensHelpers.o
+
+# Lift the per-scanline renderer and sound hotspots to -O3. Keep the rest at
+# the libdragon default (-O2) so libdragon-facing code is unaffected.
+# z80.c and vdp.c are deliberately absent: both carry a
+# #pragma GCC optimize ("O2") that overrides any -O3 given here, so listing
+# them only made the flag look like it was doing something. z80_execute() is
+# already ~14K against the VR4300's 16K direct-mapped instruction cache, so
+# more inlining there is as likely to hurt as help - measure with the
+# on-screen profiler (Z + C-Up) before removing that pragma.
+HOT_OBJS = $(BUILD_DIR)/render.o $(BUILD_DIR)/sn76496.o \
+           $(BUILD_DIR)/sms.o $(BUILD_DIR)/system.o
+$(HOT_OBJS): N64_CFLAGS := $(patsubst -O2,-O3,$(N64_CFLAGS))
 
 smsPlus64.z64: N64_ROM_TITLE = "SMSPlus emulator"
 smsPlus64.z64: $(BUILD_DIR)/smsPlus64.dfs
-$(BUILD_DIR)/smsPlus64.dfs: $(wildcard filesystem/*)
+# Filenames in filesystem/ may contain spaces (game ROMs), which GNU make
+# cannot represent as individual prereqs. Use a phony stamp so the dfs is
+# always considered out-of-date — packing it is fast.
+.PHONY: filesystem-stamp
+filesystem-stamp:
+$(BUILD_DIR)/smsPlus64.dfs: filesystem-stamp
 $(BUILD_DIR)/smsPlus64.elf: $(OBJS)
 
 clean:

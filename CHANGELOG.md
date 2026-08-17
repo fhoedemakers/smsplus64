@@ -1,5 +1,45 @@
 # CHANGELOG
 
+## Unreleased
+
+### Features
+
+- Frameskip. **Z + C-Left** cycles `AUTO -> off -> 1 -> 2 -> 3 -> AUTO`. AUTO (the
+  default) drops rendering only while emulation has fallen a frame behind, so games
+  run at the correct speed and pitch even when the N64 cannot draw every frame.
+  The mode is shown as the last character of the frame rate overlay.
+- The frame rate overlay now reads `S 060/30 A`: sound on/muted, *emulated* frames
+  per second, *displayed* frames per second, and the frameskip mode.
+- On-screen phase profiler, toggled with **Z + C-Up**. Shows the percentage of each
+  second spent in the Z80 core, the scanline renderer, the RDP blit, sound
+  generation, and waiting (`Z.. R.. B.. A.. I..`).
+
+### Performance
+
+- Replaced the 64KB sprite/background priority lookup table with arithmetic. The
+  table was larger than the VR4300's 8KB data cache, so it missed on nearly every
+  sprite pixel. Verified bit-identical to the old table for all reachable inputs.
+- The scanline renderer now writes straight into the CI8 frame the RDP reads,
+  removing a 256-byte copy per scanline.
+- Inlined the pattern-cache hit path, which previously paid a full nine-register
+  call frame roughly 6000 times per frame.
+- Background line writes now use MIPS unaligned store instructions instead of
+  testing alignment and branching twice per column.
+- The CI8 frame is double buffered and the display swap is scheduled on RDP
+  completion, so the CPU no longer parks on the RDP before every buffer swap.
+
+### Fixes
+
+- Writes by the emulated Z80 to ROM space were landing in a 256-byte buffer that
+  `cpu_writemem16` could index 8KB into, overrunning it and corrupting the
+  scanline being rendered. They now go to a dedicated 8KB dummy page.
+
+### Known trade-off
+
+- The VDP sprite-collision flag is only updated while sprites are being drawn, so
+  it is not refreshed on skipped frames. The handful of games that poll it can be
+  run with frameskip off (**Z + C-Left**).
+
 ## v0.7
 
 ### Features
