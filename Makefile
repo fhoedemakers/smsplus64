@@ -47,12 +47,21 @@ $(HOT_OBJS): N64_CFLAGS := $(patsubst -O2,-O3,$(N64_CFLAGS))
 #
 #   Os   z80_execute =  4176 bytes   38 fps, Z 49%   opcodes become calls
 #   O2   z80_execute = 10992 bytes   47 fps, Z 43%   opcodes inlined (default)
-#   O3   z80_execute = 13844 bytes   ?
+#   O3   z80_execute = 13844 bytes   45 fps, Z 37%   more inlining
 #
-# The -Os result is the informative one: shrinking the interpreter 2.6x made
-# it 41% slower, so this loop is bound by work per instruction, not by fitting
-# the VR4300's 16K direct-mapped instruction cache. Do not assume smaller is
-# faster here.
+# -O2 is a genuine optimum, and both neighbours lose for opposite reasons.
+#
+# -Os shrinks the interpreter 2.6x but turns each opcode into a call, and runs
+# 41% slower: this loop is bound by work per instruction, not code size.
+#
+# -O3 is the subtle one. It makes the Z80 itself 10% faster (9.15 -> 8.22 ms
+# per frame) yet the build is slower overall, because everything else slows by
+# 15% without any of that code changing. sms_frame() alternates render_line()
+# and z80_execute() 262 times per frame, so the two share the VR4300's 16K
+# direct-mapped instruction cache. At -O2 the pair fits; at -O3 z80_execute
+# grows past the point where it does, and they evict each other every
+# scanline. Judge a change here by total fps, never by the Z share alone, and
+# keep an eye on the size of the renderer's hot path for the same reason.
 #
 # Build a variant to compare with:  make RELEASE=1 Z80OPT=O3
 Z80OPT ?= O2

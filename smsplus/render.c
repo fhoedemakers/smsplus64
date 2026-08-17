@@ -248,6 +248,28 @@ void (render_reset)(void)
     render_bg = IS_GG ? render_bg_gg : render_bg_sms;
 }
 
+/* Claim a range of the CI8 frame in the data cache without fetching it from
+   RDRAM first.
+
+   A normal write miss on the VR4300 reads the 16-byte line in before the store
+   can happen. Every scanline is completely overwritten here and is then only
+   ever read by the RDP, so that read is pure waste: 3072 line fills per frame
+   for data nobody looks at. "Create Dirty Exclusive" (cache op 0xD) marks the
+   line valid and dirty and skips the fetch.
+
+   The caller must overwrite every byte of the range afterwards. Whatever is
+   left untouched is stale cache contents and gets written back as if it were
+   pixel data. */
+#define DCACHE_LINE_SIZE 16
+static __inline__ void (claim_dcache_range)(uint8 *start, int bytes)
+{
+    int i;
+    for (i = 0; i < bytes; i += DCACHE_LINE_SIZE)
+    {
+        __asm__ __volatile__("cache 0xD, 0(%0)" : : "r"(start + i) : "memory");
+    }
+}
+
 /* Draw a line of the display */
 void (render_line)(int line)
 {
@@ -261,6 +283,13 @@ void (render_line)(int line)
        Rendering here directly removes the 256-byte copy per scanline that
        the old scratch line buffer needed. */
     linebuf = sms_line_target + (line * SMS_WIDTH);
+
+    /* Claim exactly the span both branches below rewrite in full: the whole
+       256-byte row for the Master System, and only the visible window for the
+       Game Gear. The Game Gear margins are deliberately left out - nothing
+       rewrites them, and render_obj reads the line back to resolve sprite
+       priority, so stale bytes there must stay as they are. */
+    claim_dcache_range(linebuf + (vp_hstart << 3), BMP_WIDTH);
 
     /* Blank line */
     if ((!(vdp.reg[1] & 0x40)) || (((vdp.reg[2] & 1) == 0) && (IS_SMS)))
