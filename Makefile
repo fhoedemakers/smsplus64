@@ -27,7 +27,7 @@ vpath %.cpp $(SUBDIRS)
 vpath %.c $(SUBDIRS)
 # 
 
-OBJS = $(BUILD_DIR)/smsPlus64.o $(BUILD_DIR)/libdragonsprite.o $(BUILD_DIR)/loadrom.o $(BUILD_DIR)/render.o $(BUILD_DIR)/sms.o $(BUILD_DIR)/builtinrom.o  $(BUILD_DIR)/sn76496.o $(BUILD_DIR)/system.o $(BUILD_DIR)/vdp.o $(BUILD_DIR)/z80.o $(BUILD_DIR)/menu.o $(BUILD_DIR)/RomLister.o $(BUILD_DIR)/FrensHelpers.o
+OBJS = $(BUILD_DIR)/smsPlus64.o $(BUILD_DIR)/libdragonsprite.o $(BUILD_DIR)/loadrom.o $(BUILD_DIR)/render.o $(BUILD_DIR)/sms.o $(BUILD_DIR)/builtinrom.o  $(BUILD_DIR)/sn76496.o $(BUILD_DIR)/system.o $(BUILD_DIR)/vdp.o $(BUILD_DIR)/z80.o $(BUILD_DIR)/menu.o $(BUILD_DIR)/RomLister.o $(BUILD_DIR)/FrensHelpers.o $(BUILD_DIR)/settings.o
 
 # Lift the per-scanline renderer and sound hotspots to -O3. Keep the rest at
 # the libdragon default (-O2) so libdragon-facing code is unaffected.

@@ -61,6 +61,21 @@ To run the emulator as a standalone ROM:
 - D-pad left or right: previous or next page.
 - B: Go to previous folder
 - A: Open folder or start selected game
+- Start: Open the settings screen
+
+### Settings
+
+Press Start in the menu to change frameskip, sound, the frame rate display and the
+profiler overlay without having to remember the in-game button combinations. Use
+Up/Down to pick a setting, Left/Right to change it and B to go back.
+
+Settings are written to `settings.cfg` in the same folder as your ROMs on the SD
+card, and are restored the next time the emulator starts. It is a small text file
+and can be edited on a PC. If you are running without an SD card the settings still
+apply, they just cannot be saved.
+
+Changes made in-game with the button combinations below are temporary; open the
+settings screen to make them stick.
 
 ### In Game
 

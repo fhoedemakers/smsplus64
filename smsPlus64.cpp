@@ -5,6 +5,7 @@
 #include "menu.h"
 #include "FrensHelpers.h"
 #include "profile.h"
+#include "settings.h"
 
 #ifndef USEMENU
 #include "builtinrom.h"
@@ -285,7 +286,13 @@ void enableordisableTimer()
 {
     if (fps_enabled)
     {
-        fpstimer = new_timer(TIMER_TICKS(1000000), TF_CONTINUOUS, frameratecalc);
+        // Guard against a second timer: this is called again whenever the
+        // setting changes, and new_timer() would otherwise leak the old one and
+        // halve the reported frame rate by counting twice a second.
+        if (fpstimer == nullptr)
+        {
+            fpstimer = new_timer(TIMER_TICKS(1000000), TF_CONTINUOUS, frameratecalc);
+        }
         framecounter = framedisplay = drawncounter = drawndisplay = 0;
         // frameratecalc() is what drains these; start from a clean slate so the
         // first second is not inflated by whatever piled up while it was off.
@@ -303,6 +310,41 @@ void enableordisableTimer()
         }
     }
 }
+// Settings <-> running emulator. The settings screen captures first so it
+// shows whatever the in-game button combinations last set, then applies on the
+// way out, so both ways of changing a setting agree.
+extern "C" void settings_apply(void)
+{
+    frameskip_mode = settings.frameskip;
+    soundEnabled = settings.sound;
+    snd.enabled = soundEnabled;
+    prof_enabled = (settings.showProfiler != 0);
+
+    if (fps_enabled && !settings.showFps)
+    {
+        // Turning the overlay off leaves its pixels on every framebuffer.
+        hideFrameRate = true;
+    }
+    fps_enabled = (settings.showFps != 0);
+    enableordisableTimer();
+
+    // Start the frameskip decision from scratch so a changed level takes effect
+    // immediately instead of finishing the previous cadence.
+    skip_phase = 0;
+    auto_level = 0;
+    auto_render_ticks = auto_skip_ticks = 0;
+    auto_render_n = auto_skip_n = 0;
+    auto_tune_countdown = FS_TUNE_INTERVAL;
+}
+
+extern "C" void settings_capture(void)
+{
+    settings.frameskip = frameskip_mode;
+    settings.sound = soundEnabled ? 1 : 0;
+    settings.showFps = fps_enabled ? 1 : 0;
+    settings.showProfiler = prof_enabled ? 1 : 0;
+}
+
 #define OTHER_BUTTON1 (0b1)
 #define OTHER_BUTTON2 (0b10)
 
@@ -1053,6 +1095,17 @@ int main()
                         debugstdout("SD card mounted\n");
                         strcpy(mountPoint, "sd:/smsPlus64");
                     }
+                    // Saved settings live beside the ROMs. Defaults are used
+                    // when there is no file yet, or when running from rom:/.
+                    if (settings_load(mountPoint))
+                    {
+                        debugstdout("Loaded settings from %s\n", mountPoint);
+                    }
+                    else
+                    {
+                        debugstdout("No saved settings, using defaults\n");
+                    }
+                    settings_apply();
                 }
                 else
                 {
