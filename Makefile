@@ -38,18 +38,23 @@ HOT_OBJS = $(BUILD_DIR)/render.o $(BUILD_DIR)/sn76496.o \
            $(BUILD_DIR)/sms.o $(BUILD_DIR)/system.o
 $(HOT_OBJS): N64_CFLAGS := $(patsubst -O2,-O3,$(N64_CFLAGS))
 
-# The Z80 interpreter is the largest single CPU cost (~43% of frame time,
-# measured on hardware), and it is bound by the VR4300's 16K direct-mapped
-# instruction cache as much as by instruction count. z80.c used to pin itself
-# to -O2 with a #pragma, which silently overrode the command line; the level
-# now comes from here so the trade-off can actually be measured.
+# The Z80 interpreter is the largest single CPU cost (~43% of frame time),
+# so its optimization level is worth choosing deliberately. z80.c used to pin
+# itself to -O2 with a #pragma, which silently overrode the command line; the
+# level now comes from here so the trade-off can actually be measured.
 #
-#   Os   z80_execute =  4176 bytes, .text =  68656   opcodes become calls,
-#                                                    but far better cache fit
-#   O2   z80_execute = 10992 bytes, .text = 118880   default, known good
-#   O3   z80_execute = 13900 bytes, .text = 122112   more inlining, worst fit
+# Measured on real hardware, Sonic the Hedgehog, frameskip off:
 #
-# Build a variant to compare with:  make RELEASE=1 Z80OPT=Os
+#   Os   z80_execute =  4176 bytes   38 fps, Z 49%   opcodes become calls
+#   O2   z80_execute = 10992 bytes   47 fps, Z 43%   opcodes inlined (default)
+#   O3   z80_execute = 13844 bytes   ?
+#
+# The -Os result is the informative one: shrinking the interpreter 2.6x made
+# it 41% slower, so this loop is bound by work per instruction, not by fitting
+# the VR4300's 16K direct-mapped instruction cache. Do not assume smaller is
+# faster here.
+#
+# Build a variant to compare with:  make RELEASE=1 Z80OPT=O3
 Z80OPT ?= O2
 $(BUILD_DIR)/z80.o: N64_CFLAGS := $(patsubst -O2,-$(Z80OPT),$(N64_CFLAGS))
 
