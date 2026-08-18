@@ -862,6 +862,12 @@ void process(void)
 
         skip_phase = (skip_phase + 1) % (frameskip_level() + 1);
     }
+
+    // Do not leave a rdpq_detach_show() in flight. Its display_show() runs from
+    // the RDP interrupt callback, so if it fires after the caller has called
+    // display_close() it asserts with "Display context is not valid". Drain the
+    // queue so any pending callback has already run by the time we return.
+    rspq_wait();
 }
 
 void checkcontrollers()
