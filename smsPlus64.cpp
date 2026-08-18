@@ -88,7 +88,7 @@ bool isFatalError = false;
 
 char romName[256];
 
-static bool fps_enabled = true;
+static bool fps_enabled = false;
 timer_link_t *fpstimer = nullptr;
 static bool hideFrameRate = false;
 
@@ -227,16 +227,19 @@ static const char *frameskip_label()
 int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
 {
     char buffer[40];
+    // Same spot for both consoles. The emulated picture starts at row 24
+    // (Master System) or row 48 (Game Gear), so rows 5..21 are clear either way.
+    int x = 10;
+    int y = 5;
+    bool showProfiler = prof_enabled && fromMenu == false;
+
+    if (fps_enabled || showProfiler)
+    {
+        graphics_set_color(CBLACK, CWHITE);
+    }
     if (fps_enabled)
     {
         char sound = soundEnabled ? 'S' : 'M';
-        // Same spot for both consoles. The emulated picture starts at row 24
-        // (Master System) or row 48 (Game Gear), so rows 5..21 are clear
-        // either way. Game Gear used to draw at (48, 24) instead, which was
-        // not visible on hardware.
-        int x = 10;
-        int y = 5;
-        graphics_set_color(CBLACK, CWHITE);
         if (fromMenu)
         {
             sprintf(buffer, "%c %04d", sound, framedisplay);
@@ -244,25 +247,23 @@ int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
         else
         {
             // console / sound / emulated fps / displayed fps / frameskip mode.
-            // The console character is what the emulator actually decided the
-            // cartridge is, which decides the CRAM format among other things -
-            // a Master System ROM run as Game Gear has its palette read two
-            // bytes per colour instead of one and comes out completely wrong.
             char console = IS_GG ? 'G' : 'S';
             sprintf(buffer, "%c%c %03d/%02d %s", console, sound,
                     framedisplay, drawndisplay, frameskip_label());
         }
         graphics_draw_text(display, x, y, buffer);
-
-        if (prof_enabled && fromMenu == false)
-        {
-            // Percentage of wall clock spent in each phase over the last second.
-            sprintf(buffer, "Z%02d R%02d B%02d A%02d I%02d",
-                    prof_shown[PROF_Z80], prof_shown[PROF_RENDER],
-                    prof_shown[PROF_BLIT], prof_shown[PROF_AUDIO],
-                    prof_shown[PROF_IDLE]);
-            graphics_draw_text(display, x, y + 9, buffer);
-        }
+        y += 9;
+    }
+    // Independent of the frame rate line: the frame rate display is off by
+    // default, and the profiler would otherwise be impossible to turn on.
+    if (showProfiler)
+    {
+        // Percentage of wall clock spent in each phase over the last second.
+        sprintf(buffer, "Z%02d R%02d B%02d A%02d I%02d",
+                prof_shown[PROF_Z80], prof_shown[PROF_RENDER],
+                prof_shown[PROF_BLIT], prof_shown[PROF_AUDIO],
+                prof_shown[PROF_IDLE]);
+        graphics_draw_text(display, x, y, buffer);
     }
     drawncounter++;
     return totalfames++;
@@ -284,7 +285,9 @@ void frameratecalc(int ovfl)
 }
 void enableordisableTimer()
 {
-    if (fps_enabled)
+    // frameratecalc() feeds both the frame rate line and the profiler, so it has
+    // to run whenever either of them is on.
+    if (fps_enabled || prof_enabled)
     {
         // Guard against a second timer: this is called again whenever the
         // setting changes, and new_timer() would otherwise leak the old one and
@@ -318,14 +321,15 @@ extern "C" void settings_apply(void)
     frameskip_mode = settings.frameskip;
     soundEnabled = settings.sound;
     snd.enabled = soundEnabled;
+    // Turning either overlay off leaves its pixels on every framebuffer, so
+    // note whether anything was on before changing them.
+    bool wasShowing = fps_enabled || prof_enabled;
     prof_enabled = (settings.showProfiler != 0);
-
-    if (fps_enabled && !settings.showFps)
+    fps_enabled = (settings.showFps != 0);
+    if (wasShowing && !(fps_enabled || prof_enabled))
     {
-        // Turning the overlay off leaves its pixels on every framebuffer.
         hideFrameRate = true;
     }
-    fps_enabled = (settings.showFps != 0);
     enableordisableTimer();
 
     // Start the frameskip decision from scratch so a changed level takes effect
@@ -472,6 +476,11 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
             {
                 prof_enabled = !prof_enabled;
                 debugf("Profiler: %s\n", prof_enabled ? "ON" : "OFF");
+                if (!fps_enabled && !prof_enabled)
+                {
+                    hideFrameRate = true;
+                }
+                enableordisableTimer();
             }
             // Open the settings overlay. Handled by the main loop rather than
             // here, so it does not run from inside input processing.

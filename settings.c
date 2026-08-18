@@ -12,7 +12,7 @@ void settings_setdefaults(void)
 {
     settings.frameskip = -1; /* automatic */
     settings.sound = 1;
-    settings.showFps = 1;
+    settings.showFps = 0;
     settings.showProfiler = 0;
     settings.autostart = 1;
 }

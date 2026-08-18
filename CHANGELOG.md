@@ -1,44 +1,34 @@
 # CHANGELOG
 
-## Unreleased
+## v0.8
 
 ### Features
 
-- Frameskip. **Z + C-Left** cycles `AUTO -> off -> 1 -> 2 -> 3 -> AUTO`. AUTO (the
-  default) drops rendering only while emulation has fallen a frame behind, so games
-  run at the correct speed and pitch even when the N64 cannot draw every frame.
-  The mode is shown as the last character of the frame rate overlay.
-- The frame rate overlay now reads `S 060/30 A`: sound on/muted, *emulated* frames
-  per second, *displayed* frames per second, and the frameskip mode.
-- On-screen phase profiler, toggled with **Z + C-Up**. Shows the percentage of each
-  second spent in the Z80 core, the scanline renderer, the RDP blit, sound
-  generation, and waiting (`Z.. R.. B.. A.. I..`).
-
-### Performance
-
-- Replaced the 64KB sprite/background priority lookup table with arithmetic. The
-  table was larger than the VR4300's 8KB data cache, so it missed on nearly every
-  sprite pixel. Verified bit-identical to the old table for all reachable inputs.
-- The scanline renderer now writes straight into the CI8 frame the RDP reads,
-  removing a 256-byte copy per scanline.
-- Inlined the pattern-cache hit path, which previously paid a full nine-register
-  call frame roughly 6000 times per frame.
-- Background line writes now use MIPS unaligned store instructions instead of
-  testing alignment and branching twice per column.
-- The CI8 frame is double buffered and the display swap is scheduled on RDP
-  completion, so the CPU no longer parks on the RDP before every buffer swap.
+- Settings screen. Press Start in the game browser, or Z + C-Right while playing,
+  to change frameskip, sound and the frame rate display without having to remember
+  button combinations. Your settings are saved on the SD card and restored the next
+  time you start the emulator.
+- Frameskip, switched on automatically. Games keep running at the right speed and
+  the music stays in tune, even when the Nintendo 64 cannot draw every frame.
+- The frame rate display now also shows which console is being emulated and how
+  many frames are actually being drawn.
 
 ### Fixes
 
-- Writes by the emulated Z80 to ROM space were landing in a 256-byte buffer that
-  `cpu_writemem16` could index 8KB into, overrunning it and corrupting the
-  scanline being rendered. They now go to a dedicated 8KB dummy page.
+- Master System games run considerably faster. Game Gear games run at full speed.
+- Sound no longer stutters when a game cannot quite reach full speed.
+- Game Gear games no longer start with completely wrong colours. The console type
+  is now taken from the ROM itself instead of from the file name.
+- ROMs with upper case file extensions (.GG, .SMS) are now listed.
+- Starting a game from the Everdrive or flashcart menu no longer starts that same
+  game again the next time you switch the console on.
+- The game browser now shows which folder it is listing, and tells you when it
+  cannot find any games there.
+- Fixed picture corruption in games that write to ROM space.
 
-### Known trade-off
-
-- The VDP sprite-collision flag is only updated while sprites are being drawn, so
-  it is not refreshed on skipped frames. The handful of games that poll it can be
-  run with frameskip off (**Z + C-Left**).
+> [!NOTE]
+> A few games rely on sprite collision and can behave differently while frameskip
+> is active. Set Frameskip to Off in the settings if you run into this.
 
 ## v0.7
 

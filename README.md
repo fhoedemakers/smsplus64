@@ -3,8 +3,10 @@
 A Sega Master System and Game Gear Emulator running on the Nintendo 64. Use it on real hardware with a flashcart. Tested with the [EverDrive-64 X7](https://krikzz.com/our-products/cartridges/ed64x7.html) and [SummerCart64](https://summercart64.dev/) on both an NTSC and PAL Nintendo 64.
 
 > [!NOTE]
-> This project is more of a fun thing for me to try if it works. Help for improvement is always welcome. 
-Master System games don't reach 60fps, Game Gear games mostly do. Try it yourself to find out.
+> This project is more of a fun thing for me to try if it works. Help for improvement is always welcome.
+Game Gear games run at full speed. Master System games do not quite reach it, so the
+emulator skips a frame now and then to keep the game running at the right speed. Try it
+yourself to find out.
 
 
 Built with [Libdragon](https://github.com/DragonMinded/libdragon)
@@ -55,59 +57,57 @@ To run the emulator as a standalone ROM:
 
 ## Controls
 
-### In menu
+### In the game browser
 
-- D-pad Up or Down: Next previous game
-- D-pad left or right: previous or next page.
-- B: Go to previous folder
-- A: Open folder or start selected game
-- Start: Open the settings screen
+- D-pad Up / Down: previous or next game
+- D-pad Left / Right: previous or next page
+- A: open a folder, or start the selected game
+- B: go back to the previous folder
+- Start: open the settings
 
-### Settings
-
-Press Start in the menu to change frameskip, sound, the frame rate display and the
-profiler overlay without having to remember the in-game button combinations. Use
-Up/Down to pick a setting, Left/Right to change it and B to go back.
-
-`Autostart` controls whether a game chosen in the flashcart menu starts straight
-away. Turn it off if the emulator keeps replaying the last game instead of showing
-its own menu.
-
-Settings are written to `settings.cfg` in the same folder as your ROMs on the SD
-card, and are restored the next time the emulator starts. It is a small text file
-and can be edited on a PC. If you are running without an SD card the settings still
-apply, they just cannot be saved.
-
-The same screen is available in-game with Z + C-Right, so you do not have to
-return to the menu to change something. Changes made with the individual button
-combinations below are temporary; opening the settings screen is what saves them.
-
-### In Game
+### In game
 
 - D-Pad: movement
-- Start: Pause game
+- Start: Pause / Start
 - B: Button 1
 - A: Button 2
-- Z + Start: Go back to menu
-- Z + A: Toggle framerate display
-- Z + B: Toggle sound (improves framerate somewhat)
-- Z + C-Right: Open the settings screen
-- Z + C-Left: Cycle frameskip: AUTO -> off -> 1 -> 2 -> 3 -> AUTO
-- Z + C-Up: Toggle the phase profiler overlay
+- Z + Start: return to the game browser
+- Z + C-Right: open the settings
 
-The framerate overlay reads `S 060/30 A1`: sound on (`S`) or muted (`M`), emulated
-frames per second, displayed frames per second, and the frameskip mode. `A1` means
-automatic, currently skipping 1 frame between drawn ones; a bare digit means that
-level was set by hand.
+The settings can also be changed with these shortcuts while playing:
 
-Frameskip defaults to AUTO, which keeps the game running at the right speed by
-skipping drawn frames when the N64 cannot keep up. It settles on a level and holds
-it rather than deciding frame by frame, because a steady cadence looks smoother
-than a higher but uneven frame rate. Set it to `0` if you would rather have every
-frame drawn and accept the game running slow.
+- Z + A: show or hide the frame rate
+- Z + B: turn sound on or off
+- Z + C-Left: change frameskip
+- Z + C-Up: show or hide the performance breakdown
 
->[!NOTE]
-> Holding Z after starting the emulator will force to load the built-in menu. 
+> [!NOTE]
+> Holding Z while the emulator starts always takes you to the game browser.
+
+## Settings
+
+Press Start in the game browser, or Z + C-Right while playing. Use Up and Down to pick
+a setting, Left and Right to change it, and B to go back.
+
+| Setting | What it does |
+| --- | --- |
+| Frameskip | `Auto` keeps games running at the right speed by skipping a frame when needed. `Off` draws every frame but games may run slow. `1`, `2` and `3` skip a fixed number of frames. |
+| Sound | Turns the sound on or off. Turning it off makes games run slightly faster. |
+| Frame rate | Shows a small frame rate display in the corner of the screen. |
+| Profiler | Shows a breakdown of where the emulator spends its time. Mainly useful for troubleshooting. |
+| Autostart | When on, a game picked in the Everdrive or flashcart menu starts straight away. Turn it off if you would rather always see the game browser. |
+
+Your settings are saved as `settings.cfg` in the same folder as your games on the SD
+card, and are restored the next time you start the emulator. Without an SD card the
+settings still work, they just cannot be saved.
+
+The frame rate display reads something like `SS 060/30 A1`:
+
+- first letter: `S` for Master System, `G` for Game Gear
+- second letter: `S` when sound is on, `M` when muted
+- `060`: how fast the game is running, out of 60
+- `30`: how many frames per second are actually drawn
+- `A1`: the frameskip setting, here automatic and skipping one frame
 
 ## Building from source
 
