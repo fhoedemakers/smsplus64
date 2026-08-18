@@ -407,17 +407,29 @@ static void settingsScreen(const char *mountPoint)
     }
 
     settings_apply();
-    if (changed)
+    if (changed && !settings_save(mountPoint))
     {
-        if (settings_save(mountPoint))
+        // Say so on screen rather than losing the change silently. Usually the
+        // smsPlus64 folder does not exist yet, or there is no SD card and we are
+        // running from the read-only rom:/ filesystem.
+        debugf("Could not save settings to %s\n", mountPoint);
+        ClearScreen(screenBuffer, bgcolor);
+        putText(1, 0, "Settings", fgcolor, bgcolor);
+        putText(1, STARTROW, "Could not save your settings.", fgcolor, bgcolor);
+        putText(1, STARTROW + 2, "They stay in effect until you", fgcolor, bgcolor);
+        putText(1, STARTROW + 3, "switch the console off.", fgcolor, bgcolor);
+        putText(1, STARTROW + 5, "To keep them, create a folder", fgcolor, bgcolor);
+        putText(1, STARTROW + 6, "named smsPlus64 on the SD card.", fgcolor, bgcolor);
+        putText(1, SCREEN_ROWS - 1, "Press a button to continue", fgcolor, bgcolor);
+        clearinput();
+        while (1)
         {
-            debugf("Settings saved to %s\n", mountPoint);
-        }
-        else
-        {
-            // No SD card, or running from the read-only rom:/ filesystem. The
-            // settings still take effect, they just will not survive a reboot.
-            debugf("Could not save settings to %s\n", mountPoint);
+            DrawScreen(-1);
+            processinput(&PAD1_Latch, &PAD1_Latch2, &pdwSystem, false);
+            if (PAD1_Latch > 0 || pdwSystem > 0)
+            {
+                break;
+            }
         }
     }
     clearinput();
