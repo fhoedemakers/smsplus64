@@ -4,9 +4,9 @@ A Sega Master System and Game Gear Emulator running on the Nintendo 64. Use it o
 
 > [!NOTE]
 > This project is more of a fun thing for me to try if it works. Help for improvement is always welcome.
-Game Gear games run at full speed. Master System games do not quite reach it, so the
-emulator skips a frame now and then to keep the game running at the right speed. Try it
-yourself to find out.
+> Not every game reaches full speed on the Nintendo 64, so the emulator skips frames by
+> default to keep games running at the correct speed and with the music in tune. You can
+> change this in the settings. Try it yourself to find out.
 
 
 Built with [Libdragon](https://github.com/DragonMinded/libdragon)
