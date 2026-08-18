@@ -1251,21 +1251,6 @@ int main()
             }
         }
 
-        // Mount early only when there is an injected rom to make a decision
-        // about, because autostart is a saved setting. Otherwise leave mounting
-        // where it has always been, in the menu branch below: doing it earlier
-        // stopped the SD card mounting on an EverDrive X7, though a SummerCart64
-        // was unaffected.
-        if (loadedFromFlashcartMenu)
-        {
-            mountFilesystemsAndLoadSettings(&dfsStarted, mountPoint);
-            if (!settings.autostart)
-            {
-                debugstdout("Autostart disabled, going to the menu\n");
-                loadedFromFlashcartMenu = false;
-            }
-        }
-
         if (loadedFromFlashcartMenu)
         {
             debugstdout("Allocating memory for rom\n");
@@ -1279,6 +1264,25 @@ int main()
             // and the next boot will come up in the menu instead of replaying
             // this game.
             killInjectedRomHeader();
+
+            // Only touch the SD card once the rom is out of cartridge space.
+            // Mounting reconfigures the cartridge interface through libcart, and
+            // a rom read issued afterwards comes back as garbage - which showed
+            // up as a black screen when starting a game from the flashcart menu.
+            // Autostart is a saved setting, so it can only be honoured after the
+            // card is mounted; by then the rom costs nothing to throw away.
+            mountFilesystemsAndLoadSettings(&dfsStarted, mountPoint);
+            if (!settings.autostart)
+            {
+                debugstdout("Autostart disabled, going to the menu\n");
+                free(info.rom);
+                info.rom = nullptr;
+                loadedFromFlashcartMenu = false;
+            }
+        }
+
+        if (loadedFromFlashcartMenu)
+        {
 #ifndef NDEBUG
             debugstdout("Press A button to continue\n");
             controller_scan();
