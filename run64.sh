@@ -9,7 +9,9 @@ z64file=smsPlus64.z64
 # check optional commandline parameter -c for copy only.
 if [ "$1" == "-c" ]; then
     echo "Copying $z64file to Nintendo 64"
-    ./usb64.exe -cp $z64file sd:$z64file
+    ./usb64.exe -cp $z64file sd:/ED64/emu/sms.v64
+    ./usb64.exe -cp $z64file sd:/ED64/emu/gg.v64
+    ./usb64.exe -cp $z64file sd:/$z64file
 else
   
     echo "Running $z64file on real hardware"
