@@ -19,10 +19,14 @@ Download smsPlus64.z64 from the [releases](https://github.com/fhoedemakers/smspl
 
 ## How to use on real hardware with an Everdrive 64 X7
 
-You can launch ROMs directly from the Everdrive menu by saving [smsPlus64.z64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/smsPlus64.z64) as:
+You can launch ROMs directly from the Everdrive menu. Download
+[sms.v64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/sms.v64) and
+[gg.v64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/gg.v64) from the
+[releases](https://github.com/fhoedemakers/smsplus64/releases/latest) page and copy them to
+the `ED64/emu` folder on your SD card. No renaming needed: both are the emulator itself,
+just under the names the Everdrive menu looks for.
 
-- `ED64/emu/gg.v64`  
-- `ED64/emu/sms.v64`
+Selecting a `.sms` or `.gg` rom in the Everdrive menu then starts it in the emulator.
 
 > [!NOTE]  
 > Everdrive OS **v3.09 or higher** is required.  
