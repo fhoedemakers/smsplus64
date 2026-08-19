@@ -30,8 +30,8 @@
 - Starting the emulator on its own can start the last game you played from the
   Everdrive menu instead of showing the game browser. Hold Z while the emulator
   starts to always get the browser.
-- Sound can be missing when you start a second game without switching the console
-  off in between. Switching the console off and on again restores it.
+- Sound can be missing when you start a second game without resetting the console
+  in between. Resetting the console restores it.
 - A few games rely on sprite collision and can behave differently while frameskip
   is active. Set Frameskip to Off in the settings if you run into this.
 
