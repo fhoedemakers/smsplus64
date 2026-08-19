@@ -1100,6 +1100,7 @@ static void mountFilesystemsAndLoadSettings(bool *dfsStarted, char *mountPoint)
     {
         return;
     }
+#if NO_DFS == 0
     debugstdout("Mounting rom file system...");
     if (dfs_init(DFS_DEFAULT_LOCATION) != DFS_ESUCCESS)
     {
@@ -1108,8 +1109,14 @@ static void mountFilesystemsAndLoadSettings(bool *dfsStarted, char *mountPoint)
         strcpy(ErrorMessage, "Error opening rom filesystem.");
         return;
     }
+    debugstdout("mounted.\n");
+#else
+    // Built with NODFS=1: no filesystem is attached to the rom, so there is
+    // nothing to mount here and no read-only fallback if the card is missing.
+    debugstdout("Built without a rom filesystem.\n");
+#endif
     *dfsStarted = true;
-    debugstdout("mounted.\nTrying to mount SD card...");
+    debugstdout("Trying to mount SD card...");
     // -1 asks for the first usable partition. Some cards only come up when a
     // partition is named explicitly, so fall back to trying the first two
     // before giving up.
@@ -1121,8 +1128,15 @@ static void mountFilesystemsAndLoadSettings(bool *dfsStarted, char *mountPoint)
     }
     if (!sdMounted)
     {
+#if NO_DFS == 0
         debugstdout("Error opening SD, using rom:/ filesystem...\n");
         strcpy(mountPoint, "rom:/");
+#else
+        // Nothing to fall back on, so stay pointed at the card. The browser
+        // comes up empty and says why.
+        debugstdout("Error opening SD, this build has no roms of its own...\n");
+        strcpy(mountPoint, "sd:/smsPlus64");
+#endif
         // The browser shows this when it has nothing to list. Without it, a
         // failed card is indistinguishable from an empty folder.
         snprintf(sdStatus, sizeof(sdStatus), "SD not mounted. Cart: %s", format_cart_type());

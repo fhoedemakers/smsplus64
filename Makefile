@@ -14,12 +14,20 @@ endif
 #N64_CXXFLAGS := $(shell echo $(N64_CXXFLAGS) | sed 's/-O2/-O3/' | sed 's/-Werror//g' | sed 's/-Wall//g' | sed 's/-Wno-error=[^ ]*//g')
 N64_CFLAGS := $(shell echo $(N64_CFLAGS) | sed 's/-Werror//g' | sed 's/-Wall//g'  | sed 's/-Wno-error=[^ ]*//g')
 N64_CXXFLAGS := $(shell echo $(N64_CXXFLAGS) | sed 's/-Werror//g' | sed 's/-Wall//g' | sed 's/-Wno-error=[^ ]*//g')
+# NODFS=1 builds a rom with no dfs filesystem attached, so nothing in
+# filesystem/ is packed into the z64 and the rom carries no games of its own.
+# It can then only load from the SD card. Code that would otherwise mount or
+# fall back on rom:/ is compiled out via NO_DFS.
+# Build one with: make RELEASE=1 NODFS=1   (this is what ./build.sh does;
+# ./build_dfs.sh builds the variant with the filesystem baked in)
+NODFS ?= 0
+
 # add current folder and infones subfolder to include path
 INCDIR = -I. -Ismsplus -Iassets
 # add INCDIR to CFLAGS
-CFLAGS += $(INCDIR) -DUSEMENU=1 # -DLSB_FIRST=0
+CFLAGS += $(INCDIR) -DUSEMENU=1 -DNO_DFS=$(NODFS) # -DLSB_FIRST=0
 # add INCDIR to CXXFLAGS
-CXXFLAGS += $(INCDIR) -DUSEMENU=1 #-DLSB_FIRST=0
+CXXFLAGS += $(INCDIR) -DUSEMENU=1 -DNO_DFS=$(NODFS) #-DLSB_FIRST=0
 
 SUBDIRS = $(SOURCE_DIR) $(SOURCE_DIR)/smsplus $(SOURCE_DIR)/assets
 
@@ -68,6 +76,10 @@ Z80OPT ?= O2
 $(BUILD_DIR)/z80.o: N64_CFLAGS := $(patsubst -O2,-$(Z80OPT),$(N64_CFLAGS))
 
 smsPlus64.z64: N64_ROM_TITLE = "SMSPlus emulator"
+
+# n64tool only attaches a filesystem when a .dfs is among the rom's prereqs,
+# so leaving it out here is all a NODFS build needs on the packaging side.
+ifneq ($(NODFS),1)
 smsPlus64.z64: $(BUILD_DIR)/smsPlus64.dfs
 # Filenames in filesystem/ may contain spaces (game ROMs), which GNU make
 # cannot represent as individual prereqs. Use a phony stamp so the dfs is
@@ -75,6 +87,7 @@ smsPlus64.z64: $(BUILD_DIR)/smsPlus64.dfs
 .PHONY: filesystem-stamp
 filesystem-stamp:
 $(BUILD_DIR)/smsPlus64.dfs: filesystem-stamp
+endif
 $(BUILD_DIR)/smsPlus64.elf: $(OBJS)
 
 clean:

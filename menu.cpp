@@ -159,8 +159,15 @@ void displayRoms(Frens::RomLister romlister, int startIndex)
         putText(1, STARTROW, "No .sms or .gg files here.", fgcolor, bgcolor);
         putText(1, STARTROW + 2, sdStatus, fgcolor, bgcolor);
         putText(1, STARTROW + 4, "Roms go in a smsPlus64 folder on", fgcolor, bgcolor);
+#if NO_DFS == 0
         putText(1, STARTROW + 5, "the SD card. rom:/ above means the", fgcolor, bgcolor);
         putText(1, STARTROW + 6, "card did not mount.", fgcolor, bgcolor);
+#else
+        // A NODFS build carries no roms of its own, so there is no rom:/ to
+        // end up in and the card is the only place a game can come from.
+        putText(1, STARTROW + 5, "the SD card. This build has no", fgcolor, bgcolor);
+        putText(1, STARTROW + 6, "built-in roms of its own.", fgcolor, bgcolor);
+#endif
     }
     for (auto index = startIndex; index < romlister.Count(); index++)
     {

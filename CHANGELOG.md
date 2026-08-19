@@ -13,6 +13,9 @@
   rather have every frame drawn.
 - The frame rate display now also shows which console is being emulated and how
   many frames are actually being drawn.
+- `build.sh` now builds a rom with no filesystem attached, which loads only from
+  the SD card. Use the new `build_dfs.sh` to bake your own roms from the
+  `filesystem` folder into the rom as before.
 
 ### Fixes
 
