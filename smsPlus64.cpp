@@ -80,6 +80,7 @@ uint32_t prof_acc[PROF_COUNT];
 uint8_t prof_shown[PROF_COUNT];
 static bool prof_enabled = false;
 
+
 #define SOUNDISENABLED 1
 int soundEnabled = SOUNDISENABLED;
 
@@ -259,10 +260,14 @@ int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
     if (showProfiler)
     {
         // Percentage of wall clock spent in each phase over the last second.
-        sprintf(buffer, "Z%02d R%02d B%02d A%02d I%02d",
+        // I is time spent pacing the frame, S is time blocked waiting for a
+        // framebuffer or for the RDP - keeping them apart matters, because a
+        // frame rate problem looks completely different depending on which of
+        // the two is growing.
+        sprintf(buffer, "Z%02d R%02d B%02d A%02d I%02d S%02d",
                 prof_shown[PROF_Z80], prof_shown[PROF_RENDER],
                 prof_shown[PROF_BLIT], prof_shown[PROF_AUDIO],
-                prof_shown[PROF_IDLE]);
+                prof_shown[PROF_IDLE], prof_shown[PROF_SYNC]);
         graphics_draw_text(display, x, y, buffer);
     }
     drawncounter++;
@@ -714,7 +719,7 @@ void process(void)
 
         if (render_frame)
         {
-            PROF_BEGIN(PROF_IDLE);
+            PROF_BEGIN(PROF_SYNC);
 
             _dc = display_get();
 
@@ -743,7 +748,7 @@ void process(void)
             // flag rather than a global wait.
             rspq_wait();
 
-            PROF_END(PROF_IDLE);
+            PROF_END(PROF_SYNC);
         }
 
         // Everything from here to the end of the blit is the frame's real
@@ -817,32 +822,38 @@ void process(void)
 
         framecounter++;
 
-        /* Push one frame of stereo samples. Blocking, so the audio queue
-           draining at 44.1kHz is what paces the emulator to 60 frames per
-           second - skipped frames never reach display_get(), so the
-           framebuffer backpressure alone no longer regulates speed. */
+        /* Push one frame of stereo samples, without blocking. */
         if (snd.enabled && snd.buffer)
         {
-            PROF_BEGIN(PROF_IDLE);
-            audio_push(snd.buffer, snd.bufsize, true);
-            PROF_END(PROF_IDLE);
+            PROF_BEGIN(PROF_AUDIO);
+            audio_push(snd.buffer, snd.bufsize, false);
+            PROF_END(PROF_AUDIO);
         }
-        else
+
+        // Pace on the tick counter, never on the audio queue.
+        //
+        // This used to block in audio_push() when sound was on, which tied
+        // emulation speed to how fast the AI drained its buffers. From the
+        // second game of a session onward the AI delivered more slowly than the
+        // rate it reports - measured with the profiler, every work slot was
+        // unchanged per frame while the wait doubled, taking 60fps to 44. That
+        // is also why muting restored full speed: it fell back to this limiter.
+        //
+        // Pacing on the tick counter makes the emulated frame rate independent
+        // of the audio hardware. Audio is now fed best-effort: samples are
+        // dropped if the queue is full rather than stalling the emulator.
+        PROF_BEGIN(PROF_IDLE);
+        frame_deadline += FRAME_TICKS;
+        if (TICKS_DISTANCE(frame_deadline, TICKS_READ()) > (int32_t)(FRAME_TICKS * 4))
         {
-            // No audio queue to pace against; hold the frame here instead.
-            PROF_BEGIN(PROF_IDLE);
-            frame_deadline += FRAME_TICKS;
-            if (TICKS_DISTANCE(frame_deadline, TICKS_READ()) > (int32_t)(FRAME_TICKS * 4))
-            {
-                // Fell a long way behind (menu, ROM load, reset): resync rather
-                // than trying to catch up on a backlog we cannot make up.
-                frame_deadline = TICKS_READ();
-            }
-            while (TICKS_BEFORE(TICKS_READ(), frame_deadline))
-            {
-            }
-            PROF_END(PROF_IDLE);
+            // Fell a long way behind (menu, ROM load, reset): resync rather
+            // than trying to catch up on a backlog we cannot make up.
+            frame_deadline = TICKS_READ();
         }
+        while (TICKS_BEFORE(TICKS_READ(), frame_deadline))
+        {
+        }
+        PROF_END(PROF_IDLE);
 
         // Feed the AUTO tuner what this frame actually cost.
         if (render_frame)
@@ -1350,6 +1361,10 @@ int main()
         debugf("- Address: %p\n", info.rom);
         debugf("- isGameGear: %d\n", info.isGameGear);
         reset = false;
+        // Set the audio hardware up for this game, and tear it down again when
+        // the game exits. Leaving it open across games left the AI stopped, so
+        // only the first game of a session had any sound. Emulation speed does
+        // not depend on this either way now - that is paced by the tick counter.
         debugf("Init audio\n");
         audio_init(44100, 4);
         load_rom(info.rom, info.size, info.isGameGear);

@@ -222,11 +222,20 @@ void (render_reset)(void)
         palette_sync(i);
     }
 
-    /* Invalidate pattern cache */
+    /* Invalidate pattern cache.
+
+       cacheStoreUsed has to be cleared here explicitly. This used to rely on
+       vramMarkTileDirty(), but that only releases a slot while cachePtr still
+       points at it, and cachePtr is wiped just above - so it released nothing
+       and every slot stayed marked as occupied for the next game. Starting a
+       second game then had to scan ever further for a free slot, which showed
+       up as the renderer slowing down, and once all the slots were marked used
+       the search loop in getCacheSlow() could not terminate at all. */
     for (i = 0; i < 512 * 4; i++)
         cachePtr[i] = -1;
-    for (i = 0; i < 512; i++)
-        vramMarkTileDirty(i);
+    __builtin_memset(cacheStoreUsed, 0, sizeof(cacheStoreUsed));
+    freePtr = 0;
+    cacheKillPtr = 0;
 
     /* Set up viewport size */
     if (IS_GG)

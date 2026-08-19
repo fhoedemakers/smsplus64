@@ -24,7 +24,8 @@ extern "C"
         PROF_RENDER,   /* render_line() - background + sprites           */
         PROF_BLIT,     /* cache writeback + RDP display list build       */
         PROF_AUDIO,    /* SN76496Update() + audio_push()                 */
-        PROF_IDLE,     /* blocked on display_get / rspq / audio / limiter */
+        PROF_IDLE,     /* blocked pacing: audio_push, or the tick limiter    */
+        PROF_SYNC,     /* blocked on display_get / rspq_wait                  */
         PROF_COUNT
     } prof_slot_t;
 
