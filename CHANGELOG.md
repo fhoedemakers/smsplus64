@@ -8,8 +8,9 @@
   to change frameskip, sound and the frame rate display without having to remember
   button combinations. Your settings are saved on the SD card and restored the next
   time you start the emulator.
-- Frameskip, switched on automatically. Games keep running at the right speed and
-  the music stays in tune, even when the Nintendo 64 cannot draw every frame.
+- Frameskip, on by default. Games keep running at the right speed even when the
+  Nintendo 64 cannot draw every frame. Set it to Off in the settings if you would
+  rather have every frame drawn.
 - The frame rate display now also shows which console is being emulated and how
   many frames are actually being drawn.
 
