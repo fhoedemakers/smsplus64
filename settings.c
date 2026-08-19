@@ -15,6 +15,7 @@ void settings_setdefaults(void)
     settings.showFps = 0;
     settings.showProfiler = 0;
     settings.autostart = 1;
+    settings.upscale = 1;
 }
 
 const char *settings_frameskip_name(int frameskip)
@@ -68,6 +69,8 @@ bool settings_load(const char *mountPoint)
             settings.showProfiler = (value != 0);
         else if (sscanf(line, "autostart=%d", &value) == 1)
             settings.autostart = (value != 0);
+        else if (sscanf(line, "upscale=%d", &value) == 1)
+            settings.upscale = (value != 0);
     }
     fclose(file);
     return true;
@@ -92,6 +95,8 @@ bool settings_save(const char *mountPoint)
     fprintf(file, "profiler=%d\n", settings.showProfiler);
     fprintf(file, "# autostart: 1 run a game launched from the flashcart menu, 0 always show our own menu\n");
     fprintf(file, "autostart=%d\n", settings.autostart);
+    fprintf(file, "# upscale: 1 scale the picture to fill the screen, 0 draw it 1:1 in the middle\n");
+    fprintf(file, "upscale=%d\n", settings.upscale);
     fclose(file);
     return true;
 }

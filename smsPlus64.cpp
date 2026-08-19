@@ -51,6 +51,20 @@
 
 surface_t *_dc;
 
+// The Game Gear's visible window inside the Master System sized frame the
+// renderer always produces: 160x144 starting at column 48, row 24.
+#define SMS_GG_WIDTH 160
+#define SMS_GG_HEIGHT 144
+#define SMS_GG_X 48
+#define SMS_GG_Y 24
+
+// The N64 framebuffer a game runs in. Its width is the Master System's, which
+// is why that console needs no horizontal scaling to fill the screen, and its
+// height is the full 240 lines the VI scans out. The blit scales into it - the
+// framebuffer itself is the same size whatever the upscale setting is.
+#define FB_HEIGHT 240
+static const resolution_t RESOLUTION_GAME = {SMS_WIDTH, FB_HEIGHT, false};
+
 // CI8 frames that the SMS+ renderer writes scanlines into directly (see
 // render_line). The RDP reads one via DMA at end-of-frame and TLUTs it into
 // the N64 framebuffer, off-loading the per-pixel palette lookup from the
@@ -92,6 +106,40 @@ char romName[256];
 static bool fps_enabled = false;
 timer_link_t *fpstimer = nullptr;
 static bool hideFrameRate = false;
+
+// Scale the picture up to fill the framebuffer instead of drawing it 1:1 in the
+// middle. The framebuffer stays 256x240 either way - this is entirely a
+// property of the blit, which is what lets it be switched while a game runs.
+//
+// It is also the more correct picture, not just the bigger one. A 256x240
+// framebuffer covers the N64's 4:3 raster, so its pixels are 1.25 times wider
+// than they are tall; a Master System frame drawn 1:1 into it comes out 25% too
+// wide. Scaled to the full 256x240 the 256x192 frame gets square pixels back.
+static bool upscale_enabled = false;
+
+// Shape of the area the blit last covered, so the main loop can notice a change
+// and have every framebuffer cleared before pixels are stranded outside it.
+static bool layout_upscale = false;
+static int layout_band = 0;
+
+// Rows at the top of the framebuffer that the blit leaves alone so the stats
+// overlay has somewhere to live. Without upscaling the overlay sits in the
+// letterbox above the picture and nothing needs reserving; with it the picture
+// would cover those rows, so the blit is scissored below them instead.
+//
+// The heights follow ProcessAfterFrameIsRendered(): an 8 pixel font, first line
+// at y=5, second at y=14. What matters is how many lines are drawn, not which
+// ones - with the frame rate hidden the profiler moves up into its place.
+#define OVERLAY_BAND_1LINE 14
+#define OVERLAY_BAND_2LINES 22
+
+static int overlay_band_height(void)
+{
+    if (!upscale_enabled) return 0;
+    int lines = (fps_enabled ? 1 : 0) + (prof_enabled ? 1 : 0);
+    if (lines == 0) return 0;
+    return lines == 1 ? OVERLAY_BAND_1LINE : OVERLAY_BAND_2LINES;
+}
 
 // Frameskip. FS_AUTO adapts to keep emulation running at 60 frames per second;
 // 0 renders every frame, 1..3 skip that many frames between rendered ones.
@@ -228,8 +276,11 @@ static const char *frameskip_label()
 int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
 {
     char buffer[40];
-    // Same spot for both consoles. The emulated picture starts at row 24
-    // (Master System) or row 48 (Game Gear), so rows 5..21 are clear either way.
+    // Same spot for both consoles, and the same spot whether or not the picture
+    // is upscaled. Drawn 1:1 the picture starts at row 24 (Master System) or row
+    // 48 (Game Gear), so rows 5..21 are clear either way. Upscaled it would
+    // cover them, so the blit is scissored below overlay_band_height() instead -
+    // keep the two in step if this moves.
     int x = 10;
     int y = 5;
     bool showProfiler = prof_enabled && fromMenu == false;
@@ -331,6 +382,7 @@ extern "C" void settings_apply(void)
     bool wasShowing = fps_enabled || prof_enabled;
     prof_enabled = (settings.showProfiler != 0);
     fps_enabled = (settings.showFps != 0);
+    upscale_enabled = (settings.upscale != 0);
     if (wasShowing && !(fps_enabled || prof_enabled))
     {
         hideFrameRate = true;
@@ -352,6 +404,7 @@ extern "C" void settings_capture(void)
     settings.sound = soundEnabled ? 1 : 0;
     settings.showFps = fps_enabled ? 1 : 0;
     settings.showProfiler = prof_enabled ? 1 : 0;
+    settings.upscale = upscale_enabled ? 1 : 0;
 }
 
 #define OTHER_BUTTON1 (0b1)
@@ -578,13 +631,13 @@ static void auto_frameskip_tune()
 
 // In-game settings overlay. The menu's settings screen uses a 38 column text
 // grid that does not fit the 256 pixel wide framebuffer a game runs in, so this
-// is a compact version of the same four settings. Emulation is paused while it
+// is a compact version of the same settings. Emulation is paused while it
 // is open.
 static void inGameSettings()
 {
     DWORD pad1, pad2, sys;
     char line[40];
-    const int rows = 5;
+    const int rows = 6;
     int row = 0;
     bool changed = false;
 
@@ -617,6 +670,9 @@ static void inGameSettings()
             case 3:
                 sprintf(line, "Profiler   %s", settings.showProfiler ? "Shown" : "Hidden");
                 break;
+            case 4:
+                sprintf(line, "Upscale    %s", settings.upscale ? "On" : "Off");
+                break;
             default:
                 sprintf(line, "Autostart  %s", settings.autostart ? "On" : "Off");
                 break;
@@ -626,10 +682,11 @@ static void inGameSettings()
             graphics_draw_text(dc, 24, 56 + i * 12, line);
         }
 
+        // Below the sixth row, which ends at y=124.
         graphics_set_color(CWHITE, CBLACK);
-        graphics_draw_text(dc, 24, 124, "Up/Down     select");
-        graphics_draw_text(dc, 24, 136, "Left/Right  change");
-        graphics_draw_text(dc, 24, 148, "B           close");
+        graphics_draw_text(dc, 24, 132, "Up/Down     select");
+        graphics_draw_text(dc, 24, 144, "Left/Right  change");
+        graphics_draw_text(dc, 24, 156, "B           close");
 
         display_show(dc);
         processinput(&pad1, &pad2, &sys, false);
@@ -659,6 +716,7 @@ static void inGameSettings()
             case 1: settings.sound = !settings.sound; break;
             case 2: settings.showFps = !settings.showFps; break;
             case 3: settings.showProfiler = !settings.showProfiler; break;
+            case 4: settings.upscale = !settings.upscale; break;
             default: settings.autostart = !settings.autostart; break;
             }
             changed = true;
@@ -687,13 +745,19 @@ void process(void)
     // Clear every framebuffer once. The RDP only ever draws the emulated
     // picture - rows 24..215 for the Master System, and a 160x144 window for
     // the Game Gear - so the border around it keeps whatever the menu or the
-    // previous game left in memory.
+    // previous game left in memory. Upscaled there is no border, but the
+    // overlay band at the top is left alone in exactly the same way.
     for (int i = 0; i < FRAMEBUFFERS; i++)
     {
         surface_t *clear = display_get();
         graphics_fill_screen(clear, CBLACK);
         display_show(clear);
     }
+    // Every buffer is blank, so whatever shape the blit is about to draw is
+    // already clean. Start the change detection from there.
+    layout_upscale = upscale_enabled;
+    layout_band = overlay_band_height();
+
     // Start by drawing every frame and let the tuner settle from there, so a
     // game that can keep up never skips.
     skip_phase = 0;
@@ -716,6 +780,20 @@ void process(void)
         }
 
         bool render_frame = (skip_phase == 0);
+
+        // Whatever the blit does not cover keeps its old contents on all three
+        // framebuffers, so any change to the shape of the drawn area strands
+        // pixels outside the new one: switching the upscale off leaves a ring
+        // of full screen picture around the small one, and turning the profiler
+        // on strands picture rows in the band reserved for it. Both are caught
+        // here rather than at each of the places that can change a setting.
+        int band = overlay_band_height();
+        if (upscale_enabled != layout_upscale || band != layout_band)
+        {
+            layout_upscale = upscale_enabled;
+            layout_band = band;
+            hideFrameRate = true;
+        }
 
         if (render_frame)
         {
@@ -783,26 +861,75 @@ void process(void)
 
             surface_t ci8_surface = surface_make_linear(frame, FMT_CI8, SMS_WIDTH, SMS_HEIGHT);
             rdpq_attach(_dc, NULL);
-            rdpq_set_mode_copy(false);
-            rdpq_mode_tlut(TLUT_RGBA16);
-            rdpq_tex_upload_tlut(palette, 0, 256);
 
-            if (IS_GG)
+            // Copy mode moves 4 pixels per cycle but can only scale vertically:
+            // the RDP ignores DsDx there, so a horizontal stretch has to drop to
+            // 1-cycle mode at a quarter of the fill rate. That single hardware
+            // limitation is what splits the two upscaled paths below.
+            bool onecycle = upscale_enabled && IS_GG;
+            if (onecycle)
             {
-                // GG visible window: cols 48..207, rows 24..167, blitted to fb at
-                // (48, 48) so the 160x144 image is centered horizontally and
-                // vertically inside the 256x240 framebuffer.
-                rdpq_blitparms_t parms = {};
-                parms.s0 = 48;
-                parms.t0 = 24;
-                parms.width = 160;
-                parms.height = 144;
-                rdpq_tex_blit(&ci8_surface, 48, 48, &parms);
+                rdpq_set_mode_standard();
+                rdpq_mode_filter(FILTER_POINT);
             }
             else
             {
-                // SMS: full 256x192 image at fb (0, 24).
-                rdpq_tex_blit(&ci8_surface, 0, 24, NULL);
+                rdpq_set_mode_copy(false);
+            }
+            rdpq_mode_tlut(TLUT_RGBA16);
+            rdpq_tex_upload_tlut(palette, 0, 256);
+
+            // Upscaled, the picture covers the whole framebuffer and would paint
+            // over the overlay, which is drawn by the CPU just above. Scissor the
+            // blit below it rather than waiting for the RDP to finish so the text
+            // can go on top - a wait would cost a sync on every drawn frame.
+            // Copy mode requires the left bound to be zero, which it is.
+            if (band > 0)
+            {
+                rdpq_set_scissor(0, band, SMS_WIDTH, FB_HEIGHT);
+            }
+
+            if (IS_GG)
+            {
+                // GG visible window out of the Master System sized frame the
+                // renderer produces: cols 48..207, rows 24..167.
+                rdpq_blitparms_t parms = {};
+                parms.s0 = SMS_GG_X;
+                parms.t0 = SMS_GG_Y;
+                parms.width = SMS_GG_WIDTH;
+                parms.height = SMS_GG_HEIGHT;
+                if (upscale_enabled)
+                {
+                    // 160x144 over the full 256x240. 1.6 horizontally is what
+                    // forces 1-cycle mode. The result is a 4:3 picture from a
+                    // 10:9 handheld, so pixels come out about 20% wide - right
+                    // for a television, not what the Game Gear looked like.
+                    parms.scale_x = (float)SMS_WIDTH / SMS_GG_WIDTH;
+                    parms.scale_y = (float)FB_HEIGHT / SMS_GG_HEIGHT;
+                    rdpq_tex_blit(&ci8_surface, 0, 0, &parms);
+                }
+                else
+                {
+                    // 1:1, centered horizontally and vertically inside the
+                    // framebuffer with a border on all four sides.
+                    rdpq_tex_blit(&ci8_surface, (SMS_WIDTH - SMS_GG_WIDTH) / 2,
+                                  (FB_HEIGHT - SMS_GG_HEIGHT) / 2, &parms);
+                }
+            }
+            else if (upscale_enabled)
+            {
+                // SMS: 256x192 over the full 256x240. Vertical only, so this
+                // stays in copy mode and costs nothing but the extra pixels
+                // written. 240/192 is exactly 1.25, and the blit is split into
+                // 8-row TMEM chunks, so every chunk lands on a whole row.
+                rdpq_blitparms_t parms = {};
+                parms.scale_y = (float)FB_HEIGHT / SMS_HEIGHT;
+                rdpq_tex_blit(&ci8_surface, 0, 0, &parms);
+            }
+            else
+            {
+                // SMS: full 256x192 image, letterboxed top and bottom.
+                rdpq_tex_blit(&ci8_surface, 0, (FB_HEIGHT - SMS_HEIGHT) / 2, NULL);
             }
 
             // Schedules display_show() to happen once the RDP is done, instead
@@ -1366,7 +1493,7 @@ int main()
 #endif
         }
         /* Initialize display */
-        display_init(RESOLUTION_256x240, DEPTH_16_BPP, FRAMEBUFFERS, GAMMA_NONE, FILTERS_RESAMPLE);
+        display_init(RESOLUTION_GAME, DEPTH_16_BPP, FRAMEBUFFERS, GAMMA_NONE, FILTERS_RESAMPLE);
         checkcontrollers();
         // dump info
         debugf("Starting game:\n");

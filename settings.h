@@ -17,6 +17,7 @@ extern "C"
         int showFps;      /* 0 hidden, 1 shown */
         int showProfiler; /* 0 hidden, 1 shown */
         int autostart;    /* 1 start a rom injected by the flashcart menu, 0 always show our menu */
+        int upscale;      /* 0 picture at 1:1 in the middle of the screen, 1 scaled to fill it */
     } Settings;
 
     extern Settings settings;

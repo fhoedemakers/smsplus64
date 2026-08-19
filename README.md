@@ -99,6 +99,7 @@ a setting, Left and Right to change it, and B to go back.
 | Sound | Turns the sound on or off. Turning it off makes games run slightly faster. |
 | Frame rate | Shows a small frame rate display in the corner of the screen. |
 | Profiler | Shows a breakdown of where the emulator spends its time. Mainly useful for troubleshooting. |
+| Upscale | Fills the screen with the picture. Turn it off if you would rather have a 1:1 picture with a black border around it. |
 | Autostart | When on, a game picked in the Everdrive or flashcart menu starts straight away. Turn it off if you would rather always see the game browser. |
 
 Your settings are saved as `settings.cfg` in the same folder as your games on the SD
@@ -112,6 +113,8 @@ The frame rate display reads something like `SS 060/30 1`:
 - `060`: how fast the game is running, out of 60
 - `30`: how many frames per second are actually drawn
 - `1`: the frameskip setting. A plain digit is the level you chose; `A1` means Auto, currently skipping one frame
+
+With Upscale on it is drawn over the picture, hiding the first few rows.
 
 ## Known issues
 

@@ -4,6 +4,8 @@
 
 ### Features
 
+- The picture now fills the screen. Turn the new Upscale setting off for the old
+  1:1 picture with a border around it.
 - Settings screen. Press Start in the game browser, or Z + C-Right while playing,
   to change frameskip, sound and the frame rate display without having to remember
   button combinations. Your settings are saved on the SD card and restored the next

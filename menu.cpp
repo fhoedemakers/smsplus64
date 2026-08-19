@@ -341,7 +341,7 @@ void clearinput()
         }
     }
 }
-#define NUMSETTINGS 5
+#define NUMSETTINGS 6
 
 // Settings screen, so the in-game button combinations do not have to be
 // remembered. Reachable with START from the rom browser.
@@ -370,13 +370,17 @@ static void settingsScreen(const char *mountPoint)
         putText(1, STARTROW + 2, line, fgcolor, bgcolor);
         snprintf(line, sizeof(line), "Profiler   : %s", settings.showProfiler ? "Shown" : "Hidden");
         putText(1, STARTROW + 3, line, fgcolor, bgcolor);
-        snprintf(line, sizeof(line), "Autostart  : %s", settings.autostart ? "On" : "Off");
+        snprintf(line, sizeof(line), "Upscale    : %s", settings.upscale ? "On" : "Off");
         putText(1, STARTROW + 4, line, fgcolor, bgcolor);
+        snprintf(line, sizeof(line), "Autostart  : %s", settings.autostart ? "On" : "Off");
+        putText(1, STARTROW + 5, line, fgcolor, bgcolor);
 
-        putText(1, STARTROW + 6, "Autostart runs the game picked in", fgcolor, bgcolor);
-        putText(1, STARTROW + 7, "the flashcart menu. Turn it off if", fgcolor, bgcolor);
-        putText(1, STARTROW + 8, "the last game keeps restarting.", fgcolor, bgcolor);
-        putText(1, STARTROW + 10, "Saved to the SD card on exit.", fgcolor, bgcolor);
+        putText(1, STARTROW + 7, "Upscale fills the screen with the", fgcolor, bgcolor);
+        putText(1, STARTROW + 8, "picture instead of leaving a border.", fgcolor, bgcolor);
+        putText(1, STARTROW + 10, "Autostart runs the game picked in", fgcolor, bgcolor);
+        putText(1, STARTROW + 11, "the flashcart menu. Turn it off if", fgcolor, bgcolor);
+        putText(1, STARTROW + 12, "the last game keeps restarting.", fgcolor, bgcolor);
+        putText(1, STARTROW + 14, "Saved to the SD card on exit.", fgcolor, bgcolor);
 
         putText(1, SCREEN_ROWS - 1, "Left/Right: change, B: Back", fgcolor, bgcolor);
         DrawScreen(STARTROW + row);
@@ -407,7 +411,8 @@ static void settingsScreen(const char *mountPoint)
             case 1: settings.sound = !settings.sound; break;
             case 2: settings.showFps = !settings.showFps; break;
             case 3: settings.showProfiler = !settings.showProfiler; break;
-            case 4: settings.autostart = !settings.autostart; break;
+            case 4: settings.upscale = !settings.upscale; break;
+            case 5: settings.autostart = !settings.autostart; break;
             }
             changed = true;
         }
