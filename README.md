@@ -113,6 +113,18 @@ The frame rate display reads something like `SS 060/30 1`:
 - `30`: how many frames per second are actually drawn
 - `1`: the frameskip setting. A plain digit is the level you chose; `A1` means Auto, currently skipping one frame
 
+## Known issues
+
+- Starting the emulator on its own can start the last game you played from the
+  Everdrive menu instead of showing the game browser. Hold Z while the emulator
+  starts to always get the browser.
+- Sound can be missing when you start a second game without switching the console
+  off in between. Switching the console off and on again restores it.
+- A few games rely on sprite collision and can behave differently while frameskip
+  is active. Set Frameskip to Off in the settings if you run into this.
+- Settings are only saved when a `smsPlus64` folder exists on the SD card. The
+  settings screen says so if it cannot save them.
+
 ## Building from source
 
 1. Install the Libdragon SDK. For more info and instructions, see https://github.com/DragonMinded/libdragon
