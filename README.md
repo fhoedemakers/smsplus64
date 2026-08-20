@@ -92,7 +92,7 @@ a setting, Left and Right to change it, and B to go back.
 
 | Setting | What it does |
 | --- | --- |
-| Frameskip | Skips drawing some frames so games keep running at the right speed. The default `1` draws every other frame. `Off` draws them all, but games may run slow. `2` and `3` skip more. `Auto` picks a level for you. |
+| Frameskip | Skips drawing some frames so games keep running at the right speed. The default `Auto` only skips when a game cannot keep up, so games that already run at full speed still draw every frame. `Off` never skips, but games may run slow. `1`, `2` and `3` always skip that many. |
 | Sound | Turns the sound on or off. Turning it off makes games run slightly faster. |
 | Frame rate | Shows a small frame rate display in the corner of the screen. |
 | Profiler | Shows a breakdown of where the emulator spends its time. Mainly useful for troubleshooting. |
@@ -103,13 +103,13 @@ Your settings are saved as `settings.cfg` in the same folder as your games on th
 card, and are restored the next time you start the emulator. Without an SD card the
 settings still work, they just cannot be saved.
 
-The frame rate display reads something like `SS 060/30 1`:
+The frame rate display reads something like `SS 060/30 A1`:
 
 - first letter: `S` for Master System, `G` for Game Gear
 - second letter: `S` when sound is on, `M` when muted
 - `060`: how fast the game is running, out of 60
 - `30`: how many frames per second are actually drawn
-- `1`: the frameskip setting. A plain digit is the level you chose; `A1` means Auto, currently skipping one frame
+- `A1`: the frameskip setting. `A` means Auto, followed by the level it settled on; a plain digit is a level you set yourself
 
 With Upscale on it is drawn over the picture, hiding the first few rows.
 
