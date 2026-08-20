@@ -426,13 +426,11 @@ static DWORD prevButtons[2]{};
 static DWORD prevButtonssystem[2]{};
 static DWORD prevOtherButtons[2]{};
 
-struct controller_data gKeys;
 static int rapidFireMask[2]{};
 static int rapidFireCounter = 0;
 void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorepushed)
 {
-    controller_scan();
-    gKeys = get_keys_pressed();
+    joypad_poll();
 
     // pwdPad1 and pwdPad2 are only used in menu and are only set on first push
     *pdwPad1 = *pdwPad2 = *pdwSystem = 0;
@@ -448,20 +446,20 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
         }
         auto &dst = (i == 0) ? *pdwPad1 : *pdwPad2;
 
-        auto gp = gKeys.c[i].data >> 16;
+        joypad_buttons_t gp = joypad_get_buttons((joypad_port_t)i);
 
-        int smsbuttons = (DL_BUTTON(gp) ? INPUT_LEFT : 0) |
-                         (DR_BUTTON(gp) ? INPUT_RIGHT : 0) |
-                         (DU_BUTTON(gp) ? INPUT_UP : 0) |
-                         (DD_BUTTON(gp) ? INPUT_DOWN : 0) |
-                         (A_BUTTON(gp) ? INPUT_BUTTON1 : 0) |
-                         (B_BUTTON(gp) ? INPUT_BUTTON2 : 0) | 0;
-        int otherButtons = (CL_BUTTON(gp) ? OTHER_BUTTON1 : 0) |
-                           (CU_BUTTON(gp) ? OTHER_BUTTON2 : 0) |
-                           (CR_BUTTON(gp) ? OTHER_BUTTON3 : 0) | 0;
+        int smsbuttons = (gp.d_left ? INPUT_LEFT : 0) |
+                         (gp.d_right ? INPUT_RIGHT : 0) |
+                         (gp.d_up ? INPUT_UP : 0) |
+                         (gp.d_down ? INPUT_DOWN : 0) |
+                         (gp.a ? INPUT_BUTTON1 : 0) |
+                         (gp.b ? INPUT_BUTTON2 : 0) | 0;
+        int otherButtons = (gp.c_left ? OTHER_BUTTON1 : 0) |
+                           (gp.c_up ? OTHER_BUTTON2 : 0) |
+                           (gp.c_right ? OTHER_BUTTON3 : 0) | 0;
         smssystem[i] =
-            (Z_BUTTON(gp) ? INPUT_PAUSE : 0) |
-            (START_BUTTON(gp) ? INPUT_START : 0) |
+            (gp.z ? INPUT_PAUSE : 0) |
+            (gp.start ? INPUT_START : 0) |
             0;
 
         // if (gp.buttons & io::GamePadState::Button::SELECT) printf("SELECT\n");
@@ -1011,13 +1009,12 @@ void process(void)
 void checkcontrollers()
 {
     controller1IsInserted = controller2IsInserted = false;
-    int controllers = get_controllers_present();
-    if (controllers & CONTROLLER_1_INSERTED)
+    if (joypad_is_connected(JOYPAD_PORT_1))
     {
         debugf("Controller 1 inserted\n");
         controller1IsInserted = true;
     }
-    if (controllers & CONTROLLER_2_INSERTED)
+    if (joypad_is_connected(JOYPAD_PORT_2))
     {
         debugf("Controller 2 inserted\n");
         controller2IsInserted = true;
@@ -1305,30 +1302,33 @@ int main()
     debugf("Built on %s %s using libdragon - https://github.com/DragonMinded/libdragon\n", __DATE__, __TIME__);
 
     cart_init();
-    controller_init();
+    joypad_init();
     timer_init();
     rdpq_init();
     enableordisableTimer();
-    struct controller_data output;
-    get_accessories_present(&output);
-    int accessory = identify_accessory(0);
-    switch (accessory)
+    // The VRU is a Joybus device of its own rather than a controller accessory,
+    // so unlike the paks it shows up in the identifier, not the accessory type.
+    if (joypad_get_identifier(JOYPAD_PORT_1) == JOYBUS_IDENTIFIER_N64_VOICE_RECOGNITION)
     {
-    case ACCESSORY_MEMPAK:
-        debugf("Accessory: Memory Pak\n");
-        break;
-    case ACCESSORY_RUMBLEPAK:
-        debugf("Accessory: Rumble Pak\n");
-        break;
-    case ACCESSORY_TRANSFERPAK:
-        debugf("Accessory: Transfer Pak\n");
-        break;
-    case ACCESSORY_VRU:
         debugf("Accessory: VRU\n");
-        break;
-    default:
-        debugf("Accessory: None\n");
-        break;
+    }
+    else
+    {
+        switch (joypad_get_accessory_type(JOYPAD_PORT_1))
+        {
+        case JOYPAD_ACCESSORY_TYPE_CONTROLLER_PAK:
+            debugf("Accessory: Memory Pak\n");
+            break;
+        case JOYPAD_ACCESSORY_TYPE_RUMBLE_PAK:
+            debugf("Accessory: Rumble Pak\n");
+            break;
+        case JOYPAD_ACCESSORY_TYPE_TRANSFER_PAK:
+            debugf("Accessory: Transfer Pak\n");
+            break;
+        default:
+            debugf("Accessory: None\n");
+            break;
+        }
     }
     while (true)
     {
@@ -1377,13 +1377,13 @@ int main()
         int counter = 0;
         while (counter < 10)
         {
-            zPressed = get_keys_pressed().c[0].Z;
+            joypad_poll();
+            zPressed = joypad_get_buttons(JOYPAD_PORT_1).z;
             if (zPressed)
             {
                 break;
             }
             wait_ms(10);
-            controller_scan();
             counter++;
         }
         // Check whether rom is started via Everdrive/N64Flashcartmenu
@@ -1452,12 +1452,12 @@ int main()
         {
 #ifndef NDEBUG
             debugstdout("Press A button to continue\n");
-            controller_scan();
+            joypad_poll();
             console_render();
-            while (!get_keys_pressed().c[0].A)
+            while (!joypad_get_buttons(JOYPAD_PORT_1).a)
             {
                 wait_ms(10);
-                controller_scan();
+                joypad_poll();
             }
 #endif
             console_close();
@@ -1468,12 +1468,12 @@ int main()
             mountFilesystemsAndLoadSettings(&dfsStarted, mountPoint);
 #ifndef NDEBUG
             debugstdout("Press A button to continue\n");
-            controller_scan();
+            joypad_poll();
             console_render();
-            while (!get_keys_pressed().c[0].A)
+            while (!joypad_get_buttons(JOYPAD_PORT_1).a)
             {
                 wait_ms(10);
-                controller_scan();
+                joypad_poll();
             }
 
             console_close();
