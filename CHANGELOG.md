@@ -27,16 +27,16 @@
 - Game Gear games no longer start with completely wrong colours. The console type
   is now taken from the ROM itself instead of from the file name.
 - ROMs with upper case file extensions (.GG, .SMS) are now listed.
-- The game browser now shows which folder it is listing, and tells you when it
+- The built-in game browser now shows which folder it is listing, and tells you when it
   cannot find any games there.
-- Fixed picture corruption in games that write to ROM space.
+- Replaced deprecated controller functions.
 
 ### Known issues
 
 - Starting the emulator on its own can start the last game you played from the
   Everdrive menu instead of showing the game browser. Hold Z while the emulator
   starts to always get the browser.
-- Sound can be missing when you start a second game without resetting the console
+- Sound can be missing when you start a second game from within the built-in filebrowser without resetting the console
   in between. Resetting the console restores it.
 - A few games rely on sprite collision and can behave differently while frameskip
   is active. Set Frameskip to Off in the settings if you run into this.
