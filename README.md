@@ -120,8 +120,6 @@ With Upscale on it is drawn over the picture, hiding the first few rows.
   starts to always get the browser.
 - Sound can be missing when you start a second game without switching the console
   off in between. Switching the console off and on again restores it.
-- A few games rely on sprite collision and can behave differently while frameskip
-  is active. Set Frameskip to Off in the settings if you run into this.
 - Settings are only saved when a `smsPlus64` folder exists on the SD card. The
   settings screen says so if it cannot save them.
 
