@@ -21,7 +21,8 @@ extern "C"
     typedef enum
     {
         PROF_Z80 = 0,  /* z80_execute()                                  */
-        PROF_RENDER,   /* render_line() - background + sprites           */
+        PROF_RENDER,   /* render_line() - background + sprites; on a
+                          skipped frame, the sprite collision pass alone  */
         PROF_BLIT,     /* cache writeback + RDP display list build       */
         PROF_AUDIO,    /* SN76496Update() + audio_push()                 */
         PROF_IDLE,     /* blocked pacing: audio_push, or the tick limiter    */

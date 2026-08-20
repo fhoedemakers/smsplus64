@@ -40,10 +40,16 @@ void (sms_frame)(int skip_render) {
         /* Handle VDP line events */
         vdp_run();
 
-        /* Draw the current frame */
-        if (!skip_render) {
+        /* Draw the current frame. A skipped frame still has to work out sprite
+           collisions: games poll the flag for hit detection, and it is the only
+           thing render_line() produces that the emulation itself can observe. */
+        {
             PROF_BEGIN(PROF_RENDER);
-            render_line(vdp.line);
+            if (!skip_render) {
+                render_line(vdp.line);
+            } else {
+                render_line_collision(vdp.line);
+            }
             PROF_END(PROF_RENDER);
         }
 

@@ -7,6 +7,57 @@ void (*render_bg)(int line);
 /* Pointer to output buffer */
 uint8 *linebuf;
 
+/* Sprite occupancy for the line being scanned, one bit per x.
+
+   Collision is sprite against sprite: the background contributes nothing, which
+   is what lets a skipped frame work it out without drawing anything. This is
+   deliberately not the 0x40 marker the line buffer carries, which a priority
+   background suppresses (sprite_mix returns the background pixel untagged, so a
+   second sprite over that pixel went unreported) and which nothing ever clears
+   in the Game Gear margins, where it accumulated into permanent false hits.
+
+   32 bytes is two cache lines, so clearing it per line is a handful of stores. */
+static uint32 spr_cov[8];
+
+/* Fold one sprite's pixel coverage into the line and raise the collision flag if
+   it lands on anything already covered. `cov` has bit k set for the pixel at
+   x0 + k, for k < n.
+
+   Merging a whole sprite at once rather than testing each pixel keeps the inner
+   loops down to a shift and an or: the address arithmetic for a per-pixel test
+   gets hoisted above the transparency check, so it would be paid on every pixel
+   a sprite covers, opaque or not. Sprites within a line cannot overlap
+   themselves, so deferring the merge to the end of one changes nothing. */
+static __attribute__((noinline)) void (spr_cov_merge)(int x0, int n, uint32 cov)
+{
+    uint32 *word;
+    uint32 low;
+
+    if (!cov)
+        return;
+
+    word = &spr_cov[x0 >> 5];
+    x0 &= 31;
+    low = cov << x0;
+
+    if (*word & low)
+        vdp.status |= 0x20;
+    *word |= low;
+
+    /* A sprite is at most 16 pixels wide, so it straddles at most one word
+       boundary, and only when x0 is past 16 - which keeps the shift below
+       inside 1..15. */
+    if ((x0 + n) > 32)
+    {
+        uint32 high = cov >> (32 - x0);
+
+        word += 1;
+        if (*word & high)
+            vdp.status |= 0x20;
+        *word |= high;
+    }
+}
+
 /* Precalculated pixel table */
 //uint16 pixel[PALETTE_SIZE];
 
@@ -46,6 +97,36 @@ static __inline__ uint8 (sprite_mix)(uint8 bg, uint8 sp)
     if (bg & 0x40) return (bg & 0x7F);
     if ((bg & 0x20) && (bg & 0x0F)) return (bg & 0x7F);
     return (sp | 0x50);
+}
+
+/* Opacity of one row of a sprite pattern: bit k is set when pixel k is not
+   transparent. Left to right, so bit 0 is the leftmost pixel.
+
+   The pattern cache gathers the four bit-plane bits of a pixel into a nibble,
+   so a pixel is opaque exactly when any plane has its bit set - which the four
+   VRAM bytes answer directly, with no tile to expand. That keeps the collision
+   pass off the pattern cache: no getCacheSlow() expansions, no evictions and no
+   pollution of it on a frame nobody is going to look at. It also replaces the
+   per-pixel loop with straight-line code, which matters more than the
+   instruction count: the drawing loop unrolls to some 2.7K of code, and running
+   that on every scanline evicts the Z80 interpreter from the VR4300's 16K
+   direct-mapped instruction cache.
+
+   Sprites carry no flip bits - only background tiles do - so there is no
+   attribute to fold in here. */
+static __inline__ uint32 (spr_row_opacity)(int tile, int row)
+{
+    const uint8 *p = &vdp.vram[(tile << 5) | ((row & 7) << 2)];
+
+    /* Bit 7 is the leftmost pixel, as the pattern cache reads it */
+    uint32 op = p[0] | p[1] | p[2] | p[3];
+
+    /* Turn it around so bit k is pixel k */
+    op = ((op & 0xF0) >> 4) | ((op & 0x0F) << 4);
+    op = ((op & 0xCC) >> 2) | ((op & 0x33) << 2);
+    op = ((op & 0xAA) >> 1) | ((op & 0x55) << 1);
+
+    return op;
 }
 
 /* Attribute expansion table */
@@ -453,14 +534,27 @@ void render_bg_gg(int line)
     }
 }
 
-/* Draw sprites */
-void (render_obj)(int line)
+/* Sprite pass.
+
+   Shared by the drawing and the collision-only entry points below. `draw` is a
+   compile-time constant in both instantiations, so each copy keeps only the
+   half it needs: no line buffer code in the collision pass, no branch in the
+   drawing one.
+
+   Every rule that decides *which* sprites are considered - the 208 terminator,
+   the 9 sprite limit, the X shift, the clipping - lives here once, so the two
+   passes cannot drift apart and raise the flag on different scanlines. */
+static __inline__ __attribute__((always_inline))
+void (render_obj_body)(int line, const int draw)
 {
     int i;
     uint8_t *ctp;
 
     /* Sprite count for current line (8 max.) */
     int count = 0;
+
+    /* Nothing is covered yet on this line */
+    __builtin_memset(spr_cov, 0, sizeof(spr_cov));
 
     /* Sprite dimensions */
     int width = 8;
@@ -528,7 +622,7 @@ void (render_obj)(int line)
                 n &= 0x01FE;
 
             /* Point to offset in line buffer */
-            linebuf_ptr = (uint8 *)&linebuf[xp];
+            linebuf_ptr = draw ? (uint8 *)&linebuf[xp] : NULL;
 
             /* Clip sprites on left edge */
             if (xp < 0)
@@ -542,15 +636,49 @@ void (render_obj)(int line)
                 end = (256 - xp);
             }
 
+            /* Where the sprite lands, bit k for the pixel at xp + start + k.
+               The clipping above keeps xp + start inside 0..255. */
+            uint32 cov = 0;
+
+            if (!draw)
+            {
+                /* Collision only: the row's opacity comes straight out of VRAM,
+                   so there is no pattern cache to touch and no pixel loop. */
+                if (vdp.reg[1] & 0x01)
+                {
+                    /* Double size: every source pixel covers two columns */
+                    uint32 src = spr_row_opacity((n & 0x1ff) + ((line - yp) >> 3),
+                                                 (line - yp) >> 1);
+                    int k;
+
+                    for (k = 0; k < 8; k += 1)
+                    {
+                        if (src & (1u << k))
+                            cov |= 3u << (k << 1);
+                    }
+                }
+                else
+                {
+                    cov = spr_row_opacity((n & 0x1ff) + ((line - yp) >> 3),
+                                          line - yp);
+                }
+
+                /* Drop the pixels the clipping took off either edge */
+                cov = (cov >> start) & ((1u << (end - start)) - 1);
+            }
             /* Draw double size sprite */
-            if (vdp.reg[1] & 0x01)
+            else if (vdp.reg[1] & 0x01)
             {
                 int x;
+                uint32 bit = 1;
                 ctp = getCache((n & 0x1ff) + ((line - yp) >> 3), (n >> 9) & 3);
-                uint8 *cache_ptr = (uint8 *)&ctp[(((line - yp) >> 1) << 3)];
+                /* The mask keeps this inside the 64-byte tile. Without it a
+                   zoomed 8x16 sprite runs off the end of its cache entry and
+                   reads whichever tile happens to sit in the next slot. */
+                uint8 *cache_ptr = (uint8 *)&ctp[(((line - yp) >> 1) << 3) & 0x38];
 
                 /* Draw sprite line */
-                for (x = start; x < end; x += 1)
+                for (x = start; x < end; x += 1, bit <<= 1)
                 {
                     /* Source pixel from cache */
                     uint8 sp = cache_ptr[(x >> 1)];
@@ -558,26 +686,23 @@ void (render_obj)(int line)
                     /* Only draw opaque sprite pixels */
                     if (sp)
                     {
-                        /* Background pixel from line buffer */
-                        uint8 bg = linebuf_ptr[x];
+                        /* Note where the sprite is for collision detection */
+                        cov |= bit;
 
                         /* Resolve sprite against background */
-                        linebuf_ptr[x] = sprite_mix(bg, sp);
-
-                        /* Set sprite collision flag */
-                        if (bg & 0x40)
-                            vdp.status |= 0x20;
+                        linebuf_ptr[x] = sprite_mix(linebuf_ptr[x], sp);
                     }
                 }
             }
             else /* Regular size sprite (8x8 / 8x16) */
             {
                 int x;
+                uint32 bit = 1;
                 ctp = getCache((n & 0x1ff) + ((line - yp) >> 3), (n >> 9) & 3);
                 uint8 *cache_ptr = (uint8 *)&ctp[((line - yp) << 3) & 0x38];
 
                 /* Draw sprite line */
-                for (x = start; x < end; x += 1)
+                for (x = start; x < end; x += 1, bit <<= 1)
                 {
                     /* Source pixel from cache */
                     uint8 sp = cache_ptr[x];
@@ -585,20 +710,57 @@ void (render_obj)(int line)
                     /* Only draw opaque sprite pixels */
                     if (sp)
                     {
-                        /* Background pixel from line buffer */
-                        uint8 bg = linebuf_ptr[x];
+                        /* Note where the sprite is for collision detection */
+                        cov |= bit;
 
                         /* Resolve sprite against background */
-                        linebuf_ptr[x] = sprite_mix(bg, sp);
-
-                        /* Set sprite collision flag */
-                        if (bg & 0x40)
-                            vdp.status |= 0x20;
+                        linebuf_ptr[x] = sprite_mix(linebuf_ptr[x], sp);
                     }
                 }
             }
+
+            spr_cov_merge(xp + start, end - start, cov);
         }
     }
+}
+
+/* Draw sprites */
+void (render_obj)(int line)
+{
+    render_obj_body(line, 1);
+}
+
+/* Work out sprite collisions without drawing anything */
+static void (render_obj_collision)(int line)
+{
+    render_obj_body(line, 0);
+}
+
+/* Sprite collision for a frame whose pixels are being skipped.
+
+   Games poll the collision flag for hit detection, and it is the only thing
+   render_line() produces that the emulation itself can observe - so it has to
+   be worked out on skipped frames too, or frameskip changes how a game plays.
+
+   Mirrors render_line()'s gates so the flag goes up on exactly the scanlines it
+   would have on a drawn frame. Touches neither linebuf nor sms_line_target: the
+   buffer still holds the last displayed image while frames are being skipped. */
+void (render_line_collision)(int line)
+{
+    /* The flag is sticky until the game reads the status port, and the Z80 only
+       runs between scanlines, so once it is up nothing later in this frame can
+       change the outcome. */
+    if (vdp.status & 0x20)
+        return;
+
+    if ((line < vp_vstart) || (line >= vp_vend))
+        return;
+
+    /* Blank line - render_line() does not reach the sprites either */
+    if ((!(vdp.reg[1] & 0x40)) || (((vdp.reg[2] & 1) == 0) && (IS_SMS)))
+        return;
+
+    render_obj_collision(line);
 }
 
 /* Update pattern cache with modified tiles */
