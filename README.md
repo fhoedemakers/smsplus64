@@ -48,13 +48,14 @@ More details can be found in the N64FlashcartMenu [Getting Started Guide](https:
 
 To run the emulator as a standalone ROM:
 
-1. Download [smsPlus64.z64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/smsPlus64.z64) from the [releases page](https://github.com/fhoedemakers/smsplus64/releases/latest).
-2. Copy it to your flashcart.
-3. Launch **smsPlus64.z64** from the Everdrive or SummerCart menu.  
-   The emulator will display its built-in game browser.
-4. On the root of your SD card, create a folder named `smsPlus64`.
-5. Place your `.sms` and `.gg` ROMs in this folder.  
+1. On the root of your SD card, create a folder named `smsPlus64`.
+2. Place your `.sms` and `.gg` ROMs in this folder.  
    Subfolders are supported; the menu will scan them automatically.
+3. Download [smsPlus64.z64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/smsPlus64.z64) from the [releases page](https://github.com/fhoedemakers/smsplus64/releases/latest).
+4. Copy it to your flashcart.
+5. Launch **smsPlus64.z64** from the Everdrive or SummerCart menu.  
+   The emulator will display its built-in game browser.
+
 
 ## Controls
 
@@ -112,10 +113,34 @@ The frame rate display reads something like `SS 060/30 A1`:
 - `30`: how many frames per second are actually drawn
 - `A1`: the frameskip setting. `A` means Auto, followed by the level it settled on; a plain digit is a level you set yourself
 
-With Upscale on it is drawn over the picture, hiding the first few rows.
+The performance breakdown reads something like `Z731 R678 B147 A218 I000 S060`. Each
+letter is one part of the work of running a game:
+
+- `Z`: emulating the game's own processor
+- `R`: drawing the picture
+- `B`: handing the finished picture to the Nintendo 64's graphics chip
+- `A`: sound
+- `I`: spare time, spent waiting so the game runs at the right speed and no faster
+- `S`: waiting for the Nintendo 64's graphics chip to catch up
+
+Each number is how long that part took on one frame, in milliseconds with the dot left
+out: `R678` means 6.78 milliseconds spent drawing. A frame lasts 16.67 milliseconds, so
+when a game is keeping up the numbers add up to roughly `1667`.
+
+`I` is the one to look at first, because it is the time left over. While there is spare
+time the game runs at full speed. When `I` reads `000` there is none left and the game is
+running slow — and then the biggest of the other numbers is what is costing you. `I` and
+`S` stop counting at `999`.
+
+With frameskip on, `R` and `B` are averages over all frames, drawn and skipped, so they
+read lower than the drawing of a single frame actually costs. To see the real cost of
+drawing a frame, set frameskip to `Off`.
+
+With Upscale on both displays are drawn over the picture, hiding the first few rows.
 
 ## Known issues
 
+- Emulator does not yet run on the [new Everdrive PRO](https://krikzz.com/our-products/cartridges/everdrive-64-pro.html)
 - Starting the emulator on its own can start the last game you played from the
   Everdrive menu instead of showing the game browser. Hold Z while the emulator
   starts to always get the browser.

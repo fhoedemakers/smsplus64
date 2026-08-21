@@ -91,7 +91,7 @@ static __attribute__((aligned(16))) uint16_t tlut_dma[2][256];
 
 // Profiler accumulators, declared in profile.h and written from the emulator core.
 uint32_t prof_acc[PROF_COUNT];
-uint8_t prof_shown[PROF_COUNT];
+uint16_t prof_shown[PROF_COUNT];
 static bool prof_enabled = false;
 
 
@@ -360,12 +360,14 @@ int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
     // default, and the profiler would otherwise be impossible to turn on.
     if (showProfiler)
     {
-        // Percentage of wall clock spent in each phase over the last second.
-        // I is time spent pacing the frame, S is time blocked waiting for a
-        // framebuffer or for the RDP - keeping them apart matters, because a
-        // frame rate problem looks completely different depending on which of
-        // the two is growing.
-        sprintf(buffer, "Z%02d R%02d B%02d A%02d I%02d S%02d",
+        // Time spent in each phase per emulated frame, in tens of microseconds:
+        // R830 is 8.30 ms of rendering. I is time spent pacing the frame, S is
+        // time blocked waiting for a framebuffer or for the RDP - keeping them
+        // apart matters, because a frame rate problem looks completely different
+        // depending on which of the two is growing. Those two are the ones that
+        // saturate at 999: on a skipped frame the pacing wait is most of the
+        // frame, which is exactly the case where their value does not matter.
+        sprintf(buffer, "Z%03d R%03d B%03d A%03d I%03d S%03d",
                 prof_shown[PROF_Z80], prof_shown[PROF_RENDER],
                 prof_shown[PROF_BLIT], prof_shown[PROF_AUDIO],
                 prof_shown[PROF_IDLE], prof_shown[PROF_SYNC]);
@@ -381,11 +383,27 @@ void frameratecalc(int ovfl)
     drawndisplay = drawncounter;
     framecounter = drawncounter = 0;
 
-    // Fold the tick accumulators into whole percent of the elapsed second.
+    // Fold the tick accumulators into time per emulated frame, in tens of
+    // microseconds. Dividing by the frames emulated rather than by the second
+    // is what makes the figures comparable between two runs: a percentage of
+    // the second also moves when another phase moves or when the frame rate
+    // changes, and that made the last set of readings unattributable.
+    //
+    // framedisplay is this second's frame count, captured just above. It is
+    // zero whenever nothing was emulating - in the menu, or across a rom load.
+    uint32_t frames = (uint32_t)framedisplay;
     for (int i = 0; i < PROF_COUNT; i++)
     {
-        uint32_t pct = prof_acc[i] / (TICKS_PER_SECOND / 100);
-        prof_shown[i] = (uint8_t)(pct > 99 ? 99 : pct);
+        if (frames)
+        {
+            uint64_t tens_us = (uint64_t)prof_acc[i] * 100000ULL /
+                               (uint64_t)TICKS_PER_SECOND / frames;
+            prof_shown[i] = (uint16_t)(tens_us > 999 ? 999 : tens_us);
+        }
+        else
+        {
+            prof_shown[i] = 0;
+        }
         prof_acc[i] = 0;
     }
 }

@@ -130,21 +130,27 @@ static __inline__ uint32 (spr_row_opacity)(int tile, int row)
 }
 
 /* Which sprites land on each scanline, built once per frame instead of being
-   rediscovered per line.
+   rediscovered per line. Both passes read this - render_obj() to draw them,
+   render_obj_collision() to work out hits on a frame nobody will see.
 
-   The drawing pass walks all 64 attribute table entries on every scanline to
-   find the few that cross it. Measured on Sonic and Aladdin that is 11750
-   entries examined per frame against 186 sprite rows actually evaluated: over
-   95% of the work is the y-range test, and neither game ever writes the 208
-   end-of-list marker that would cut the scan short. Turning it inside out -
-   once per sprite, over the 8 or 16 lines it covers - replaces some 12000
-   y-tests with about 512 appends.
+   Both used to walk all 64 attribute table entries on every scanline to find the
+   few that cross it. Measured on Sonic and Aladdin that is 11750 entries
+   examined per frame against 186 sprite rows actually evaluated: over 95% of the
+   work is the y-range test, and neither game ever writes the 208 end-of-list
+   marker that would cut the scan short. Turning it inside out - once per sprite,
+   over the 8 or 16 lines it covers - replaces some 12000 y-tests with about 512
+   appends, 120 of them in practice.
 
-   Capped at the 8 sprites the hardware draws per line, so the list holds
-   exactly the set the drawing pass would have processed before its ninth-sprite
-   bail-out. That assumes vdp.limit is set, which it is throughout this port
-   (vdp_reset raises it and nothing clears it); were it ever cleared, collisions
-   involving the ninth sprite onwards would go unreported. */
+   Capped at the 8 sprites the hardware draws per line, so the list holds exactly
+   the set the drawing pass processed before its ninth-sprite bail-out. That
+   assumes vdp.limit is set, which it is throughout this port (vdp_reset raises
+   it and nothing clears it, and nothing outside this file reads it); were it
+   ever cleared, the ninth sprite onwards would go undrawn as well as unreported.
+
+   Nothing structural keeps this in step with the attribute table any more, now
+   that neither pass reads the table to decide what is on a line - that is
+   tools/collisioncheck's job, which re-derives the list with the old scan and
+   compares. Run it after touching anything here. */
 
 #define SPR_PER_LINE 8
 #define SPR_MAX_LINES 192
@@ -158,7 +164,21 @@ static int spr_list_dirty = 1;
 static int spr_list_satb = -1;
 static int spr_list_size = -1;
 
-static void (spr_list_build)(void)
+#ifdef COLLISION_STATS
+/* Semantic counters for tools/collisioncheck: how much work the per-line lists
+   actually do, against the scan they replace. Never built for the Nintendo 64.
+   Two attempts at optimising this file went wrong from estimating cost instead
+   of counting it, so the counters are kept rather than re-derived each time. */
+long cstat_builds, cstat_appends;
+#endif
+
+/* noinline deliberately: this runs a fraction of a time per frame, but both
+   per-scanline paths call it through spr_list_sync() below. Left to itself GCC
+   inlines it - it did, into render_line_collision(), when that was its only
+   caller - which would put a couple of hundred bytes of once-a-frame code on a
+   path taken 192 times, competing with the Z80 interpreter for the VR4300's
+   direct-mapped instruction cache. */
+static __attribute__((noinline)) void (spr_list_build)(void)
 {
     uint8 *st = (uint8 *)&vdp.vram[vdp.satb];
     int height = (vdp.reg[1] & 0x02) ? 16 : 8;
@@ -194,14 +214,52 @@ static void (spr_list_build)(void)
         for (y = y0; y < y1; y += 1)
         {
             if (spr_line_count[y] < SPR_PER_LINE)
+            {
                 spr_line_list[y][spr_line_count[y]++] = (uint8)i;
+#ifdef COLLISION_STATS
+                cstat_appends++;
+#endif
+            }
         }
     }
+
+#ifdef COLLISION_STATS
+    cstat_builds++;
+#endif
 
     spr_list_dirty = 0;
     spr_list_satb = vdp.satb;
     spr_list_size = (vdp.reg[1] & 0x03);
 }
+
+/* Rebuild the lists if anything they are derived from has moved.
+
+   Called once per scanline by both passes rather than once per frame: a game
+   that rewrites the attribute table part way down the screen has to be picked
+   up on the next line, which is what the drawing pass used to get for free by
+   re-reading the table itself. Three loads and three compares against the
+   11750 y-tests this replaces. */
+static __inline__ void (spr_list_sync)(void)
+{
+    if (spr_list_dirty || spr_list_satb != vdp.satb ||
+        spr_list_size != (vdp.reg[1] & 0x03))
+    {
+        spr_list_build();
+    }
+}
+
+#ifdef SPR_LIST_CHECK
+/* For tools/collisioncheck, which re-derives this list with the plain per-line
+   attribute table scan render_obj() used to do and compares the two. Both
+   passes read the list now, so nothing else can tell whether it is right.
+   Never built for the Nintendo 64. */
+const uint8 *spr_list_for_line(int line, int *count)
+{
+    spr_list_sync();
+    *count = spr_line_count[line];
+    return spr_line_list[line];
+}
+#endif
 
 /* Attribute expansion table */
 uint32 atex[4] =
@@ -622,167 +680,176 @@ void render_bg_gg(int line)
     }
 }
 
-/* Draw sprites */
+/* Draw sprites.
+
+   Walks the per-line list rather than rediscovering which sprites cross this
+   line: the same transformation the collision pass got, and for the same reason.
+   The scan this replaces examined 11750 attribute table entries per frame to
+   find 186 sprite rows worth drawing, because no game writes the 208 marker that
+   would cut it short.
+
+   The list encodes everything the scan used to work out - it breaks on 208,
+   covers exactly the lines a sprite crosses, appends in ascending entry order so
+   front-to-back priority is unchanged, and caps at the 8 sprites the hardware
+   draws, which is what the old count == 9 bail-out did. Only ever called for a
+   line inside the viewport, so `line` is always within the lists' 192. */
 void (render_obj)(int line)
 {
-    int i;
-    uint8_t *ctp;
+    const uint8 *list;
+    int n_line;
+    uint8 *st;
+    int width = 8;
+    int k;
 
-    /* Sprite count for current line (8 max.) */
-    int count = 0;
+    spr_list_sync();
+
+    n_line = spr_line_count[line];
+
+    /* Nothing to draw, and nothing to clear: spr_cov is only ever read by
+       spr_cov_merge() for a sprite on this same line. Measured on Aladdin and
+       Sonic, 70% of lines carry no sprite at all. */
+    if (n_line == 0)
+        return;
+
+    list = spr_line_list[line];
+    st = (uint8 *)&vdp.vram[vdp.satb];
 
     /* Nothing is covered yet on this line */
     __builtin_memset(spr_cov, 0, sizeof(spr_cov));
 
-    /* Sprite dimensions */
-    int width = 8;
-    int height = (vdp.reg[1] & 0x02) ? 16 : 8;
-
-    /* Pointer to sprite attribute table */
-    uint8 *st = (uint8 *)&vdp.vram[vdp.satb];
-
-    /* Adjust dimensions for double size sprites */
+    /* Double size sprites are twice as wide. Their height is the list's
+       business, not this loop's. */
     if (vdp.reg[1] & 0x01)
-    {
         width *= 2;
-        height *= 2;
-    }
 
     /* Draw sprites in front-to-back order */
-    for (i = 0; i < 64; i += 1)
+    for (k = 0; k < n_line; k += 1)
     {
-        /* Sprite Y position */
-        int yp = st[i];
+        int i = list[k];
+        uint8_t *ctp;
+        uint8 *linebuf_ptr;
 
-        /* End of sprite list marker? */
-        if (yp == 208)
-            return;
+        /* Y as the list was built from it */
+        int yp = st[i] + 1;
+        int row;
 
-        /* Actual Y position is +1 */
-        yp += 1;
+        /* Width of sprite */
+        int start = 0;
+        int end = width;
+
+        /* Sprite X position */
+        int xp = st[0x80 + (i << 1)];
+
+        /* Pattern name */
+        int n = st[0x81 + (i << 1)];
 
         /* Wrap Y coordinate for sprites > 240 */
         if (yp > 240)
             yp -= 256;
 
-        /* Check if sprite falls on current line */
-        if ((line >= yp) && (line < (yp + height)))
+        /* Row of the sprite this line lands on. The list guarantees it is
+           inside the sprite, which is what the y-range test used to do. */
+        row = line - yp;
+
+        /* X position shift */
+        if (vdp.reg[0] & 0x08)
+            xp -= 8;
+
+        /* Add MSB of pattern name */
+        if (vdp.reg[6] & 0x04)
+            n |= 0x0100;
+
+        /* Mask LSB for 8x16 sprites */
+        if (vdp.reg[1] & 0x02)
+            n &= 0x01FE;
+
+        /* Point to offset in line buffer */
+        linebuf_ptr = (uint8 *)&linebuf[xp];
+
+        /* Clip sprites on left edge */
+        if (xp < 0)
         {
-            uint8 *linebuf_ptr;
-
-            /* Width of sprite */
-            int start = 0;
-            int end = width;
-
-            /* Sprite X position */
-            int xp = st[0x80 + (i << 1)];
-
-            /* Pattern name */
-            int n = st[0x81 + (i << 1)];
-
-            /* Bump sprite count */
-            count += 1;
-
-            /* Too many sprites on this line ? */
-            if ((vdp.limit) && (count == 9))
-                return;
-
-            /* X position shift */
-            if (vdp.reg[0] & 0x08)
-                xp -= 8;
-
-            /* Add MSB of pattern name */
-            if (vdp.reg[6] & 0x04)
-                n |= 0x0100;
-
-            /* Mask LSB for 8x16 sprites */
-            if (vdp.reg[1] & 0x02)
-                n &= 0x01FE;
-
-            /* Point to offset in line buffer */
-            linebuf_ptr = (uint8 *)&linebuf[xp];
-
-            /* Clip sprites on left edge */
-            if (xp < 0)
-            {
-                start = (0 - xp);
-            }
-
-            /* Clip sprites on right edge */
-            if ((xp + width) > 256)
-            {
-                end = (256 - xp);
-            }
-
-            /* Where the sprite lands, bit k for the pixel at xp + start + k.
-               The clipping above keeps xp + start inside 0..255. */
-            uint32 cov = 0;
-
-            /* Draw double size sprite */
-            if (vdp.reg[1] & 0x01)
-            {
-                int x;
-                uint32 bit = 1;
-                ctp = getCache((n & 0x1ff) + ((line - yp) >> 3), (n >> 9) & 3);
-                /* The mask keeps this inside the 64-byte tile. Without it a
-                   zoomed 8x16 sprite runs off the end of its cache entry and
-                   reads whichever tile happens to sit in the next slot. */
-                uint8 *cache_ptr = (uint8 *)&ctp[(((line - yp) >> 1) << 3) & 0x38];
-
-                /* Draw sprite line */
-                for (x = start; x < end; x += 1, bit <<= 1)
-                {
-                    /* Source pixel from cache */
-                    uint8 sp = cache_ptr[(x >> 1)];
-
-                    /* Only draw opaque sprite pixels */
-                    if (sp)
-                    {
-                        /* Note where the sprite is for collision detection */
-                        cov |= bit;
-
-                        /* Resolve sprite against background */
-                        linebuf_ptr[x] = sprite_mix(linebuf_ptr[x], sp);
-                    }
-                }
-            }
-            else /* Regular size sprite (8x8 / 8x16) */
-            {
-                int x;
-                uint32 bit = 1;
-                ctp = getCache((n & 0x1ff) + ((line - yp) >> 3), (n >> 9) & 3);
-                uint8 *cache_ptr = (uint8 *)&ctp[((line - yp) << 3) & 0x38];
-
-                /* Draw sprite line */
-                for (x = start; x < end; x += 1, bit <<= 1)
-                {
-                    /* Source pixel from cache */
-                    uint8 sp = cache_ptr[x];
-
-                    /* Only draw opaque sprite pixels */
-                    if (sp)
-                    {
-                        /* Note where the sprite is for collision detection */
-                        cov |= bit;
-
-                        /* Resolve sprite against background */
-                        linebuf_ptr[x] = sprite_mix(linebuf_ptr[x], sp);
-                    }
-                }
-            }
-
-            spr_cov_merge(xp + start, end - start, cov);
+            start = (0 - xp);
         }
+
+        /* Clip sprites on right edge */
+        if ((xp + width) > 256)
+        {
+            end = (256 - xp);
+        }
+
+        /* Where the sprite lands, bit k for the pixel at xp + start + k.
+           The clipping above keeps xp + start inside 0..255. */
+        uint32 cov = 0;
+
+        /* Draw double size sprite */
+        if (vdp.reg[1] & 0x01)
+        {
+            int x;
+            uint32 bit = 1;
+            ctp = getCache((n & 0x1ff) + (row >> 3), (n >> 9) & 3);
+            /* The mask keeps this inside the 64-byte tile. Without it a
+               zoomed 8x16 sprite runs off the end of its cache entry and
+               reads whichever tile happens to sit in the next slot. */
+            uint8 *cache_ptr = (uint8 *)&ctp[((row >> 1) << 3) & 0x38];
+
+            /* Draw sprite line */
+            for (x = start; x < end; x += 1, bit <<= 1)
+            {
+                /* Source pixel from cache */
+                uint8 sp = cache_ptr[(x >> 1)];
+
+                /* Only draw opaque sprite pixels */
+                if (sp)
+                {
+                    /* Note where the sprite is for collision detection */
+                    cov |= bit;
+
+                    /* Resolve sprite against background */
+                    linebuf_ptr[x] = sprite_mix(linebuf_ptr[x], sp);
+                }
+            }
+        }
+        else /* Regular size sprite (8x8 / 8x16) */
+        {
+            int x;
+            uint32 bit = 1;
+            ctp = getCache((n & 0x1ff) + (row >> 3), (n >> 9) & 3);
+            uint8 *cache_ptr = (uint8 *)&ctp[(row << 3) & 0x38];
+
+            /* Draw sprite line */
+            for (x = start; x < end; x += 1, bit <<= 1)
+            {
+                /* Source pixel from cache */
+                uint8 sp = cache_ptr[x];
+
+                /* Only draw opaque sprite pixels */
+                if (sp)
+                {
+                    /* Note where the sprite is for collision detection */
+                    cov |= bit;
+
+                    /* Resolve sprite against background */
+                    linebuf_ptr[x] = sprite_mix(linebuf_ptr[x], sp);
+                }
+            }
+        }
+
+        spr_cov_merge(xp + start, end - start, cov);
     }
 }
 
 /* Work out sprite collisions without drawing anything.
 
-   Walks the precomputed list for this line rather than the whole attribute
-   table. The drawing pass above re-reads all 64 entries per scanline to find
-   the handful that land on it, which measured at 11750 entries examined per
+   Walks the same per-line list the drawing pass above does. Rediscovering the
+   sprites per scanline measured at 11750 attribute table entries examined per
    frame against 186 sprite rows actually evaluated - a 63x overhead that
-   dwarfed everything else and is what made this too slow to ship at first. */
+   dwarfed everything else and is what made this too slow to ship at first.
+
+   What is left here that the drawing pass does not do: opacity comes straight
+   out of the VRAM bit-planes instead of the pattern cache, so a skipped frame
+   neither expands tiles nor evicts anything from a cache only a drawn frame
+   reads. */
 static void (render_obj_collision)(int line)
 {
     const uint8 *list = spr_line_list[line];
@@ -889,11 +956,7 @@ void (render_line_collision)(int line)
     if ((!(vdp.reg[1] & 0x40)) || (((vdp.reg[2] & 1) == 0) && (IS_SMS)))
         return;
 
-    if (spr_list_dirty || spr_list_satb != vdp.satb ||
-        spr_list_size != (vdp.reg[1] & 0x03))
-    {
-        spr_list_build();
-    }
+    spr_list_sync();
 
     /* One sprite cannot collide with anything, and the coverage map starts
        empty on every line, so fewer than two is nothing to work out. This has

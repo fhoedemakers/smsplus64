@@ -6,8 +6,15 @@
 
     Costs roughly 1000 COP0 count reads per frame (<0.2%), so it is always
     compiled in; only the on-screen display is toggled at runtime (Z + C-Up).
-    Slots accumulate VR4300 ticks for one second, then frameratecalc() folds
-    them into whole-percent figures and clears the accumulators.
+    Slots accumulate VR4300 ticks for one second, then frameratecalc() divides
+    each by the frames emulated in that second and clears the accumulators.
+
+    The figures are time per frame, not a percentage of the second. A percentage
+    is a share of a wall clock that includes the pacing wait, so a slot's figure
+    moved whenever a *different* slot moved, or whenever the frame rate changed -
+    which made two readings of the same game impossible to compare. Time per
+    frame is absolute: 830 is 8.30 ms spent in that phase on that frame,
+    whatever the rest of the frame is doing.
 */
 
 #include <stdint.h>
@@ -30,8 +37,9 @@ extern "C"
         PROF_COUNT
     } prof_slot_t;
 
-    extern uint32_t prof_acc[PROF_COUNT];   /* ticks accumulated this second */
-    extern uint8_t prof_shown[PROF_COUNT];  /* percent of the last full second */
+    extern uint32_t prof_acc[PROF_COUNT];   /* ticks accumulated this second   */
+    extern uint16_t prof_shown[PROF_COUNT]; /* tens of microseconds per frame,
+                                               averaged over the last second   */
 
 /* PROF_BEGIN declares a local holding the start tick, so a matching pair must
    sit in the same block. Wrap each region in braces when the same slot is

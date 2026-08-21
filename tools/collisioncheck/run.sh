@@ -8,7 +8,7 @@ OUT=$(mktemp -d)
 trap 'rm -rf "$OUT"' EXIT
 FRAMES=${FRAMES:-20000}
 
-gcc -O2 -DLSB_FIRST -Itools/collisioncheck -I. -Ismsplus \
+gcc -O2 -DLSB_FIRST -DSPR_LIST_CHECK -Itools/collisioncheck -I. -Ismsplus \
     -o "$OUT/collisioncheck" \
     tools/collisioncheck/main.c \
     smsplus/render.c smsplus/vdp.c smsplus/sms.c smsplus/z80.c \
