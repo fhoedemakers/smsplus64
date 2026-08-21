@@ -341,7 +341,7 @@ void clearinput()
         }
     }
 }
-#define NUMSETTINGS 6
+#define NUMSETTINGS 7
 
 // Settings screen, so the in-game button combinations do not have to be
 // remembered. Reachable with START from the rom browser.
@@ -364,23 +364,34 @@ static void settingsScreen(const char *mountPoint)
 
         snprintf(line, sizeof(line), "Frameskip  : %s", settings_frameskip_name(settings.frameskip));
         putText(1, STARTROW + 0, line, fgcolor, bgcolor);
-        snprintf(line, sizeof(line), "Sound      : %s", settings.sound ? "On" : "Off");
+        snprintf(line, sizeof(line), "Blink fix  : %s", settings.blinkFix ? "On" : "Off");
         putText(1, STARTROW + 1, line, fgcolor, bgcolor);
-        snprintf(line, sizeof(line), "Frame rate : %s", settings.showFps ? "Shown" : "Hidden");
+        snprintf(line, sizeof(line), "Sound      : %s", settings.sound ? "On" : "Off");
         putText(1, STARTROW + 2, line, fgcolor, bgcolor);
-        snprintf(line, sizeof(line), "Profiler   : %s", settings.showProfiler ? "Shown" : "Hidden");
+        snprintf(line, sizeof(line), "Frame rate : %s", settings.showFps ? "Shown" : "Hidden");
         putText(1, STARTROW + 3, line, fgcolor, bgcolor);
-        snprintf(line, sizeof(line), "Upscale    : %s", settings.upscale ? "On" : "Off");
+        snprintf(line, sizeof(line), "Profiler   : %s", settings.showProfiler ? "Shown" : "Hidden");
         putText(1, STARTROW + 4, line, fgcolor, bgcolor);
-        snprintf(line, sizeof(line), "Autostart  : %s", settings.autostart ? "On" : "Off");
+        snprintf(line, sizeof(line), "Upscale    : %s", settings.upscale ? "On" : "Off");
         putText(1, STARTROW + 5, line, fgcolor, bgcolor);
+        snprintf(line, sizeof(line), "Autostart  : %s", settings.autostart ? "On" : "Off");
+        putText(1, STARTROW + 6, line, fgcolor, bgcolor);
 
-        putText(1, STARTROW + 7, "Upscale fills the screen with the", fgcolor, bgcolor);
-        putText(1, STARTROW + 8, "picture instead of leaving a border.", fgcolor, bgcolor);
-        putText(1, STARTROW + 10, "Autostart runs the game picked in", fgcolor, bgcolor);
-        putText(1, STARTROW + 11, "the flashcart menu. Turn it off if", fgcolor, bgcolor);
-        putText(1, STARTROW + 12, "the last game keeps restarting.", fgcolor, bgcolor);
-        putText(1, STARTROW + 14, "Saved to the SD card on exit.", fgcolor, bgcolor);
+        putText(1, STARTROW + 8,  "Some games blink a character on and", fgcolor, bgcolor);
+        putText(1, STARTROW + 9,  "off after it is hit. Frameskip can", fgcolor, bgcolor);
+        putText(1, STARTROW + 10, "drop just the frames it is drawn on,", fgcolor, bgcolor);
+        putText(1, STARTROW + 11, "so it seems to disappear instead.", fgcolor, bgcolor);
+        putText(1, STARTROW + 12, "Blink fix varies which frames are", fgcolor, bgcolor);
+        putText(1, STARTROW + 13, "drawn so the blink stays visible,", fgcolor, bgcolor);
+        putText(1, STARTROW + 14, "at a little smoothness. Try it if a", fgcolor, bgcolor);
+        putText(1, STARTROW + 15, "character vanishes when it is hit.", fgcolor, bgcolor);
+
+        putText(1, STARTROW + 17, "Upscale fills the screen with the", fgcolor, bgcolor);
+        putText(1, STARTROW + 18, "picture instead of leaving a border.", fgcolor, bgcolor);
+        putText(1, STARTROW + 20, "Autostart runs the game picked in", fgcolor, bgcolor);
+        putText(1, STARTROW + 21, "the flashcart menu. Turn it off if", fgcolor, bgcolor);
+        putText(1, STARTROW + 22, "the last game keeps restarting.", fgcolor, bgcolor);
+        putText(1, STARTROW + 24, "Saved to the SD card on exit.", fgcolor, bgcolor);
 
         putText(1, SCREEN_ROWS - 1, "Left/Right: change, B: Back", fgcolor, bgcolor);
         DrawScreen(STARTROW + row);
@@ -408,11 +419,12 @@ static void settingsScreen(const char *mountPoint)
                 if (settings.frameskip > 3) settings.frameskip = -1;
                 if (settings.frameskip < -1) settings.frameskip = 3;
                 break;
-            case 1: settings.sound = !settings.sound; break;
-            case 2: settings.showFps = !settings.showFps; break;
-            case 3: settings.showProfiler = !settings.showProfiler; break;
-            case 4: settings.upscale = !settings.upscale; break;
-            case 5: settings.autostart = !settings.autostart; break;
+            case 1: settings.blinkFix = !settings.blinkFix; break;
+            case 2: settings.sound = !settings.sound; break;
+            case 3: settings.showFps = !settings.showFps; break;
+            case 4: settings.showProfiler = !settings.showProfiler; break;
+            case 5: settings.upscale = !settings.upscale; break;
+            case 6: settings.autostart = !settings.autostart; break;
             }
             changed = true;
         }

@@ -10,6 +10,8 @@
   to change frameskip, sound and the frame rate display without having to remember
   button combinations. Your settings are saved on the SD card and restored the next
   time you start the emulator.
+- Blink fix setting, off by default. Turn it on if a character disappears for a
+  moment when it is hit instead of blinking.
 - Frameskip, set to automatic by default. Games keep running at the right speed
   even when the Nintendo 64 cannot draw every frame, and games that already run
   at full speed are left alone. Change it in the settings if you prefer.
@@ -24,6 +26,8 @@
 - Master System games run considerably faster. Game Gear games run at full speed.
 - Sound is smoother, now that games keep running at full speed.
 - The "Segaaa" shout and other digitized speech no longer crackles.
+- Games that rely on sprite collision now play the same with frameskip on as with
+  it off, and hits behind scenery are picked up as they are on a real console.
 - Game Gear games no longer start with completely wrong colours. The console type
   is now taken from the ROM itself instead of from the file name.
 - ROMs with upper case file extensions (.GG, .SMS) are now listed.
@@ -38,8 +42,6 @@
   starts to always get the browser.
 - Sound can be missing when you start a second game from within the built-in filebrowser without resetting the console
   in between. Resetting the console restores it.
-- A few games rely on sprite collision and can behave differently while frameskip
-  is active. Set Frameskip to Off in the settings if you run into this.
 
 ## v0.7
 

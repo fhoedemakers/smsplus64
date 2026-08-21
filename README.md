@@ -93,6 +93,7 @@ a setting, Left and Right to change it, and B to go back.
 | Setting | What it does |
 | --- | --- |
 | Frameskip | Skips drawing some frames so games keep running at the right speed. The default `Auto` only skips when a game cannot keep up, so games that already run at full speed still draw every frame. `Off` never skips, but games may run slow. `1`, `2` and `3` always skip that many. |
+| Blink fix | Some games blink a character on and off after it is hit. Frameskip can drop exactly the frames the character is drawn on, so it seems to disappear for a moment instead of blinking. This varies which frames are drawn so the blink stays visible. It makes the picture a little less smooth, so it is off unless you turn it on. Only frameskip `1` and `3` are affected; `2` and `Off` never had the problem. |
 | Sound | Turns the sound on or off. Turning it off makes games run slightly faster. |
 | Frame rate | Shows a small frame rate display in the corner of the screen. |
 | Profiler | Shows a breakdown of where the emulator spends its time. Mainly useful for troubleshooting. |
@@ -120,8 +121,6 @@ With Upscale on it is drawn over the picture, hiding the first few rows.
   starts to always get the browser.
 - Sound can be missing when you start a second game without switching the console
   off in between. Switching the console off and on again restores it.
-- A few games rely on sprite collision and can behave differently while frameskip
-  is active. Set Frameskip to Off in the settings if you run into this.
 - Settings are only saved when a `smsPlus64` folder exists on the SD card. The
   settings screen says so if it cannot save them.
 
