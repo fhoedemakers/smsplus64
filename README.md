@@ -93,10 +93,10 @@ a setting, Left and Right to change it, and B to go back.
 
 | Setting | What it does |
 | --- | --- |
-| Frameskip | Skips drawing some frames so games keep running at the right speed. The default `Auto` only skips when a game cannot keep up, so games that already run at full speed still draw every frame. `Off` never skips, but games may run slow. `1`, `2` and `3` always skip that many. |
+| Frameskip | Skips drawing some frames so games keep running at the right speed. `Auto` only skips when a game cannot keep up, so games that already run at full speed still draw every frame. `Off` never skips, but games may run slow. `1` (default), `2` and `3` always skip that many. |
 | Blink fix | Some games blink a character on and off after it is hit. Frameskip can drop exactly the frames the character is drawn on, so it seems to disappear for a moment instead of blinking. This varies which frames are drawn so the blink stays visible. It makes the picture a little less smooth, so it is off unless you turn it on. Only frameskip `1` and `3` are affected; `2` and `Off` never had the problem. |
 | Sound | Turns the sound on or off. Turning it off makes games run slightly faster. |
-| Frame rate | Shows a small frame rate display in the corner of the screen. |
+| Frame rate | Shows among other stats a small frame rate display in the corner of the screen. (see below) |
 | Profiler | Shows a breakdown of where the emulator spends its time. Mainly useful for troubleshooting. |
 | Upscale | Fills the screen with the picture. Turn it off if you would rather have a 1:1 picture with a black border around it. |
 | Autostart | When on, a game picked in the Everdrive or flashcart menu starts straight away. Turn it off if you would rather always see the game browser. |
