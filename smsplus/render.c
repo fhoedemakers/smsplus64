@@ -895,6 +895,16 @@ void (render_line_collision)(int line)
         spr_list_build();
     }
 
+    /* One sprite cannot collide with anything, and the coverage map starts
+       empty on every line, so fewer than two is nothing to work out. This has
+       to come before render_obj_collision() rather than inside it: measured on
+       Aladdin and Sonic, 70% of lines carry no sprite at all and only 21% to
+       31% carry two or more, so on most lines the setup - the call, the 32-byte
+       coverage clear, the register and attribute table reads - was the entire
+       cost. */
+    if (spr_line_count[line] < 2)
+        return;
+
     render_obj_collision(line);
 }
 
