@@ -1,5 +1,6 @@
 :
-# Run on Real Hardware (Nintendo 64)
+# Run on Real Hardware (Nintendo 64 with Everdrive X7)
+# Everdrive X7 must be inserted into the Nintendo 64 and the console must be switched on and in the menu.
 # Needs usb64.exe ( https://krikzz.com/pub/support/everdrive-64/x-series/dev/usb64-v1.0.0.3.zip )
 # This script is for Windows WSL (Windows Subsystem for Linux), since USB64 is a Windows tool.
 z64file=smsPlus64.z64
