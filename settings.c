@@ -11,6 +11,7 @@ Settings settings;
 void settings_setdefaults(void)
 {
     settings.frameskip = -1; /* automatic */
+    settings.blinkFix = 0;   /* costs a little smoothness, so ask for it */
     settings.sound = 1;
     settings.showFps = 0;
     settings.showProfiler = 0;
@@ -61,6 +62,8 @@ bool settings_load(const char *mountPoint)
         int value;
         if (sscanf(line, "frameskip=%d", &value) == 1)
             settings.frameskip = clamp(value, -1, 3);
+        else if (sscanf(line, "blinkfix=%d", &value) == 1)
+            settings.blinkFix = (value != 0);
         else if (sscanf(line, "sound=%d", &value) == 1)
             settings.sound = (value != 0);
         else if (sscanf(line, "fps=%d", &value) == 1)
@@ -90,6 +93,9 @@ bool settings_save(const char *mountPoint)
     fprintf(file, "# smsPlus64 settings\n");
     fprintf(file, "# frameskip: -1 automatic, 0..3 frames skipped between drawn ones\n");
     fprintf(file, "frameskip=%d\n", settings.frameskip);
+    fprintf(file, "# blinkfix: 1 vary which frames are drawn so sprites that blink every frame\n");
+    fprintf(file, "#           are not lost to frameskip, 0 off\n");
+    fprintf(file, "blinkfix=%d\n", settings.blinkFix);
     fprintf(file, "sound=%d\n", settings.sound);
     fprintf(file, "fps=%d\n", settings.showFps);
     fprintf(file, "profiler=%d\n", settings.showProfiler);

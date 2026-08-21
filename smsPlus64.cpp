@@ -148,7 +148,57 @@ static int overlay_band_height(void)
 #define FRAME_TICKS (TICKS_PER_SECOND / 60)
 
 static int frameskip_mode = FS_AUTO;
-static int skip_phase = 0;
+
+// Frames still to be skipped before the next drawn one. Zero means draw this
+// frame. Counting down rather than up modulo the period leaves room to lengthen
+// a single cycle, which is what the phase rotation below needs.
+static int skip_left = 0;
+
+// Dropping whole frames samples the emulated picture at a fixed rate, and a game
+// that toggles a sprite every frame is a signal at exactly that rate. Where the
+// skip period is even - levels 1 and 3, drawing frames 0,2,4,6 and 0,4,8,12 -
+// every drawn frame has the same parity, so such a sprite is either always
+// caught or always missed. Aladdin flashes its hero that way after a hit, and at
+// those levels the sprite vanished for the length of the flash instead of
+// blinking. Level 2 draws one frame in three, so its parity alternates by itself
+// and it never showed the problem.
+//
+// Inserting one extra skipped frame every FS_PHASE_RUN drawn frames flips the
+// parity, so both phases get sampled. It renders less rather than more, so it
+// costs no time, and the emulated rate stays at 60 either way - only the
+// displayed rate drops. It cannot be made faithful: a fixed-rate sampler
+// against a same-rate signal aliases whatever the phase, so the choice is only
+// which artefact to have.
+//
+// This is the Blink fix setting, off by default, because both the lower
+// displayed rate and the uneven gap are a real cost to every game while only a
+// few need it. Off, the cadence is exactly the plain "% (level + 1)" it was
+// before, at every level. Levels 0 and 2 are left alone even when it is on:
+// neither aliases, so there is nothing to trade smoothness for.
+
+// Drawn frames between parity flips. This is the one knob here, and it trades
+// how quickly a blink is sampled against how much smoothness it costs: each
+// flip spends one extra skipped frame, so a shorter run means both a lower
+// displayed rate and a longer gap more often.
+//
+//   run   draw rate   displayed   flip interval   blink reads as
+//     4      4 / 9      26.7 fps      0.15 s      a fast flicker, choppy picture
+//     8      8 / 17     28.2 fps      0.28 s      a slow blink  <-- chosen
+//    16     16 / 33     29.1 fps      0.55 s      about one blink per flash
+//
+// The figures are for level 1. A cycle is FS_PHASE_RUN drawn frames plus
+// FS_PHASE_RUN * level + 1 skipped ones, so the flip interval grows with the
+// skip period: level 3 at run 8 gives 8/33, 14.5 fps and 0.55 s, about twice
+// the interval level 1 has at the same run.
+//
+// 8 is a compromise. Anything long enough to keep the displayed rate near 30
+// blinks slower than the game intended, and anything fast enough to look like
+// the real flicker judders. If it wants changing, the thing to check on
+// hardware is scrolling at level 1 with a game that has no flash to distract
+// from the pacing.
+#define FS_PHASE_RUN 8
+static bool blink_fix_enabled = false;
+static int drawn_since_flip = 0;
 
 // AUTO picks a skip level and holds it, rather than deciding frame by frame.
 // Deciding per frame gives an irregular cadence - a mix of drawing every frame
@@ -375,6 +425,7 @@ void enableordisableTimer()
 extern "C" void settings_apply(void)
 {
     frameskip_mode = settings.frameskip;
+    blink_fix_enabled = (settings.blinkFix != 0);
     soundEnabled = settings.sound;
     snd.enabled = soundEnabled;
     // Turning either overlay off leaves its pixels on every framebuffer, so
@@ -391,7 +442,8 @@ extern "C" void settings_apply(void)
 
     // Start the frameskip decision from scratch so a changed level takes effect
     // immediately instead of finishing the previous cadence.
-    skip_phase = 0;
+    skip_left = 0;
+    drawn_since_flip = 0;
     auto_level = 0;
     auto_render_ticks = auto_skip_ticks = 0;
     auto_render_n = auto_skip_n = 0;
@@ -401,6 +453,7 @@ extern "C" void settings_apply(void)
 extern "C" void settings_capture(void)
 {
     settings.frameskip = frameskip_mode;
+    settings.blinkFix = blink_fix_enabled ? 1 : 0;
     settings.sound = soundEnabled ? 1 : 0;
     settings.showFps = fps_enabled ? 1 : 0;
     settings.showProfiler = prof_enabled ? 1 : 0;
@@ -520,7 +573,8 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
                     frameskip_mode = FS_AUTO;
                 else
                     frameskip_mode++;
-                skip_phase = 0;
+                skip_left = 0;
+                drawn_since_flip = 0;
                 auto_render_ticks = auto_skip_ticks = 0;
                 auto_render_n = auto_skip_n = 0;
                 auto_tune_countdown = FS_TUNE_INTERVAL;
@@ -635,7 +689,7 @@ static void inGameSettings()
 {
     DWORD pad1, pad2, sys;
     char line[40];
-    const int rows = 6;
+    const int rows = 7;
     int row = 0;
     bool changed = false;
 
@@ -660,15 +714,18 @@ static void inGameSettings()
                 sprintf(line, "Frameskip  %s", settings_frameskip_name(settings.frameskip));
                 break;
             case 1:
-                sprintf(line, "Sound      %s", settings.sound ? "On" : "Off");
+                sprintf(line, "Blink fix  %s", settings.blinkFix ? "On" : "Off");
                 break;
             case 2:
-                sprintf(line, "Frame rate %s", settings.showFps ? "Shown" : "Hidden");
+                sprintf(line, "Sound      %s", settings.sound ? "On" : "Off");
                 break;
             case 3:
-                sprintf(line, "Profiler   %s", settings.showProfiler ? "Shown" : "Hidden");
+                sprintf(line, "Frame rate %s", settings.showFps ? "Shown" : "Hidden");
                 break;
             case 4:
+                sprintf(line, "Profiler   %s", settings.showProfiler ? "Shown" : "Hidden");
+                break;
+            case 5:
                 sprintf(line, "Upscale    %s", settings.upscale ? "On" : "Off");
                 break;
             default:
@@ -680,11 +737,14 @@ static void inGameSettings()
             graphics_draw_text(dc, 24, 56 + i * 12, line);
         }
 
-        // Below the sixth row, which ends at y=124.
+        // Below the seventh row, which ends at y=136.
         graphics_set_color(CWHITE, CBLACK);
-        graphics_draw_text(dc, 24, 132, "Up/Down     select");
-        graphics_draw_text(dc, 24, 144, "Left/Right  change");
-        graphics_draw_text(dc, 24, 156, "B           close");
+        graphics_draw_text(dc, 24, 148, "Up/Down     select");
+        graphics_draw_text(dc, 24, 160, "Left/Right  change");
+        graphics_draw_text(dc, 24, 172, "B           close");
+        graphics_draw_text(dc, 24, 196, "Blink fix stops sprites that");
+        graphics_draw_text(dc, 24, 208, "blink from vanishing while");
+        graphics_draw_text(dc, 24, 220, "frameskip is on.");
 
         display_show(dc);
         processinput(&pad1, &pad2, &sys, false);
@@ -711,10 +771,11 @@ static void inGameSettings()
                 if (settings.frameskip > 3) settings.frameskip = -1;
                 if (settings.frameskip < -1) settings.frameskip = 3;
                 break;
-            case 1: settings.sound = !settings.sound; break;
-            case 2: settings.showFps = !settings.showFps; break;
-            case 3: settings.showProfiler = !settings.showProfiler; break;
-            case 4: settings.upscale = !settings.upscale; break;
+            case 1: settings.blinkFix = !settings.blinkFix; break;
+            case 2: settings.sound = !settings.sound; break;
+            case 3: settings.showFps = !settings.showFps; break;
+            case 4: settings.showProfiler = !settings.showProfiler; break;
+            case 5: settings.upscale = !settings.upscale; break;
             default: settings.autostart = !settings.autostart; break;
             }
             changed = true;
@@ -758,7 +819,8 @@ void process(void)
 
     // Start by drawing every frame and let the tuner settle from there, so a
     // game that can keep up never skips.
-    skip_phase = 0;
+    skip_left = 0;
+    drawn_since_flip = 0;
     auto_level = 0;
     auto_render_ticks = auto_skip_ticks = 0;
     auto_render_n = auto_skip_n = 0;
@@ -777,7 +839,7 @@ void process(void)
             continue;
         }
 
-        bool render_frame = (skip_phase == 0);
+        bool render_frame = (skip_left == 0);
 
         // Whatever the blit does not cover keeps its old contents on all three
         // framebuffers, so any change to the shape of the drawn area strands
@@ -996,7 +1058,25 @@ void process(void)
             auto_frameskip_tune();
         }
 
-        skip_phase = (skip_phase + 1) % (frameskip_level() + 1);
+        if (render_frame)
+        {
+            int level = frameskip_level();
+
+            skip_left = level;
+
+            // An odd level is an even skip period, which is the case that locks
+            // the drawn frames to one parity.
+            if (blink_fix_enabled && (level & 1) &&
+                (++drawn_since_flip >= FS_PHASE_RUN))
+            {
+                drawn_since_flip = 0;
+                skip_left += 1;
+            }
+        }
+        else if (skip_left > 0)
+        {
+            skip_left -= 1;
+        }
     }
 
     // Do not leave a rdpq_detach_show() in flight. Its display_show() runs from

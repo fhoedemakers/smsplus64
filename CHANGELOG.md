@@ -10,6 +10,8 @@
   to change frameskip, sound and the frame rate display without having to remember
   button combinations. Your settings are saved on the SD card and restored the next
   time you start the emulator.
+- Blink fix setting, off by default. Turn it on if a character disappears for a
+  moment when it is hit instead of blinking.
 - Frameskip, set to automatic by default. Games keep running at the right speed
   even when the Nintendo 64 cannot draw every frame, and games that already run
   at full speed are left alone. Change it in the settings if you prefer.

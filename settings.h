@@ -13,6 +13,7 @@ extern "C"
     typedef struct
     {
         int frameskip;    /* -1 automatic, else 0..3 frames skipped between drawn ones */
+        int blinkFix;     /* 1 vary which frames are drawn so blinking sprites stay visible, 0 off */
         int sound;        /* 0 muted, 1 on */
         int showFps;      /* 0 hidden, 1 shown */
         int showProfiler; /* 0 hidden, 1 shown */
