@@ -1203,44 +1203,46 @@ bool IsRomInjected(RomInfo *info, bool withOffset)
         uint8_t romsize = header.sizeAndRegion & 0b00001111;
         uint8_t region = (header.sizeAndRegion >> 4) & 0b00001111;
         // https://www.smspower.org/Development/ROMHeader
+        //
+        // The size nibble says how much to read, and it cannot be believed.
+        // Cartridge space carries no length of its own, so this is the only
+        // thing to go on - but homebrew routinely ships the 32KB header its
+        // toolchain template came with. The Super Mario Bros conversion is a
+        // 256KB rom declaring 0xC (32KB), and its header checksum agrees with
+        // the 32KB range, so nothing in the header betrays it. Reading 32KB
+        // gave the game 2 of its 16 banks, every bank switch came back mod 2,
+        // and it never reached the code that turns the display on: a black
+        // screen that lasted until the console was reset.
+        //
+        // So 512KB is read for every rom instead, which is already what the
+        // two size codes covering most of the library did. Over-reading a
+        // smaller rom is harmless: the surplus pages hold whatever cartridge
+        // space had in it, and a game only ever selects banks it has, so
+        // cart.pages being too large never comes into play. Only the 1MB code
+        // is still honoured, because those roms genuinely need it and are too
+        // rare to spend the memory on for everything else.
         switch (romsize)
         {
-        case 0:                      // 256KB
-            info->size = 512 * 1024; // 512KB and 1MB Roms are reported in the header as 256KB.
-                                     // Setting Rom size to 512KB also works for 256KB roms.
-            break;                   // Setting rom size to 1MB for 256 or 512KB games does not work.
-                                     // Only a small set of roms are 1MB.
-        case 1:
-            info->size = 512 * 1024;
-            break;
-        case 2:
+        case 2: // 1MB
             info->size = 1024 * 1024;
             break;
+        case 0: // 256KB claimed - also what 512KB and 1MB roms report
+        case 1: // 512KB
         case 0xa:
-            info->size = 8 * 1024;
-            break;
         case 0xb:
-            info->size = 16 * 1024;
-            break;
         case 0xc:
-            info->size = 32 * 1024;
-            break;
         case 0xd:
-            info->size = 48 * 1024;
-            break;
         case 0xe:
-            info->size = 64 * 1024;
+        case 0xf: // 8KB to 128KB claimed - read the full 512KB regardless
+            info->size = 512 * 1024;
             break;
-        case 0xf:
-            info->size = 128 * 1024;
-            break;
-        default:
+        default: // 3 to 9 are unassigned: the header is not one we understand
             debugstdout("Unknown romsize %x\n", romsize);
             info->size = 0; // unknown size
             break;
         }
         info->isGameGear = false;
-        debugstdout("Romsize %x = %d bytes\n", romsize, info->size);
+        debugstdout("Romsize %x, reading %d bytes\n", romsize, info->size);
         debugstdout("Region: %x - ", region);
         switch (region)
         {

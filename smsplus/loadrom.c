@@ -151,7 +151,21 @@ int load_rom(uint8_t *rom, int size, bool isGameGear)
     bitmap.pitch = BMP_WIDTH;
     bitmap.depth = 8;
     cart.rom = start;
+
+    /* Never zero. sms_mapper_w() reduces every bank number modulo this, and a
+       rom under 16K rounds down to no pages at all - which is not a wrong
+       picture but a dead console: gcc compiles the modulo to a divu preceded by
+       "teq v1,zero,0x7", so the first bank switch a game does raises a trap
+       exception. A rom that small has one page as far as the mapper is
+       concerned, and every bank number resolves to it, which is what the
+       hardware does when the cartridge has no bank lines to drive.
+
+       This is a floor, not a rounding: rounding a partial page up would let the
+       mapper select a page the buffer does not hold. */
     cart.pages = (size / 0x4000);
+    if (cart.pages == 0)
+        cart.pages = 1;
+
     cart.type = isGameGear ? TYPE_GG : TYPE_SMS;
     return 1;
 }

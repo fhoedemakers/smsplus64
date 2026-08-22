@@ -666,10 +666,24 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
                         break;
                     }
                     int size = filesize(pFile);
+                    // A copier header makes the file an odd number of 512 byte
+                    // blocks; a rom on its own never is. It is not part of the
+                    // rom, so it comes off the size here, before anything is
+                    // allocated. Taking it off afterwards - as this used to -
+                    // left the last 512 bytes of the buffer never read while
+                    // romInfo.size still counted them as rom, so whatever the
+                    // allocator handed over was passed to the emulator as
+                    // cartridge data.
+                    int romheader = ((size / 512) & 1) ? 512 : 0;
+                    if (romheader)
+                    {
+                        debugf("Skipping 512 byte header\n");
+                        size -= romheader;
+                    }
                     if (size > 0)
                     {
                         showLoadScreen();
-                        debugf("Size of file %s is %d\n", filetoopen, size);
+                        debugf("Size of rom in %s is %d\n", filetoopen, size);
                         romInfo.size = size;
                         romInfo.rom = (uint8_t *)malloc(size);
                         romInfo.isGameGear = Frens::cstr_endswith(selectedRomOrFolder, ".gg");
@@ -683,22 +697,30 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
                         else
                         {
                             debugf("Allocated %d bytes for rom, reading file\n", size);
-                            // skip possible 512 byte header if size / 512 has the lsb bit set
-                            if ((size / 512) & 1)
+                            fseek(pFile, romheader, SEEK_SET);
+                            // A short read would leave the tail of the buffer
+                            // uninitialised, which is the thing this block is
+                            // careful not to do, so it is an error rather than
+                            // something to run anyway.
+                            if ((int)fread(romInfo.rom, 1, size, pFile) != size)
                             {
-                                debugf("Skipping 512 byte header\n");
-                                fseek(pFile, 512, SEEK_SET);
-                                size -= 512;
+                                snprintf(globalErrorMessage, 40, "Cannot read rom");
+                                errorInSavingRom = true;
+                                debugf("Short read on %s\n", filetoopen);
+                                free(romInfo.rom);
+                                romInfo.rom = nullptr;
+                                romInfo.size = 0;
                             }
-                            
-                            fread(romInfo.rom, 1, size, pFile);
-                            fclose(pFile);
-                            break;
+                            else
+                            {
+                                fclose(pFile);
+                                break;
+                            }
                         }
                     }
                     else
                     {
-                        debugf("Size of file %s is 0\n", filetoopen);
+                        debugf("Nothing to load from %s\n", filetoopen);
                     }
                     fclose(pFile);
                 }

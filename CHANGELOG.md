@@ -31,6 +31,9 @@
 - ROMs with upper case file extensions (.GG, .SMS) are now listed.
 - The built-in game browser now shows which folder it is listing, and tells you when it
   cannot find any games there.
+- Homebrew games no longer come up as a black screen when started from the
+  Everdrive or N64FlashcartMenu. Their ROM header often understates how big
+  they are, and only that much of the game was being loaded.
 - Replaced deprecated controller functions.
 
 ### Known issues
