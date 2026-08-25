@@ -19,7 +19,7 @@ Built with [Libdragon](https://github.com/DragonMinded/libdragon)
 | Nintendo 64, NTSC | ✅ | Tested with a SummerCart64 and an EverDrive-64 X7. |
 | Nintendo 64, PAL | ❔ | Untested, but will probably work |
 | ModRetro M64 (FPGA) | ⚠️ | With an EverDrive-64 X7, games start from the Everdrive menu, but the built-in game browser does not see the SD card. [#12](https://github.com/fhoedemakers/smsplus64/issues/12) Other flashcarts are untested. |
-| Analogue 3D (FPGA) | ❔ | Untested. |
+| Analogue 3D (FPGA) | ✅ | Tested with a SummerCart64 and an EverDrive-64 X7. |
 
 ### Flashcarts
 
