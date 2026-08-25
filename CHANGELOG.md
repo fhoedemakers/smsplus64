@@ -2,6 +2,18 @@
 
 ## v0.8
 
+### Speed
+
+Emulated frames per second on real hardware, at the default settings. 60 is full
+speed.
+
+| | v0.7 | v0.8 |
+| --- | --- | --- |
+| Master System | 30-40 | 59 |
+| Game Gear | not measured | 58 |
+
+Master System draws every second frame to hold that speed, Game Gear draws them all.
+
 ### Features
 
 - The picture now fills the screen. Turn the new Upscale setting off for the old
