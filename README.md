@@ -1,12 +1,44 @@
 # smsPlus64
 
-A Sega Master System and Game Gear Emulator running on the Nintendo 64. Use it on real hardware with a flashcart. Tested with the [EverDrive-64 X7](https://krikzz.com/our-products/cartridges/ed64x7.html) and [SummerCart64](https://summercart64.dev/) on both an NTSC and PAL Nintendo 64.
+A Sega Master System and Game Gear Emulator running on the Nintendo 64. Use it on real hardware with a flashcart. See [Compatibility](#compatibility) for the hardware it has been tested on.
 
 > [!NOTE]
 > This project is more of a fun thing for me to try if it works. Help for improvement is always welcome.
 
 
 Built with [Libdragon](https://github.com/DragonMinded/libdragon)
+
+## Compatibility
+
+✅ works &nbsp;&nbsp; ⚠️ works, with a catch &nbsp;&nbsp; ❌ does not work &nbsp;&nbsp; ❔ untested
+
+### Consoles
+
+| Console | Status | Notes |
+| --- | --- | --- |
+| Nintendo 64, NTSC | ✅ | Tested with a SummerCart64 and an EverDrive-64 X7. |
+| Nintendo 64, PAL | ❔ | Untested, but will probably work |
+| ModRetro M64 (FPGA) | ⚠️ | With an EverDrive-64 X7, games start from the Everdrive menu, but the built-in game browser does not see the SD card. [#12](https://github.com/fhoedemakers/smsplus64/issues/12) Other flashcarts are untested. |
+| Analogue 3D (FPGA) | ❔ | Untested. |
+
+### Flashcarts
+
+| Flashcart | Status | Notes |
+| --- | --- | --- |
+| [SummerCart64](https://summercart64.dev/) | ✅ | Games can also be started straight from [N64FlashcartMenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu), see [below](#how-to-use-on-real-hardware-with-a-summercart64-and-n64flashcartmenu). |
+| [EverDrive-64 X7](https://krikzz.com/our-products/cartridges/ed64x7.html) | ✅ | Games can also be started straight from the Everdrive menu, see [below](#how-to-use-on-real-hardware-with-an-everdrive-64-x7). Needs Everdrive OS v3.09 or higher. |
+| EverDrive-64 V3 | ⚠️ | Shows an invalid checksum warning on boot. The emulator itself runs fine. [#11](https://github.com/fhoedemakers/smsplus64/issues/11) |
+| [EverDrive-64 PRO](https://krikzz.com/our-products/cartridges/everdrive-64-pro.html) | ❌ | The emulator does not start yet. [#13](https://github.com/fhoedemakers/smsplus64/issues/13) |
+| 64drive | ❔ | Untested. |
+
+### Emulators
+
+| Emulator | Status | Notes |
+| --- | --- | --- |
+| [Ares](https://ares-emu.net/download) | ✅ | There is no SD card, so build with `build_dfs.sh` to bake your roms into the rom, see [Using an Emulator](#using-an-emulator). |
+
+Reports for anything untested here are welcome.
+
 
 <img src="/assets/libdragon.png" width="200" />
 
@@ -140,7 +172,6 @@ With Upscale on both displays are drawn over the picture, hiding the first few r
 
 ## Known issues
 
-- Emulator does not yet run on the [new Everdrive PRO](https://krikzz.com/our-products/cartridges/everdrive-64-pro.html)
 - Starting the emulator on its own can start the last game you played from the
   Everdrive menu instead of showing the game browser. Hold Z while the emulator
   starts to always get the browser.
