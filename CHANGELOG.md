@@ -33,7 +33,7 @@
   cannot find any games there.
 - Homebrew games no longer come up as a black screen when started from the
   Everdrive or N64FlashcartMenu. Their ROM header often understates how big
-  they are, and only that much of the game was being loaded.
+  they are, and only that much of the game was being loaded. [#8](https://github.com/fhoedemakers/smsplus64/issues/8)
 - Replaced deprecated controller functions.
 
 ### Known issues
@@ -42,7 +42,12 @@
   Everdrive menu instead of showing the game browser. Hold Z while the emulator
   starts to always get the browser.
 - Sound can be missing when you start a second game from within the built-in filebrowser without resetting the console
-  in between. Resetting the console restores it.
+  in between. Resetting the console restores it. [#10](https://github.com/fhoedemakers/smsplus64/issues/10)
+- The emulator does not start on the EverDrive 64 PRO. [#13](https://github.com/fhoedemakers/smsplus64/issues/13)
+- On an EverDrive 64 V3 the emulator shows an invalid checksum warning on boot. It runs
+  fine. [#11](https://github.com/fhoedemakers/smsplus64/issues/11)
+- On a ModRetro M64 the built-in game browser does not see the SD card. Games can still
+  be started from the Everdrive menu. [#12](https://github.com/fhoedemakers/smsplus64/issues/12)
 
 ## v0.7
 
@@ -61,7 +66,7 @@
 
 ### Features
 
-Using a [SummerCart64](https://github.com/Polprzewodnikowy/SummerCart64), Master system and GameGear roms can be started directly from [N64FlashCartmenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu).
+Using a [SummerCart64](https://github.com/Polprzewodnikowy/SummerCart64), Master system and GameGear roms can be started directly from [N64FlashCartmenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu). [#4](https://github.com/fhoedemakers/smsplus64/issues/4)
 
 For this to work with N64FlashCartmenu, copy smsPlus64.z64 to the menu/emulators folder of your SD-card. More info in the N64FlashcartMenu [Getting Started Guide](https://github.com/Polprzewodnikowy/N64FlashcartMenu/blob/main/docs/00_getting_started_sd.md)
 
@@ -104,7 +109,7 @@ For this to work with N64FlashCartmenu, copy smsPlus64.z64 to the menu/emulators
 ## v0.2
 
 ### Features
-- Enabled audio
+- Enabled audio [#1](https://github.com/fhoedemakers/smsplus64/issues/1)
 
 ### Fixes
 - None
