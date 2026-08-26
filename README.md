@@ -207,3 +207,39 @@ You can also use an Emulator. Libdragon suggests [Ares](https://ares-emu.net/dow
 
 The files `run64.sh`, `cp64.sh` are used to  run or copy `smsPlus64.z64` to the Everdrive, using an USB cable. (using `usb64.exe`). Since usb64.exe runs on Windows, you need to build the project using WSL (Windows Subsystem for Linux) in order to use these scripts. If you are using Linux, you have to copy the file manually to the Everdrive.
 
+## Credits
+
+This emulator is other people's work brought together on a Nintendo 64.
+
+**Emulation**
+
+- [SMS Plus](https://segaretro.org/SMS_Plus) by **Charles MacDonald** — the Sega Master System and Game Gear emulator core in `smsplus/` that this project is built on.
+- The Z80 CPU core is **Juergen Buchmueller**'s portable Z80 emulator.
+- The core reached this project by way of [pico-smsplus](https://github.com/fhoedemakers/pico-smsplus), the Raspberry Pi Pico version of the same emulator.
+
+**Nintendo 64 side**
+
+- [Libdragon](https://github.com/DragonMinded/libdragon) by **DragonMinded** and its contributors — the open source SDK everything here is built with: display and RDP, audio, controllers, and the filesystem code. The dragon in the game browser is its logo.
+- [libcart](https://github.com/devwizard64/libcart) by **devwizard** ([@devwizard64](https://github.com/devwizard64)), as bundled with Libdragon — flashcart detection and SD card access on the EverDrive-64 and the SummerCart64.
+- [FatFs](http://elm-chan.org/fsw/ff/00index_e.html) by **ChaN**, also by way of Libdragon — reading the SD card.
+- [SummerCart64](https://summercart64.dev/) and [N64FlashcartMenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu) by **Mateusz Faderewski** ([@Polprzewodnikowy](https://github.com/Polprzewodnikowy)) — the flashcart and menu that games can be started from directly.
+- Thanks to **Wayne Reilly** and **Dan Moore** for testing releases on hardware this project does not have and reporting back.
+
+**This project**
+
+- **smsPlus64** — the port to the Nintendo 64, the game browser, the settings screen and the renderer — is by **Frank Hoedemakers** ([@fhoedemakers](https://github.com/fhoedemakers)).
+- The game browser and the `Frens::` helpers are the same ideas as in [pico-infonesPlus](https://github.com/fhoedemakers/pico-infonesPlus) and the other emulators in that family, rewritten here for Libdragon.
+
+## Use of AI
+
+Part of the code and the documentation was written with the assistance of
+[Anthropic Claude Opus](https://www.anthropic.com/claude/opus), through
+[Claude Code](https://claude.com/claude-code). It helped with:
+
+- the speed work in v0.8: the per-scanline renderer, frameskip and its automatic cadence, building the sprite list once per frame, and choosing the Z80 optimization level by measurement
+- the sound work: generating the PSG per scanline, so digitized speech no longer crackles
+- keeping sprite collision correct on skipped frames, and the Blink fix setting
+- the settings screen and saving settings to the SD card
+- filling the screen with the picture (Upscale), taking the console type from the ROM instead of the file name, and loading the whole ROM whatever its header claims
+- the frame rate and profiler overlay, and the `tools/collisioncheck` host harness
+- this readme and the changelog
