@@ -61,6 +61,10 @@ Master System draws every second frame to hold that speed, Game Gear draws them 
 - On a ModRetro M64 the built-in game browser does not see the SD card. Games can still
   be started from the Everdrive menu. [#12](https://github.com/fhoedemakers/smsplus64/issues/12)
 
+### Thanks
+
+Thanks to Wayne Reilly and Dan Moore for testing this release.
+
 ## v0.7
 
 ### Features
