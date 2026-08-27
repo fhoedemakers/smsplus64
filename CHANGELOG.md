@@ -46,15 +46,16 @@ Master System draws every second frame to hold that speed, Game Gear draws them 
 - Homebrew games no longer come up as a black screen when started from the
   Everdrive or N64FlashcartMenu. Their ROM header often understates how big
   they are, and only that much of the game was being loaded. [#8](https://github.com/fhoedemakers/smsplus64/issues/8)
+- Starting a second game from the built-in game browser no longer comes up silent, and
+  no longer crashes on some flashcarts. [#10](https://github.com/fhoedemakers/smsplus64/issues/10)
+  [#14](https://github.com/fhoedemakers/smsplus64/issues/14)
 - Replaced deprecated controller functions.
+- Starting the emulator on its own no longer starts the last game you played from the
+  Everdrive menu instead of showing the game browser. 
 
 ### Known issues
 
-- Starting the emulator on its own can start the last game you played from the
-  Everdrive menu instead of showing the game browser. Hold Z while the emulator
-  starts to always get the browser.
-- Sound can be missing when you start a second game from within the built-in filebrowser without resetting the console
-  in between. Resetting the console restores it. [#10](https://github.com/fhoedemakers/smsplus64/issues/10)
+
 - The emulator does not start on the EverDrive 64 PRO. [#13](https://github.com/fhoedemakers/smsplus64/issues/13)
 - On an EverDrive 64 V3 the emulator shows an invalid checksum warning on boot. It runs
   fine. [#11](https://github.com/fhoedemakers/smsplus64/issues/11)

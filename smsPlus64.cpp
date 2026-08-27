@@ -244,7 +244,11 @@ struct SegaHeader
     uint8_t ProductCodeAndVersion;
     // 0x7FFF
     uint8_t sizeAndRegion;
-} header;
+    // Cache line sized and aligned: this struct is both DMA'd into and DMA'd
+    // out of, and the writeback/invalidate around those transfers works on
+    // whole lines. Sharing a line with another variable would mean retiring
+    // that one's cached value too.
+} __attribute__((aligned(16))) header;
 static inline void tlut_mirror(int index)
 {
     // Replicate one palette slot across all 8 TLUT copies so any 8-bit
@@ -810,6 +814,48 @@ static void inGameSettings()
     hideFrameRate = true;
 }
 
+// Samples handed to audio_push() since the last audio_init(), modulo nothing -
+// only its remainder against the AI buffer length is used. See flushAudioRing().
+static int audioSamplesPushed = 0;
+
+// Leave audio_push() holding no part filled buffer.
+//
+// audio_push() keeps the buffer it is part way through filling in a static of
+// its own, and audio_close() does not clear it. A frame is 735 samples and an
+// AI buffer is 1760, so a game practically always exits part way through one:
+// the next game's first push then writes its samples through that stale
+// pointer, into memory audio_close() has already handed back to the allocator -
+// which is where audio_init() promptly carves out the new buffers and the array
+// of pointers to them. A garbage entry there goes straight to AI_regs->address,
+// which is the second game starting silent, and PCM written over a heap header
+// is a fair reading of the crash reported from a flashcart.
+//
+// Padding up to a buffer boundary empties that static, so nothing carries over
+// to the next game. Called while the audio system is still up, and after the
+// last frame, so the padding is never heard.
+static void flushAudioRing()
+{
+    static const short silence[128 * 2] = {0};
+    const int chunk = sizeof(silence) / (2 * sizeof(short));
+    int buflen = audio_get_buffer_length();
+    int partial;
+
+    if (buflen > 0)
+    {
+        while ((partial = audioSamplesPushed % buflen) != 0)
+        {
+            int need = buflen - partial;
+            int written = audio_push(silence, need < chunk ? need : chunk, false);
+            // Cannot happen while a buffer is part filled - push only refuses
+            // when it has none open and the ring is full - but a miscount here
+            // must not become a hang.
+            if (written <= 0) break;
+            audioSamplesPushed += written;
+        }
+    }
+    audioSamplesPushed = 0;
+}
+
 void process(void)
 {
     DWORD pdwPad1, pdwPad2, pdwSystem; // have only meaning in menu
@@ -1031,7 +1077,7 @@ void process(void)
         if (snd.enabled && snd.buffer)
         {
             PROF_BEGIN(PROF_AUDIO);
-            audio_push(snd.buffer, snd.bufsize, false);
+            audioSamplesPushed += audio_push(snd.buffer, snd.bufsize, false);
             PROF_END(PROF_AUDIO);
         }
 
@@ -1194,6 +1240,10 @@ bool IsRomInjected(RomInfo *info, bool withOffset)
     bool rval = false;
     int offset = withOffset ? 512 : 0;
     debugstdout("Searching for Sega header at %x\n", GetRomAddress() + 0x7FF0 + offset);
+    // The DMA writes RDRAM through an uncached address, so the signature test
+    // below would otherwise be free to read a stale copy of this struct out of
+    // the data cache instead of what the cartridge just handed over.
+    data_cache_hit_writeback_invalidate(&header, sizeof(header));
     dma_read_async(&header, GetRomAddress() + 0x7FF0 + offset, sizeof(header));
     dma_wait();
     if (strncmp(header.signature, "TMR SEGA", 8) == 0)
@@ -1308,6 +1358,11 @@ static void killInjectedRomHeader()
 {
     __builtin_memset(&header, 0, sizeof(header));
     debugf("Clearing injected rom header\n");
+    // The memset above only reached the data cache. The DMA reads RDRAM
+    // directly, so without this it can hand the cartridge whatever was in
+    // memory beforehand - leaving the signature in place, which is the one
+    // thing this function exists to prevent.
+    data_cache_hit_writeback_invalidate(&header, sizeof(header));
     dma_write_raw_async(&header, GetRomAddress() + 0x7FF0, sizeof(header));
     dma_wait();
     dma_write_raw_async(&header, GetRomAddress() + 0x7FF0 + 512, sizeof(header));
@@ -1522,29 +1577,47 @@ int main()
         {
             debugstdout("Allocating memory for rom\n");
             info.rom = (uint8_t *)malloc(info.size);
-            debugstdout("Reading rom at %x\n", GetRomAddress() + offset);
-            dma_read_async(info.rom, GetRomAddress() + offset, info.size);
-            debugstdout("Waiting for dma\n");
-            dma_wait();
-            strcpy(info.title, "Everdrive/Flashcart");
-            // The rom is safely in RAM now, so drop the header that got us here
-            // and the next boot will come up in the menu instead of replaying
-            // this game.
-            killInjectedRomHeader();
-
-            // Only touch the SD card once the rom is out of cartridge space.
-            // Mounting reconfigures the cartridge interface through libcart, and
-            // a rom read issued afterwards comes back as garbage - which showed
-            // up as a black screen when starting a game from the flashcart menu.
-            // Autostart is a saved setting, so it can only be honoured after the
-            // card is mounted; by then the rom costs nothing to throw away.
-            mountFilesystemsAndLoadSettings(&dfsStarted, mountPoint);
-            if (!settings.autostart)
+            if (info.rom == nullptr)
             {
-                debugstdout("Autostart disabled, going to the menu\n");
-                free(info.rom);
-                info.rom = nullptr;
+                // dma_read_async() writes straight into RDRAM and does not look
+                // at where it is pointing, so a null destination is not a failed
+                // load but half a megabyte written over the bottom of memory.
+                // Fall through to the menu with the error instead.
+                debugstdout("Cannot allocate %d bytes for rom\n", info.size);
+                snprintf(ErrorMessage, ERRORMESSAGESIZE, "Cannot allocate memory for rom");
                 loadedFromFlashcartMenu = false;
+            }
+            else
+            {
+                debugstdout("Reading rom at %x\n", GetRomAddress() + offset);
+                // The rom arrives behind the CPU's back, through an uncached
+                // address. Any dirty cache line still covering this buffer - the
+                // allocator's own bookkeeping at either end of it, or whatever held
+                // this memory before - would be written back over the rom later on.
+                data_cache_hit_writeback_invalidate(info.rom, info.size);
+                dma_read_async(info.rom, GetRomAddress() + offset, info.size);
+                debugstdout("Waiting for dma\n");
+                dma_wait();
+                strcpy(info.title, "Everdrive/Flashcart");
+                // The rom is safely in RAM now, so drop the header that got us here
+                // and the next boot will come up in the menu instead of replaying
+                // this game.
+                killInjectedRomHeader();
+
+                // Only touch the SD card once the rom is out of cartridge space.
+                // Mounting reconfigures the cartridge interface through libcart, and
+                // a rom read issued afterwards comes back as garbage - which showed
+                // up as a black screen when starting a game from the flashcart menu.
+                // Autostart is a saved setting, so it can only be honoured after the
+                // card is mounted; by then the rom costs nothing to throw away.
+                mountFilesystemsAndLoadSettings(&dfsStarted, mountPoint);
+                if (!settings.autostart)
+                {
+                    debugstdout("Autostart disabled, going to the menu\n");
+                    free(info.rom);
+                    info.rom = nullptr;
+                    loadedFromFlashcartMenu = false;
+                }
             }
         }
 
@@ -1608,6 +1681,7 @@ int main()
         // not depend on this either way now - that is paced by the tick counter.
         debugf("Init audio\n");
         audio_init(44100, 4);
+        audioSamplesPushed = 0;
         load_rom(info.rom, info.size, info.isGameGear);
         // Initialize all systems and power on
         system_init(SMS_AUD_RATE);
@@ -1619,6 +1693,7 @@ int main()
         romName[0] = 0;
         display_close();
         debugf("Closing audio\n");
+        flushAudioRing();
         audio_close();
 #ifdef USEMENU
         debugf("Freeing rom\n");

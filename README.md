@@ -173,11 +173,6 @@ With Upscale on both displays are drawn over the picture, hiding the first few r
 
 ## Known issues
 
-- Starting the emulator on its own can start the last game you played from the
-  Everdrive menu instead of showing the game browser. Hold Z while the emulator
-  starts to always get the browser.
-- Sound can be missing when you start a second game without switching the console
-  off in between. Switching the console off and on again restores it.
 - Settings are only saved when a `smsPlus64` folder exists on the SD card. The
   settings screen says so if it cannot save them.
 

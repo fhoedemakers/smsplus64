@@ -49,11 +49,17 @@ void system_init(int rate) {
     __builtin_memset(&input, 0, sizeof(t_input));
 }
 
+/* One frame of stereo samples.
+
+   This used to be malloc'ed here and freed on the next game's system_init(),
+   which left a heap pointer to carry across a whole game and the menu after it.
+   Any memory damage elsewhere then surfaced as a crash inside that free() -
+   reported from a flashcart as a misaligned read on a pointer of fill bytes -
+   with nothing wrong at the point it blew up. The size never varies, so the
+   buffer does not need to come off the heap at all. */
+static signed short sound_buffer[(SMS_AUD_RATE / 60) * 2];
+
 void sms_audio_init(int rate) {
-    /* Free any buffer left over from a previous game before clearing snd. */
-    if (snd.buffer) {
-        free(snd.buffer);
-    }
     /* Clear sound context */
     __builtin_memset(&snd, 0, sizeof(t_snd));
 
@@ -67,9 +73,11 @@ void sms_audio_init(int rate) {
     /* Calculate buffer size in samples (per channel, per frame) */
     snd.bufsize = (rate / 60);
 
-    /* Stereo interleaved S16 output buffer: bufsize stereo pairs = bufsize*2 shorts */
-    snd.buffer = (signed short *) malloc(snd.bufsize * 2 * sizeof(short));
-    if (!snd.buffer) return;
+    /* Stereo interleaved S16 output buffer: bufsize stereo pairs = bufsize*2
+       shorts. A rate the fixed buffer cannot hold plays no sound rather than
+       running off the end of it. */
+    if (snd.bufsize * 2 > (int)(sizeof(sound_buffer) / sizeof(sound_buffer[0]))) return;
+    snd.buffer = sound_buffer;
     __builtin_memset(snd.buffer, 0, snd.bufsize * 2 * sizeof(short));
 
     /* Set up SN76489 emulation */
