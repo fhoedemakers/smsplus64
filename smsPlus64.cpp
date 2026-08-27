@@ -4,6 +4,8 @@
 #include "libdragon.h"
 #include "menu.h"
 #include "FrensHelpers.h"
+#include "profile.h"
+#include "settings.h"
 
 #ifndef USEMENU
 #include "builtinrom.h"
@@ -49,6 +51,50 @@
 
 surface_t *_dc;
 
+// The Game Gear's visible window inside the Master System sized frame the
+// renderer always produces: 160x144 starting at column 48, row 24.
+#define SMS_GG_WIDTH 160
+#define SMS_GG_HEIGHT 144
+#define SMS_GG_X 48
+#define SMS_GG_Y 24
+
+// The N64 framebuffer a game runs in. Its width is the Master System's, which
+// is why that console needs no horizontal scaling to fill the screen, and its
+// height is the full 240 lines the VI scans out. The blit scales into it - the
+// framebuffer itself is the same size whatever the upscale setting is.
+#define FB_HEIGHT 240
+static const resolution_t RESOLUTION_GAME = {SMS_WIDTH, FB_HEIGHT, false};
+
+// CI8 frames that the SMS+ renderer writes scanlines into directly (see
+// render_line). The RDP reads one via DMA at end-of-frame and TLUTs it into
+// the N64 framebuffer, off-loading the per-pixel palette lookup from the
+// VR4300. Double buffered so the CPU can emulate and render the next frame
+// while the RDP is still blitting this one. 16-byte aligned for RDP's DMA
+// requirements; cache writeback runs before each blit.
+#define CI8_FRAME_BYTES (SMS_WIDTH * SMS_HEIGHT)
+static __attribute__((aligned(16))) uint8_t ci8_frame[2][CI8_FRAME_BYTES];
+static int ci8_back = 0;
+uint8_t *sms_line_target = ci8_frame[0];
+
+// 32-entry palette replicated 8 times so any random 8-bit CI8 index maps
+// to a valid RGBA5551 color in TMEM. Avoids per-pixel masking on the CPU.
+// This is the live copy, updated by the emulator as it writes CRAM.
+static __attribute__((aligned(16))) uint16_t tlut[256];
+
+// Snapshot of the palette handed to the RDP, double buffered alongside the CI8
+// frames. The RDP is still executing the queued LOAD_TLUT after
+// rdpq_detach_show() returns, while the CPU has already moved on to emulating
+// the next frame - and on a skipped frame nothing waits for it. Pointing the
+// RDP straight at the live tlut let it read a palette that was being rewritten
+// underneath it, which showed up as wrong colours on Game Gear.
+static __attribute__((aligned(16))) uint16_t tlut_dma[2][256];
+
+// Profiler accumulators, declared in profile.h and written from the emulator core.
+uint32_t prof_acc[PROF_COUNT];
+uint16_t prof_shown[PROF_COUNT];
+static bool prof_enabled = false;
+
+
 #define SOUNDISENABLED 1
 int soundEnabled = SOUNDISENABLED;
 
@@ -60,6 +106,121 @@ char romName[256];
 static bool fps_enabled = false;
 timer_link_t *fpstimer = nullptr;
 static bool hideFrameRate = false;
+
+// Scale the picture up to fill the framebuffer instead of drawing it 1:1 in the
+// middle. The framebuffer stays 256x240 either way - this is entirely a
+// property of the blit, which is what lets it be switched while a game runs.
+//
+// It is also the more correct picture, not just the bigger one. A 256x240
+// framebuffer covers the N64's 4:3 raster, so its pixels are 1.25 times wider
+// than they are tall; a Master System frame drawn 1:1 into it comes out 25% too
+// wide. Scaled to the full 256x240 the 256x192 frame gets square pixels back.
+static bool upscale_enabled = false;
+
+// Shape of the area the blit last covered, so the main loop can notice a change
+// and have every framebuffer cleared before pixels are stranded outside it.
+static bool layout_upscale = false;
+static int layout_band = 0;
+
+// Rows at the top of the framebuffer that the blit leaves alone so the stats
+// overlay has somewhere to live. Without upscaling the overlay sits in the
+// letterbox above the picture and nothing needs reserving; with it the picture
+// would cover those rows, so the blit is scissored below them instead.
+//
+// The heights follow ProcessAfterFrameIsRendered(): an 8 pixel font, first line
+// at y=5, second at y=14. What matters is how many lines are drawn, not which
+// ones - with the frame rate hidden the profiler moves up into its place.
+#define OVERLAY_BAND_1LINE 14
+#define OVERLAY_BAND_2LINES 22
+
+static int overlay_band_height(void)
+{
+    if (!upscale_enabled) return 0;
+    int lines = (fps_enabled ? 1 : 0) + (prof_enabled ? 1 : 0);
+    if (lines == 0) return 0;
+    return lines == 1 ? OVERLAY_BAND_1LINE : OVERLAY_BAND_2LINES;
+}
+
+// Frameskip. FS_AUTO adapts to keep emulation running at 60 frames per second;
+// 0 renders every frame, 1..3 skip that many frames between rendered ones.
+#define FS_AUTO (-1)
+#define FS_AUTO_MAX 3       // never skip more than this many frames in a row
+#define FRAME_TICKS (TICKS_PER_SECOND / 60)
+
+static int frameskip_mode = FS_AUTO;
+
+// Frames still to be skipped before the next drawn one. Zero means draw this
+// frame. Counting down rather than up modulo the period leaves room to lengthen
+// a single cycle, which is what the phase rotation below needs.
+static int skip_left = 0;
+
+// Dropping whole frames samples the emulated picture at a fixed rate, and a game
+// that toggles a sprite every frame is a signal at exactly that rate. Where the
+// skip period is even - levels 1 and 3, drawing frames 0,2,4,6 and 0,4,8,12 -
+// every drawn frame has the same parity, so such a sprite is either always
+// caught or always missed. Aladdin flashes its hero that way after a hit, and at
+// those levels the sprite vanished for the length of the flash instead of
+// blinking. Level 2 draws one frame in three, so its parity alternates by itself
+// and it never showed the problem.
+//
+// Inserting one extra skipped frame every FS_PHASE_RUN drawn frames flips the
+// parity, so both phases get sampled. It renders less rather than more, so it
+// costs no time, and the emulated rate stays at 60 either way - only the
+// displayed rate drops. It cannot be made faithful: a fixed-rate sampler
+// against a same-rate signal aliases whatever the phase, so the choice is only
+// which artefact to have.
+//
+// This is the Blink fix setting, off by default, because both the lower
+// displayed rate and the uneven gap are a real cost to every game while only a
+// few need it. Off, the cadence is exactly the plain "% (level + 1)" it was
+// before, at every level. Levels 0 and 2 are left alone even when it is on:
+// neither aliases, so there is nothing to trade smoothness for.
+
+// Drawn frames between parity flips. This is the one knob here, and it trades
+// how quickly a blink is sampled against how much smoothness it costs: each
+// flip spends one extra skipped frame, so a shorter run means both a lower
+// displayed rate and a longer gap more often.
+//
+//   run   draw rate   displayed   flip interval   blink reads as
+//     4      4 / 9      26.7 fps      0.15 s      a fast flicker, choppy picture
+//     8      8 / 17     28.2 fps      0.28 s      a slow blink  <-- chosen
+//    16     16 / 33     29.1 fps      0.55 s      about one blink per flash
+//
+// The figures are for level 1. A cycle is FS_PHASE_RUN drawn frames plus
+// FS_PHASE_RUN * level + 1 skipped ones, so the flip interval grows with the
+// skip period: level 3 at run 8 gives 8/33, 14.5 fps and 0.55 s, about twice
+// the interval level 1 has at the same run.
+//
+// 8 is a compromise. Anything long enough to keep the displayed rate near 30
+// blinks slower than the game intended, and anything fast enough to look like
+// the real flicker judders. If it wants changing, the thing to check on
+// hardware is scrolling at level 1 with a game that has no flash to distract
+// from the pacing.
+#define FS_PHASE_RUN 8
+static bool blink_fix_enabled = false;
+static int drawn_since_flip = 0;
+
+// AUTO picks a skip level and holds it, rather than deciding frame by frame.
+// Deciding per frame gives an irregular cadence - a mix of drawing every frame
+// and every other frame - and uneven pacing reads as judder even when the
+// average frame rate is higher. A steady 1-in-2 looks better than a jittery
+// 1.7-in-2, so AUTO settles on a level and runs the same fixed cadence the
+// manual modes do.
+//
+// The level is re-chosen a couple of times a second from the measured cost of
+// a rendered frame and a skipped one, which is drift-free by construction: it
+// times only work, never the waits that pace the emulator.
+#define FS_TUNE_INTERVAL 30
+static int auto_level = 0;
+static uint32_t auto_render_ticks = 0;
+static uint32_t auto_skip_ticks = 0;
+static int auto_render_n = 0;
+static int auto_skip_n = 0;
+static int auto_tune_countdown = FS_TUNE_INTERVAL;
+
+// Deadline for the busy-wait speed limiter, used only when sound is off and
+// there is no audio queue to pace against.
+static uint32_t frame_deadline = 0;
 
 bool reset = false;
 
@@ -83,85 +244,39 @@ struct SegaHeader
     uint8_t ProductCodeAndVersion;
     // 0x7FFF
     uint8_t sizeAndRegion;
-} header;
+    // Cache line sized and aligned: this struct is both DMA'd into and DMA'd
+    // out of, and the writeback/invalidate around those transfers works on
+    // whole lines. Sharing a line with another variable would mean retiring
+    // that one's cached value too.
+} __attribute__((aligned(16))) header;
+static inline void tlut_mirror(int index)
+{
+    // Replicate one palette slot across all 8 TLUT copies so any 8-bit
+    // CI8 index resolves to a valid color without CPU-side masking.
+    uint16_t v = (uint16_t)palette444[index & 31];
+    uint16_t *dst = tlut + (index & 31);
+    for (int rep = 0; rep < 8; rep++, dst += 32) {
+        *dst = v;
+    }
+}
+
 extern "C" void sms_palette_syncGG(int index)
 {
     // The GG has a different palette format
     int r = ((vdp.cram[(index << 1) | 0] >> 1) & 7) << 5;
     int g = ((vdp.cram[(index << 1) | 0] >> 5) & 7) << 5;
     int b = ((vdp.cram[(index << 1) | 1] >> 1) & 7) << 5;
-#if 0
-    int r444 = ((r << 4) + 127) >> 8; // equivalent to (r888 * 15 + 127) / 255
-    int g444 = ((g << 4) + 127) >> 8; // equivalent to (g888 * 15 + 127) / 255
-    int b444 = ((b << 4) + 127) >> 8;
-    palette444[index] = (r444 << 8) | (g444 << 4) | b444;
-#endif
     palette444[index] = RGB888_TO_RGB5551(r, g, b);
-    return;
+    tlut_mirror(index);
 }
 
 extern "C" void sms_palette_sync(int index)
 {
-#if 0
-    // Get SMS palette color index from CRAM
-    WORD r = ((vdp.cram[index] >> 0) & 3);
-    WORD g = ((vdp.cram[index] >> 2) & 3);
-    WORD b = ((vdp.cram[index] >> 4) & 3);
-    WORD tableIndex = b << 4 | g << 2 | r;
-    // Get the RGB444 color from the SMS RGB444 palette
-    palette444[index] = SMSPaletteRGB444[tableIndex];
-#endif
-
-#if 1
-    // Alternative color rendering below
     WORD r = ((vdp.cram[index] >> 0) & 3) << 6;
     WORD g = ((vdp.cram[index] >> 2) & 3) << 6;
     WORD b = ((vdp.cram[index] >> 4) & 3) << 6;
-#if 0
-    int r444 = ((r << 4) + 127) >> 8; // equivalent to (r888 * 15 + 127) / 255
-    int g444 = ((g << 4) + 127) >> 8; // equivalent to (g888 * 15 + 127) / 255
-    int b444 = ((b << 4) + 127) >> 8;
-    palette444[index] = (r444 << 8) | (g444 << 4) | b444;
-#endif
     palette444[index] = RGB888_TO_RGB5551(r, g, b);
-#endif
-    return;
-}
-
-extern "C" void sms_render_line(int line, const uint8_t *buffer)
-{
-    // SMS has 192 lines
-    // GG  has 144 lines
-    // gg : Line starts at line 24
-    // sms: Line starts at line 0
-    // Emulator loops from scanline 0 to 261
-    if (IS_GG)
-    {
-        if (line < 24 || line >= 168)
-        {
-            return;
-        }
-    }
-    else
-    {
-        if (line >= 192)
-        {
-            return;
-        }
-    }
-    // center more or less screen
-    line += 24;
-
-    // debugf("\tLine %d, ISGG: %d\n", line, IS_GG);
-
-    if (buffer)
-    {
-        WORD *framebufferline = ((WORD *)(_dc)->buffer) + (line << 8) + (IS_GG ? 48 : 0);
-        for (int i = screenCropX; i < BMP_WIDTH - screenCropX; i++)
-        {
-            framebufferline[i - screenCropX] = palette444[(buffer[i + BMP_X_OFFSET]) & 31];
-        }
-    }
+    tlut_mirror(index);
 }
 
 void system_load_sram(void)
@@ -188,44 +303,134 @@ void system_save_state()
     // TODO
 }
 
-int framecounter = 0;
-int framedisplay = 0;
+int framecounter = 0;    // emulated frames this second
+int drawncounter = 0;    // frames actually rendered and shown this second
+int framedisplay = 0;    // emulated frames per second, last full second
+int drawndisplay = 0;    // rendered frames per second, last full second
 int totalfames = 0;
+
+// Frameskip mode for the OSD. AUTO also reports the level it settled on.
+static const char *frameskip_label()
+{
+    static char label[4];
+    int n = 0;
+    if (frameskip_mode == FS_AUTO)
+    {
+        label[n++] = 'A';
+        label[n++] = (char)('0' + auto_level);
+    }
+    else
+    {
+        label[n++] = (char)('0' + frameskip_mode);
+    }
+    label[n] = '\0';
+    return label;
+}
+
 int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
 {
-    char buffer[15];
+    char buffer[40];
+    // Same spot for both consoles, and the same spot whether or not the picture
+    // is upscaled. Drawn 1:1 the picture starts at row 24 (Master System) or row
+    // 48 (Game Gear), so rows 5..21 are clear either way. Upscaled it would
+    // cover them, so the blit is scissored below overlay_band_height() instead -
+    // keep the two in step if this moves.
+    int x = 10;
+    int y = 5;
+    bool showProfiler = prof_enabled && fromMenu == false;
+
+    if (fps_enabled || showProfiler)
+    {
+        graphics_set_color(CBLACK, CWHITE);
+    }
     if (fps_enabled)
     {
         char sound = soundEnabled ? 'S' : 'M';
-        sprintf(buffer, "%c %04d", sound, framedisplay);
-        // debugf("Frame %d\n", totalfames);
-        graphics_set_color(CBLACK, CWHITE);
-        if (IS_GG && fromMenu == false)
+        if (fromMenu)
         {
-            graphics_draw_text(display, 48, 24, buffer);
+            sprintf(buffer, "%c %04d", sound, framedisplay);
         }
         else
         {
-            graphics_draw_text(display, 10, 5, buffer);
+            // console / sound / emulated fps / displayed fps / frameskip mode.
+            char console = IS_GG ? 'G' : 'S';
+            sprintf(buffer, "%c%c %03d/%02d %s", console, sound,
+                    framedisplay, drawndisplay, frameskip_label());
         }
-        // Frame rate calculation
+        graphics_draw_text(display, x, y, buffer);
+        y += 9;
     }
-    framecounter++;
+    // Independent of the frame rate line: the frame rate display is off by
+    // default, and the profiler would otherwise be impossible to turn on.
+    if (showProfiler)
+    {
+        // Time spent in each phase per emulated frame, in tens of microseconds:
+        // R830 is 8.30 ms of rendering. I is time spent pacing the frame, S is
+        // time blocked waiting for a framebuffer or for the RDP - keeping them
+        // apart matters, because a frame rate problem looks completely different
+        // depending on which of the two is growing. Those two are the ones that
+        // saturate at 999: on a skipped frame the pacing wait is most of the
+        // frame, which is exactly the case where their value does not matter.
+        sprintf(buffer, "Z%03d R%03d B%03d A%03d I%03d S%03d",
+                prof_shown[PROF_Z80], prof_shown[PROF_RENDER],
+                prof_shown[PROF_BLIT], prof_shown[PROF_AUDIO],
+                prof_shown[PROF_IDLE], prof_shown[PROF_SYNC]);
+        graphics_draw_text(display, x, y, buffer);
+    }
+    drawncounter++;
     return totalfames++;
 }
 
 void frameratecalc(int ovfl)
 {
-    // debugf("FPS: %d\n", framecounter);
     framedisplay = framecounter;
-    framecounter = 0;
+    drawndisplay = drawncounter;
+    framecounter = drawncounter = 0;
+
+    // Fold the tick accumulators into time per emulated frame, in tens of
+    // microseconds. Dividing by the frames emulated rather than by the second
+    // is what makes the figures comparable between two runs: a percentage of
+    // the second also moves when another phase moves or when the frame rate
+    // changes, and that made the last set of readings unattributable.
+    //
+    // framedisplay is this second's frame count, captured just above. It is
+    // zero whenever nothing was emulating - in the menu, or across a rom load.
+    uint32_t frames = (uint32_t)framedisplay;
+    for (int i = 0; i < PROF_COUNT; i++)
+    {
+        if (frames)
+        {
+            uint64_t tens_us = (uint64_t)prof_acc[i] * 100000ULL /
+                               (uint64_t)TICKS_PER_SECOND / frames;
+            prof_shown[i] = (uint16_t)(tens_us > 999 ? 999 : tens_us);
+        }
+        else
+        {
+            prof_shown[i] = 0;
+        }
+        prof_acc[i] = 0;
+    }
 }
 void enableordisableTimer()
 {
-    if (fps_enabled)
+    // frameratecalc() feeds both the frame rate line and the profiler, so it has
+    // to run whenever either of them is on.
+    if (fps_enabled || prof_enabled)
     {
-        fpstimer = new_timer(TIMER_TICKS(1000000), TF_CONTINUOUS, frameratecalc);
-        framecounter = framedisplay = 0;
+        // Guard against a second timer: this is called again whenever the
+        // setting changes, and new_timer() would otherwise leak the old one and
+        // halve the reported frame rate by counting twice a second.
+        if (fpstimer == nullptr)
+        {
+            fpstimer = new_timer(TIMER_TICKS(1000000), TF_CONTINUOUS, frameratecalc);
+        }
+        framecounter = framedisplay = drawncounter = drawndisplay = 0;
+        // frameratecalc() is what drains these; start from a clean slate so the
+        // first second is not inflated by whatever piled up while it was off.
+        for (int i = 0; i < PROF_COUNT; i++)
+        {
+            prof_acc[i] = 0;
+        }
     }
     else
     {
@@ -236,20 +441,71 @@ void enableordisableTimer()
         }
     }
 }
+// Settings <-> running emulator. The settings screen captures first so it
+// shows whatever the in-game button combinations last set, then applies on the
+// way out, so both ways of changing a setting agree.
+extern "C" void settings_apply(void)
+{
+    frameskip_mode = settings.frameskip;
+    blink_fix_enabled = (settings.blinkFix != 0);
+    soundEnabled = settings.sound;
+    snd.enabled = soundEnabled;
+    // Turning either overlay off leaves its pixels on every framebuffer, so
+    // note whether anything was on before changing them.
+    bool wasShowing = fps_enabled || prof_enabled;
+    prof_enabled = (settings.showProfiler != 0);
+    fps_enabled = (settings.showFps != 0);
+    upscale_enabled = (settings.upscale != 0);
+    if (wasShowing && !(fps_enabled || prof_enabled))
+    {
+        hideFrameRate = true;
+    }
+    enableordisableTimer();
+
+    // Start the frameskip decision from scratch so a changed level takes effect
+    // immediately instead of finishing the previous cadence.
+    skip_left = 0;
+    drawn_since_flip = 0;
+    auto_level = 0;
+    auto_render_ticks = auto_skip_ticks = 0;
+    auto_render_n = auto_skip_n = 0;
+    auto_tune_countdown = FS_TUNE_INTERVAL;
+}
+
+extern "C" void settings_capture(void)
+{
+    settings.frameskip = frameskip_mode;
+    settings.blinkFix = blink_fix_enabled ? 1 : 0;
+    settings.sound = soundEnabled ? 1 : 0;
+    settings.showFps = fps_enabled ? 1 : 0;
+    settings.showProfiler = prof_enabled ? 1 : 0;
+    settings.upscale = upscale_enabled ? 1 : 0;
+}
+
 #define OTHER_BUTTON1 (0b1)
 #define OTHER_BUTTON2 (0b10)
+#define OTHER_BUTTON3 (0b100)
+
+// Where saved settings live. Kept at file scope so the in-game overlay can
+// write them too, not just the menu.
+char mountPoint[24] = "";
+
+// Set by the Z + C-Right combination, acted on by the main loop.
+static bool settingsRequested = false;
+
+// Why the browser is looking where it is. Shown when it has nothing to list, so
+// a failed SD card is distinguishable from an empty folder.
+char sdStatus[48] = "";
 
 static DWORD prevButtons[2]{};
 static DWORD prevButtonssystem[2]{};
 static DWORD prevOtherButtons[2]{};
 
-struct controller_data gKeys;
 static int rapidFireMask[2]{};
 static int rapidFireCounter = 0;
 void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorepushed)
 {
-    controller_scan();
-    gKeys = get_keys_pressed();
+    joypad_poll();
 
     // pwdPad1 and pwdPad2 are only used in menu and are only set on first push
     *pdwPad1 = *pdwPad2 = *pdwSystem = 0;
@@ -265,19 +521,20 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
         }
         auto &dst = (i == 0) ? *pdwPad1 : *pdwPad2;
 
-        auto gp = gKeys.c[i].data >> 16;
+        joypad_buttons_t gp = joypad_get_buttons((joypad_port_t)i);
 
-        int smsbuttons = (DL_BUTTON(gp) ? INPUT_LEFT : 0) |
-                         (DR_BUTTON(gp) ? INPUT_RIGHT : 0) |
-                         (DU_BUTTON(gp) ? INPUT_UP : 0) |
-                         (DD_BUTTON(gp) ? INPUT_DOWN : 0) |
-                         (A_BUTTON(gp) ? INPUT_BUTTON1 : 0) |
-                         (B_BUTTON(gp) ? INPUT_BUTTON2 : 0) | 0;
-        int otherButtons = (CL_BUTTON(gp) ? OTHER_BUTTON1 : 0) |
-                           (CU_BUTTON(gp) ? OTHER_BUTTON2 : 0) | 0;
+        int smsbuttons = (gp.d_left ? INPUT_LEFT : 0) |
+                         (gp.d_right ? INPUT_RIGHT : 0) |
+                         (gp.d_up ? INPUT_UP : 0) |
+                         (gp.d_down ? INPUT_DOWN : 0) |
+                         (gp.a ? INPUT_BUTTON1 : 0) |
+                         (gp.b ? INPUT_BUTTON2 : 0) | 0;
+        int otherButtons = (gp.c_left ? OTHER_BUTTON1 : 0) |
+                           (gp.c_up ? OTHER_BUTTON2 : 0) |
+                           (gp.c_right ? OTHER_BUTTON3 : 0) | 0;
         smssystem[i] =
-            (Z_BUTTON(gp) ? INPUT_PAUSE : 0) |
-            (START_BUTTON(gp) ? INPUT_START : 0) |
+            (gp.z ? INPUT_PAUSE : 0) |
+            (gp.start ? INPUT_START : 0) |
             0;
 
         // if (gp.buttons & io::GamePadState::Button::SELECT) printf("SELECT\n");
@@ -329,6 +586,40 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
                 snd.enabled = soundEnabled = !soundEnabled;
                 debugf("Toggle sound (%d)\n", soundEnabled);
             }
+            // Cycle frameskip: AUTO -> off -> 1 -> 2 -> 3 -> AUTO
+            if (pushedother & OTHER_BUTTON1)
+            {
+                if (frameskip_mode == FS_AUTO)
+                    frameskip_mode = 0;
+                else if (frameskip_mode >= FS_AUTO_MAX)
+                    frameskip_mode = FS_AUTO;
+                else
+                    frameskip_mode++;
+                skip_left = 0;
+                drawn_since_flip = 0;
+                auto_render_ticks = auto_skip_ticks = 0;
+                auto_render_n = auto_skip_n = 0;
+                auto_tune_countdown = FS_TUNE_INTERVAL;
+                frame_deadline = TICKS_READ();
+                debugf("Frameskip: %s\n", frameskip_label());
+            }
+            // Toggle the phase profiler overlay
+            if (pushedother & OTHER_BUTTON2)
+            {
+                prof_enabled = !prof_enabled;
+                debugf("Profiler: %s\n", prof_enabled ? "ON" : "OFF");
+                if (!fps_enabled && !prof_enabled)
+                {
+                    hideFrameRate = true;
+                }
+                enableordisableTimer();
+            }
+            // Open the settings overlay. Handled by the main loop rather than
+            // here, so it does not run from inside input processing.
+            if (pushedother & OTHER_BUTTON3)
+            {
+                settingsRequested = true;
+            }
         }
         if (p1 & INPUT_START)
         {
@@ -350,17 +641,6 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
         {
             dst = smsbuttons;
         }
-        if (pushedother)
-        {
-            if (pushedother & OTHER_BUTTON1)
-            {
-                debugf("Other 1\n");
-            }
-            if (pushedother & OTHER_BUTTON2)
-            {
-                debugf("Other 2\n");
-            }
-        }
     }
     input.system = *pdwSystem = smssystem[0] | smssystem[1];
     // return only on first push
@@ -370,57 +650,515 @@ void processinput(DWORD *pdwPad1, DWORD *pdwPad2, DWORD *pdwSystem, bool ignorep
     }
 }
 
+// Frames skipped between drawn ones, for whichever mode is active.
+static int frameskip_level()
+{
+    return (frameskip_mode == FS_AUTO) ? auto_level : frameskip_mode;
+}
+
+// Re-choose the AUTO level from what rendering and skipping actually cost.
+// Called once per frame; does its work every FS_TUNE_INTERVAL frames.
+static void auto_frameskip_tune()
+{
+    if (--auto_tune_countdown > 0)
+        return;
+    auto_tune_countdown = FS_TUNE_INTERVAL;
+
+    if (auto_render_n == 0)
+        return;
+
+    uint32_t render_cost = auto_render_ticks / (uint32_t)auto_render_n;
+    // At level 0 there are no skipped frames to measure. Treating them as free
+    // makes the estimate optimistic, so AUTO may step up one level too eagerly
+    // - but that immediately produces real samples and the next pass corrects
+    // it, so it settles either way.
+    uint32_t skip_cost = auto_skip_n ? (auto_skip_ticks / (uint32_t)auto_skip_n) : 0;
+
+    // Cheapest cadence whose predicted average frame cost fits in the budget.
+    // Stepping up halves the frames drawn, so it needs to buy more than a
+    // rounding error: a game running at 58fps is 3% short of the budget and is
+    // far better left alone than cut to 29.
+    uint32_t step_up_limit = FRAME_TICKS + (FRAME_TICKS / 16);
+    int level = 0;
+    while (level < FS_AUTO_MAX)
+    {
+        uint32_t avg = (render_cost + (uint32_t)level * skip_cost) / (uint32_t)(level + 1);
+        if (avg <= step_up_limit)
+            break;
+        level++;
+    }
+
+    // Stepping down needs clear headroom, otherwise a level sitting right on
+    // the budget oscillates against the one above it every tuning pass, which
+    // is exactly the judder this is meant to avoid.
+    if (level < auto_level)
+    {
+        uint32_t avg = (render_cost + (uint32_t)level * skip_cost) / (uint32_t)(level + 1);
+        if (avg > FRAME_TICKS - (FRAME_TICKS / 16))
+            level = auto_level;
+    }
+
+    auto_level = level;
+    auto_render_ticks = auto_skip_ticks = 0;
+    auto_render_n = auto_skip_n = 0;
+}
+
+// In-game settings overlay. The menu's settings screen uses a 38 column text
+// grid that does not fit the 256 pixel wide framebuffer a game runs in, so this
+// is a compact version of the same settings. Emulation is paused while it
+// is open.
+static void inGameSettings()
+{
+    DWORD pad1, pad2, sys;
+    char line[40];
+    const int rows = 7;
+    int row = 0;
+    bool changed = false;
+
+    // The RDP may still be blitting the last frame into a buffer we are about
+    // to draw over.
+    rspq_wait();
+    settings_capture();
+
+    while (true)
+    {
+        surface_t *dc = display_get();
+        graphics_fill_screen(dc, CBLACK);
+
+        graphics_set_color(CWHITE, CBLACK);
+        graphics_draw_text(dc, 24, 32, "SETTINGS");
+
+        for (int i = 0; i < rows; i++)
+        {
+            switch (i)
+            {
+            case 0:
+                sprintf(line, "Frameskip  %s", settings_frameskip_name(settings.frameskip));
+                break;
+            case 1:
+                sprintf(line, "Blink fix  %s", settings.blinkFix ? "On" : "Off");
+                break;
+            case 2:
+                sprintf(line, "Sound      %s", settings.sound ? "On" : "Off");
+                break;
+            case 3:
+                sprintf(line, "Frame rate %s", settings.showFps ? "Shown" : "Hidden");
+                break;
+            case 4:
+                sprintf(line, "Profiler   %s", settings.showProfiler ? "Shown" : "Hidden");
+                break;
+            case 5:
+                sprintf(line, "Upscale    %s", settings.upscale ? "On" : "Off");
+                break;
+            default:
+                sprintf(line, "Autostart  %s", settings.autostart ? "On" : "Off");
+                break;
+            }
+            // Selected row is inverted.
+            graphics_set_color(i == row ? CBLACK : CWHITE, i == row ? CWHITE : CBLACK);
+            graphics_draw_text(dc, 24, 56 + i * 12, line);
+        }
+
+        // Below the seventh row, which ends at y=136.
+        graphics_set_color(CWHITE, CBLACK);
+        graphics_draw_text(dc, 24, 148, "Up/Down     select");
+        graphics_draw_text(dc, 24, 160, "Left/Right  change");
+        graphics_draw_text(dc, 24, 172, "B           close");
+        graphics_draw_text(dc, 24, 196, "Blink fix stops sprites that");
+        graphics_draw_text(dc, 24, 208, "blink from vanishing while");
+        graphics_draw_text(dc, 24, 220, "frameskip is on.");
+
+        display_show(dc);
+        processinput(&pad1, &pad2, &sys, false);
+
+        if (pad1 & INPUT_UP)
+        {
+            row = (row + rows - 1) % rows;
+        }
+        else if (pad1 & INPUT_DOWN)
+        {
+            row = (row + 1) % rows;
+        }
+        else if (pad1 & INPUT_BUTTON2)
+        {
+            break;
+        }
+        else if (pad1 & (INPUT_LEFT | INPUT_RIGHT | INPUT_BUTTON1))
+        {
+            int direction = (pad1 & INPUT_LEFT) ? -1 : 1;
+            switch (row)
+            {
+            case 0:
+                settings.frameskip += direction;
+                if (settings.frameskip > 3) settings.frameskip = -1;
+                if (settings.frameskip < -1) settings.frameskip = 3;
+                break;
+            case 1: settings.blinkFix = !settings.blinkFix; break;
+            case 2: settings.sound = !settings.sound; break;
+            case 3: settings.showFps = !settings.showFps; break;
+            case 4: settings.showProfiler = !settings.showProfiler; break;
+            case 5: settings.upscale = !settings.upscale; break;
+            default: settings.autostart = !settings.autostart; break;
+            }
+            changed = true;
+        }
+    }
+
+    settings_apply();
+    if (changed && !settings_save(mountPoint))
+    {
+        debugf("Could not save settings to '%s'\n", mountPoint);
+    }
+    // This drew over framebuffers the emulator only partly repaints, so have
+    // the main loop clear them before resuming.
+    hideFrameRate = true;
+}
+
+// Samples handed to audio_push() since the last audio_init(), modulo nothing -
+// only its remainder against the AI buffer length is used. See flushAudioRing().
+static int audioSamplesPushed = 0;
+
+// Leave audio_push() holding no part filled buffer.
+//
+// audio_push() keeps the buffer it is part way through filling in a static of
+// its own, and audio_close() does not clear it. A frame is 735 samples and an
+// AI buffer is 1760, so a game practically always exits part way through one:
+// the next game's first push then writes its samples through that stale
+// pointer, into memory audio_close() has already handed back to the allocator -
+// which is where audio_init() promptly carves out the new buffers and the array
+// of pointers to them. A garbage entry there goes straight to AI_regs->address,
+// which is the second game starting silent, and PCM written over a heap header
+// is a fair reading of the crash reported from a flashcart.
+//
+// Padding up to a buffer boundary empties that static, so nothing carries over
+// to the next game. Called while the audio system is still up, and after the
+// last frame, so the padding is never heard.
+static void flushAudioRing()
+{
+    static const short silence[128 * 2] = {0};
+    const int chunk = sizeof(silence) / (2 * sizeof(short));
+    int buflen = audio_get_buffer_length();
+    int partial;
+
+    if (buflen > 0)
+    {
+        while ((partial = audioSamplesPushed % buflen) != 0)
+        {
+            int need = buflen - partial;
+            int written = audio_push(silence, need < chunk ? need : chunk, false);
+            // Cannot happen while a buffer is part filled - push only refuses
+            // when it has none open and the ring is full - but a miscount here
+            // must not become a hang.
+            if (written <= 0) break;
+            audioSamplesPushed += written;
+        }
+    }
+    audioSamplesPushed = 0;
+}
+
 void process(void)
 {
     DWORD pdwPad1, pdwPad2, pdwSystem; // have only meaning in menu
+
+    // Start both CI8 frames blank so nothing from a previous game shows through.
+    __builtin_memset(ci8_frame, 0, sizeof(ci8_frame));
+    ci8_back = 0;
+    sms_line_target = ci8_frame[0];
+
+    // Clear every framebuffer once. The RDP only ever draws the emulated
+    // picture - rows 24..215 for the Master System, and a 160x144 window for
+    // the Game Gear - so the border around it keeps whatever the menu or the
+    // previous game left in memory. Upscaled there is no border, but the
+    // overlay band at the top is left alone in exactly the same way.
+    for (int i = 0; i < FRAMEBUFFERS; i++)
+    {
+        surface_t *clear = display_get();
+        graphics_fill_screen(clear, CBLACK);
+        display_show(clear);
+    }
+    // Every buffer is blank, so whatever shape the blit is about to draw is
+    // already clean. Start the change detection from there.
+    layout_upscale = upscale_enabled;
+    layout_band = overlay_band_height();
+
+    // Start by drawing every frame and let the tuner settle from there, so a
+    // game that can keep up never skips.
+    skip_left = 0;
+    drawn_since_flip = 0;
+    auto_level = 0;
+    auto_render_ticks = auto_skip_ticks = 0;
+    auto_render_n = auto_skip_n = 0;
+    auto_tune_countdown = FS_TUNE_INTERVAL;
+    frame_deadline = TICKS_READ();
+
     while (reset == false)
     {
-        // debugf("Frame %d\n", framecounter);
         processinput(&pdwPad1, &pdwPad2, &pdwSystem, false);
-        _dc = display_get();
-        if (hideFrameRate)
-        {
 
-            hideFrameRate = false;
-            // Clear all the framebuffers
-            for (int i = 0; i < FRAMEBUFFERS; i++)
+        if (settingsRequested)
+        {
+            settingsRequested = false;
+            inGameSettings();
+            frame_deadline = TICKS_READ(); // do not try to catch up on the pause
+            continue;
+        }
+
+        bool render_frame = (skip_left == 0);
+
+        // Whatever the blit does not cover keeps its old contents on all three
+        // framebuffers, so any change to the shape of the drawn area strands
+        // pixels outside the new one: switching the upscale off leaves a ring
+        // of full screen picture around the small one, and turning the profiler
+        // on strands picture rows in the band reserved for it. Both are caught
+        // here rather than at each of the places that can change a setting.
+        int band = overlay_band_height();
+        if (upscale_enabled != layout_upscale || band != layout_band)
+        {
+            layout_upscale = upscale_enabled;
+            layout_band = band;
+            hideFrameRate = true;
+        }
+
+        if (render_frame)
+        {
+            PROF_BEGIN(PROF_SYNC);
+
+            _dc = display_get();
+
+            if (hideFrameRate)
             {
-                debugf("Clear framebuffer %d\n", i + 1);
-                graphics_fill_screen(_dc, 1);
-                display_show(_dc);
-                _dc = display_get();
+                hideFrameRate = false;
+                // Clear all the framebuffers
+                for (int i = 0; i < FRAMEBUFFERS; i++)
+                {
+                    debugf("Clear framebuffer %d\n", i + 1);
+                    graphics_fill_screen(_dc, 1);
+                    display_show(_dc);
+                    _dc = display_get();
+                }
+            }
+
+            // Make sure the RDP is done before we start overwriting a CI8
+            // buffer it might still be reading. In the steady state it is
+            // reading the *other* buffer, so this costs nothing; it only bites
+            // if a blit somehow ran over a whole frame.
+            //
+            // This is a full sync because there is no cheap way to wait on just
+            // the RDP's texture DMA: rspq syncpoints track the RSP, which runs
+            // ahead of the RDP. Watch PROF_IDLE - if this turns out to cost
+            // real time, the fix is a per-buffer rdpq_detach_cb() completion
+            // flag rather than a global wait.
+            rspq_wait();
+
+            PROF_END(PROF_SYNC);
+        }
+
+        // Everything from here to the end of the blit is the frame's real
+        // work; the waits around it are pacing, not cost.
+        uint32_t work_start = TICKS_READ();
+
+        sms_frame(render_frame ? 0 : 1);
+
+        if (render_frame)
+        {
+            PROF_BEGIN(PROF_BLIT);
+
+            uint8_t *frame = ci8_frame[ci8_back];
+
+            // Draw the overlay before handing the framebuffer to the RDP, so
+            // CPU and RDP never touch it at the same time.
+            ProcessAfterFrameIsRendered(_dc, false);
+
+            // RDP TLUTs the CI8 emulator output into the RGBA5551 framebuffer.
+            // CPU writes to the frame went through the d-cache; flush before
+            // the RDP reads via DMA.
+            data_cache_hit_writeback(frame, CI8_FRAME_BYTES);
+
+            // Snapshot the palette for the RDP. It has to be a copy, not the
+            // live tlut, because the emulator keeps writing CRAM while the RDP
+            // is still reading. rdpq_tex_upload_tlut() issues a LOAD_TLUT that
+            // DMAs straight out of RDRAM and does no writeback of its own, so
+            // the snapshot has to be flushed by hand. Only 512 bytes.
+            uint16_t *palette = tlut_dma[ci8_back];
+            __builtin_memcpy(palette, tlut, sizeof(tlut));
+            data_cache_hit_writeback(palette, sizeof(tlut));
+
+            surface_t ci8_surface = surface_make_linear(frame, FMT_CI8, SMS_WIDTH, SMS_HEIGHT);
+            rdpq_attach(_dc, NULL);
+
+            // Copy mode moves 4 pixels per cycle but can only scale vertically:
+            // the RDP ignores DsDx there, so a horizontal stretch has to drop to
+            // 1-cycle mode at a quarter of the fill rate. That single hardware
+            // limitation is what splits the two upscaled paths below.
+            bool onecycle = upscale_enabled && IS_GG;
+            if (onecycle)
+            {
+                rdpq_set_mode_standard();
+                rdpq_mode_filter(FILTER_POINT);
+            }
+            else
+            {
+                rdpq_set_mode_copy(false);
+            }
+            rdpq_mode_tlut(TLUT_RGBA16);
+            rdpq_tex_upload_tlut(palette, 0, 256);
+
+            // Upscaled, the picture covers the whole framebuffer and would paint
+            // over the overlay, which is drawn by the CPU just above. Scissor the
+            // blit below it rather than waiting for the RDP to finish so the text
+            // can go on top - a wait would cost a sync on every drawn frame.
+            // Copy mode requires the left bound to be zero, which it is.
+            if (band > 0)
+            {
+                rdpq_set_scissor(0, band, SMS_WIDTH, FB_HEIGHT);
+            }
+
+            if (IS_GG)
+            {
+                // GG visible window out of the Master System sized frame the
+                // renderer produces: cols 48..207, rows 24..167.
+                rdpq_blitparms_t parms = {};
+                parms.s0 = SMS_GG_X;
+                parms.t0 = SMS_GG_Y;
+                parms.width = SMS_GG_WIDTH;
+                parms.height = SMS_GG_HEIGHT;
+                if (upscale_enabled)
+                {
+                    // 160x144 over the full 256x240. 1.6 horizontally is what
+                    // forces 1-cycle mode. The result is a 4:3 picture from a
+                    // 10:9 handheld, so pixels come out about 20% wide - right
+                    // for a television, not what the Game Gear looked like.
+                    parms.scale_x = (float)SMS_WIDTH / SMS_GG_WIDTH;
+                    parms.scale_y = (float)FB_HEIGHT / SMS_GG_HEIGHT;
+                    rdpq_tex_blit(&ci8_surface, 0, 0, &parms);
+                }
+                else
+                {
+                    // 1:1, centered horizontally and vertically inside the
+                    // framebuffer with a border on all four sides.
+                    rdpq_tex_blit(&ci8_surface, (SMS_WIDTH - SMS_GG_WIDTH) / 2,
+                                  (FB_HEIGHT - SMS_GG_HEIGHT) / 2, &parms);
+                }
+            }
+            else if (upscale_enabled)
+            {
+                // SMS: 256x192 over the full 256x240. Vertical only, so this
+                // stays in copy mode and costs nothing but the extra pixels
+                // written. 240/192 is exactly 1.25, and the blit is split into
+                // 8-row TMEM chunks, so every chunk lands on a whole row.
+                rdpq_blitparms_t parms = {};
+                parms.scale_y = (float)FB_HEIGHT / SMS_HEIGHT;
+                rdpq_tex_blit(&ci8_surface, 0, 0, &parms);
+            }
+            else
+            {
+                // SMS: full 256x192 image, letterboxed top and bottom.
+                rdpq_tex_blit(&ci8_surface, 0, (FB_HEIGHT - SMS_HEIGHT) / 2, NULL);
+            }
+
+            // Schedules display_show() to happen once the RDP is done, instead
+            // of parking the VR4300 on rspq_wait() for the whole blit.
+            rdpq_detach_show();
+
+            // Flip: the next frame renders into the other buffer while the RDP
+            // reads this one.
+            ci8_back ^= 1;
+            sms_line_target = ci8_frame[ci8_back];
+
+            PROF_END(PROF_BLIT);
+        }
+
+        // How much of the frame budget this frame actually consumed.
+        int32_t work = TICKS_SINCE(work_start);
+
+        framecounter++;
+
+        /* Push one frame of stereo samples, without blocking. */
+        if (snd.enabled && snd.buffer)
+        {
+            PROF_BEGIN(PROF_AUDIO);
+            audioSamplesPushed += audio_push(snd.buffer, snd.bufsize, false);
+            PROF_END(PROF_AUDIO);
+        }
+
+        // Pace on the tick counter, never on the audio queue.
+        //
+        // This used to block in audio_push() when sound was on, which tied
+        // emulation speed to how fast the AI drained its buffers. From the
+        // second game of a session onward the AI delivered more slowly than the
+        // rate it reports - measured with the profiler, every work slot was
+        // unchanged per frame while the wait doubled, taking 60fps to 44. That
+        // is also why muting restored full speed: it fell back to this limiter.
+        //
+        // Pacing on the tick counter makes the emulated frame rate independent
+        // of the audio hardware. Audio is now fed best-effort: samples are
+        // dropped if the queue is full rather than stalling the emulator.
+        PROF_BEGIN(PROF_IDLE);
+        frame_deadline += FRAME_TICKS;
+        if (TICKS_DISTANCE(frame_deadline, TICKS_READ()) > (int32_t)(FRAME_TICKS * 4))
+        {
+            // Fell a long way behind (menu, ROM load, reset): resync rather
+            // than trying to catch up on a backlog we cannot make up.
+            frame_deadline = TICKS_READ();
+        }
+        while (TICKS_BEFORE(TICKS_READ(), frame_deadline))
+        {
+        }
+        PROF_END(PROF_IDLE);
+
+        // Feed the AUTO tuner what this frame actually cost.
+        if (render_frame)
+        {
+            auto_render_ticks += (uint32_t)work;
+            auto_render_n++;
+        }
+        else
+        {
+            auto_skip_ticks += (uint32_t)work;
+            auto_skip_n++;
+        }
+        if (frameskip_mode == FS_AUTO)
+        {
+            auto_frameskip_tune();
+        }
+
+        if (render_frame)
+        {
+            int level = frameskip_level();
+
+            skip_left = level;
+
+            // An odd level is an even skip period, which is the case that locks
+            // the drawn frames to one parity.
+            if (blink_fix_enabled && (level & 1) &&
+                (++drawn_since_flip >= FS_PHASE_RUN))
+            {
+                drawn_since_flip = 0;
+                skip_left += 1;
             }
         }
-        sms_frame(0);
-        ProcessAfterFrameIsRendered(_dc, false);
-        display_show(_dc);
-
-        //
-#if 0
-       
-        short *p = audio_write_begin();
-        //debugf("Audio buffer length: %d\n",  snd.bufsize );
-        int i = 0;
-        for (int x = 0; x < snd.bufsize; x++)
+        else if (skip_left > 0)
         {
-            // audio_buffer[x] = (snd.buffer[0][x] << 16) + snd.buffer[1][x];
-            *p++ = (snd.buffer[0][x] << 16) + snd.buffer[1][x];
+            skip_left -= 1;
         }
-        audio_write_end();
-#endif
     }
+
+    // Do not leave a rdpq_detach_show() in flight. Its display_show() runs from
+    // the RDP interrupt callback, so if it fires after the caller has called
+    // display_close() it asserts with "Display context is not valid". Drain the
+    // queue so any pending callback has already run by the time we return.
+    rspq_wait();
 }
 
 void checkcontrollers()
 {
     controller1IsInserted = controller2IsInserted = false;
-    int controllers = get_controllers_present();
-    if (controllers & CONTROLLER_1_INSERTED)
+    if (joypad_is_connected(JOYPAD_PORT_1))
     {
         debugf("Controller 1 inserted\n");
         controller1IsInserted = true;
     }
-    if (controllers & CONTROLLER_2_INSERTED)
+    if (joypad_is_connected(JOYPAD_PORT_2))
     {
         debugf("Controller 2 inserted\n");
         controller2IsInserted = true;
@@ -502,6 +1240,10 @@ bool IsRomInjected(RomInfo *info, bool withOffset)
     bool rval = false;
     int offset = withOffset ? 512 : 0;
     debugstdout("Searching for Sega header at %x\n", GetRomAddress() + 0x7FF0 + offset);
+    // The DMA writes RDRAM through an uncached address, so the signature test
+    // below would otherwise be free to read a stale copy of this struct out of
+    // the data cache instead of what the cartridge just handed over.
+    data_cache_hit_writeback_invalidate(&header, sizeof(header));
     dma_read_async(&header, GetRomAddress() + 0x7FF0 + offset, sizeof(header));
     dma_wait();
     if (strncmp(header.signature, "TMR SEGA", 8) == 0)
@@ -511,44 +1253,46 @@ bool IsRomInjected(RomInfo *info, bool withOffset)
         uint8_t romsize = header.sizeAndRegion & 0b00001111;
         uint8_t region = (header.sizeAndRegion >> 4) & 0b00001111;
         // https://www.smspower.org/Development/ROMHeader
+        //
+        // The size nibble says how much to read, and it cannot be believed.
+        // Cartridge space carries no length of its own, so this is the only
+        // thing to go on - but homebrew routinely ships the 32KB header its
+        // toolchain template came with. The Super Mario Bros conversion is a
+        // 256KB rom declaring 0xC (32KB), and its header checksum agrees with
+        // the 32KB range, so nothing in the header betrays it. Reading 32KB
+        // gave the game 2 of its 16 banks, every bank switch came back mod 2,
+        // and it never reached the code that turns the display on: a black
+        // screen that lasted until the console was reset.
+        //
+        // So 512KB is read for every rom instead, which is already what the
+        // two size codes covering most of the library did. Over-reading a
+        // smaller rom is harmless: the surplus pages hold whatever cartridge
+        // space had in it, and a game only ever selects banks it has, so
+        // cart.pages being too large never comes into play. Only the 1MB code
+        // is still honoured, because those roms genuinely need it and are too
+        // rare to spend the memory on for everything else.
         switch (romsize)
         {
-        case 0:                      // 256KB
-            info->size = 512 * 1024; // 512KB and 1MB Roms are reported in the header as 256KB.
-                                     // Setting Rom size to 512KB also works for 256KB roms.
-            break;                   // Setting rom size to 1MB for 256 or 512KB games does not work.
-                                     // Only a small set of roms are 1MB.
-        case 1:
-            info->size = 512 * 1024;
-            break;
-        case 2:
+        case 2: // 1MB
             info->size = 1024 * 1024;
             break;
+        case 0: // 256KB claimed - also what 512KB and 1MB roms report
+        case 1: // 512KB
         case 0xa:
-            info->size = 8 * 1024;
-            break;
         case 0xb:
-            info->size = 16 * 1024;
-            break;
         case 0xc:
-            info->size = 32 * 1024;
-            break;
         case 0xd:
-            info->size = 48 * 1024;
-            break;
         case 0xe:
-            info->size = 64 * 1024;
+        case 0xf: // 8KB to 128KB claimed - read the full 512KB regardless
+            info->size = 512 * 1024;
             break;
-        case 0xf:
-            info->size = 128 * 1024;
-            break;
-        default:
+        default: // 3 to 9 are unassigned: the header is not one we understand
             debugstdout("Unknown romsize %x\n", romsize);
             info->size = 0; // unknown size
             break;
         }
         info->isGameGear = false;
-        debugstdout("Romsize %x = %d bytes\n", romsize, info->size);
+        debugstdout("Romsize %x, reading %d bytes\n", romsize, info->size);
         debugstdout("Region: %x - ", region);
         switch (region)
         {
@@ -604,6 +1348,97 @@ static const char *format_cart_type()
     }
 }
 
+// Blank the "TMR SEGA" signature the flashcart menu leaves in cartridge space
+// when it injects a rom. It survives a reset, so without this the same game is
+// detected and started again on every boot and the menu is unreachable except
+// by holding Z. Called as soon as the rom has been copied to RAM, so the next
+// boot comes up in the menu; picking a game from the flashcart menu writes a
+// fresh header and works as before.
+static void killInjectedRomHeader()
+{
+    __builtin_memset(&header, 0, sizeof(header));
+    debugf("Clearing injected rom header\n");
+    // The memset above only reached the data cache. The DMA reads RDRAM
+    // directly, so without this it can hand the cartridge whatever was in
+    // memory beforehand - leaving the signature in place, which is the one
+    // thing this function exists to prevent.
+    data_cache_hit_writeback_invalidate(&header, sizeof(header));
+    dma_write_raw_async(&header, GetRomAddress() + 0x7FF0, sizeof(header));
+    dma_wait();
+    dma_write_raw_async(&header, GetRomAddress() + 0x7FF0 + 512, sizeof(header));
+    dma_wait();
+}
+
+// Mount the rom filesystem and the SD card, then read the saved settings from
+// beside the roms. Runs before the injected-rom check so that settings are in
+// effect however the emulator was started, and so the autostart setting can be
+// honoured at all.
+static void mountFilesystemsAndLoadSettings(bool *dfsStarted, char *mountPoint)
+{
+    if (*dfsStarted)
+    {
+        return;
+    }
+#if NO_DFS == 0
+    debugstdout("Mounting rom file system...");
+    if (dfs_init(DFS_DEFAULT_LOCATION) != DFS_ESUCCESS)
+    {
+        debugstdout("rom filesystem failed to start!\n");
+        isFatalError = true;
+        strcpy(ErrorMessage, "Error opening rom filesystem.");
+        return;
+    }
+    debugstdout("mounted.\n");
+#else
+    // Built with NODFS=1: no filesystem is attached to the rom, so there is
+    // nothing to mount here and no read-only fallback if the card is missing.
+    debugstdout("Built without a rom filesystem.\n");
+#endif
+    *dfsStarted = true;
+    debugstdout("Trying to mount SD card...");
+    // -1 asks for the first usable partition. Some cards only come up when a
+    // partition is named explicitly, so fall back to trying the first two
+    // before giving up.
+    bool sdMounted = init_sdfs("sd:/", -1);
+    for (int part = 0; !sdMounted && part < 2; part++)
+    {
+        debugstdout("Retrying SD with partition %d\n", part);
+        sdMounted = init_sdfs("sd:/", part);
+    }
+    if (!sdMounted)
+    {
+#if NO_DFS == 0
+        debugstdout("Error opening SD, using rom:/ filesystem...\n");
+        strcpy(mountPoint, "rom:/");
+#else
+        // Nothing to fall back on, so stay pointed at the card. The browser
+        // comes up empty and says why.
+        debugstdout("Error opening SD, this build has no roms of its own...\n");
+        strcpy(mountPoint, "sd:/smsPlus64");
+#endif
+        // The browser shows this when it has nothing to list. Without it, a
+        // failed card is indistinguishable from an empty folder.
+        snprintf(sdStatus, sizeof(sdStatus), "SD not mounted. Cart: %s", format_cart_type());
+    }
+    else
+    {
+        debugstdout("SD card mounted\n");
+        strcpy(mountPoint, "sd:/smsPlus64");
+        snprintf(sdStatus, sizeof(sdStatus), "SD ok. Cart: %s", format_cart_type());
+    }
+    // Saved settings live beside the roms. Defaults are used when there is no
+    // file yet, or when running from the read-only rom:/ filesystem.
+    if (settings_load(mountPoint))
+    {
+        debugstdout("Loaded settings from %s\n", mountPoint);
+    }
+    else
+    {
+        debugstdout("No saved settings, using defaults\n");
+    }
+    settings_apply();
+}
+
 int main()
 {
 
@@ -611,7 +1446,6 @@ int main()
     errMSG[0] = romName[0] = 0;
     int fileSize = 0;
     bool isGameGear = false;
-    char mountPoint[20];
     size_t tmpSize;
 
     bool dfsStarted = false;
@@ -623,29 +1457,33 @@ int main()
     debugf("Built on %s %s using libdragon - https://github.com/DragonMinded/libdragon\n", __DATE__, __TIME__);
 
     cart_init();
-    controller_init();
+    joypad_init();
     timer_init();
+    rdpq_init();
     enableordisableTimer();
-    struct controller_data output;
-    get_accessories_present(&output);
-    int accessory = identify_accessory(0);
-    switch (accessory)
+    // The VRU is a Joybus device of its own rather than a controller accessory,
+    // so unlike the paks it shows up in the identifier, not the accessory type.
+    if (joypad_get_identifier(JOYPAD_PORT_1) == JOYBUS_IDENTIFIER_N64_VOICE_RECOGNITION)
     {
-    case ACCESSORY_MEMPAK:
-        debugf("Accessory: Memory Pak\n");
-        break;
-    case ACCESSORY_RUMBLEPAK:
-        debugf("Accessory: Rumble Pak\n");
-        break;
-    case ACCESSORY_TRANSFERPAK:
-        debugf("Accessory: Transfer Pak\n");
-        break;
-    case ACCESSORY_VRU:
         debugf("Accessory: VRU\n");
-        break;
-    default:
-        debugf("Accessory: None\n");
-        break;
+    }
+    else
+    {
+        switch (joypad_get_accessory_type(JOYPAD_PORT_1))
+        {
+        case JOYPAD_ACCESSORY_TYPE_CONTROLLER_PAK:
+            debugf("Accessory: Memory Pak\n");
+            break;
+        case JOYPAD_ACCESSORY_TYPE_RUMBLE_PAK:
+            debugf("Accessory: Rumble Pak\n");
+            break;
+        case JOYPAD_ACCESSORY_TYPE_TRANSFER_PAK:
+            debugf("Accessory: Transfer Pak\n");
+            break;
+        default:
+            debugf("Accessory: None\n");
+            break;
+        }
     }
     while (true)
     {
@@ -694,13 +1532,13 @@ int main()
         int counter = 0;
         while (counter < 10)
         {
-            zPressed = get_keys_pressed().c[0].Z;
+            joypad_poll();
+            zPressed = joypad_get_buttons(JOYPAD_PORT_1).z;
             if (zPressed)
             {
                 break;
             }
             wait_ms(10);
-            controller_scan();
             counter++;
         }
         // Check whether rom is started via Everdrive/N64Flashcartmenu
@@ -739,19 +1577,60 @@ int main()
         {
             debugstdout("Allocating memory for rom\n");
             info.rom = (uint8_t *)malloc(info.size);
-            debugstdout("Reading rom at %x\n", GetRomAddress() + offset);
-            dma_read_async(info.rom, GetRomAddress() + offset, info.size);
-            debugstdout("Waiting for dma\n");
-            dma_wait();
-            strcpy(info.title, "Everdrive/Flashcart");
+            if (info.rom == nullptr)
+            {
+                // dma_read_async() writes straight into RDRAM and does not look
+                // at where it is pointing, so a null destination is not a failed
+                // load but half a megabyte written over the bottom of memory.
+                // Fall through to the menu with the error instead.
+                debugstdout("Cannot allocate %d bytes for rom\n", info.size);
+                snprintf(ErrorMessage, ERRORMESSAGESIZE, "Cannot allocate memory for rom");
+                loadedFromFlashcartMenu = false;
+            }
+            else
+            {
+                debugstdout("Reading rom at %x\n", GetRomAddress() + offset);
+                // The rom arrives behind the CPU's back, through an uncached
+                // address. Any dirty cache line still covering this buffer - the
+                // allocator's own bookkeeping at either end of it, or whatever held
+                // this memory before - would be written back over the rom later on.
+                data_cache_hit_writeback_invalidate(info.rom, info.size);
+                dma_read_async(info.rom, GetRomAddress() + offset, info.size);
+                debugstdout("Waiting for dma\n");
+                dma_wait();
+                strcpy(info.title, "Everdrive/Flashcart");
+                // The rom is safely in RAM now, so drop the header that got us here
+                // and the next boot will come up in the menu instead of replaying
+                // this game.
+                killInjectedRomHeader();
+
+                // Only touch the SD card once the rom is out of cartridge space.
+                // Mounting reconfigures the cartridge interface through libcart, and
+                // a rom read issued afterwards comes back as garbage - which showed
+                // up as a black screen when starting a game from the flashcart menu.
+                // Autostart is a saved setting, so it can only be honoured after the
+                // card is mounted; by then the rom costs nothing to throw away.
+                mountFilesystemsAndLoadSettings(&dfsStarted, mountPoint);
+                if (!settings.autostart)
+                {
+                    debugstdout("Autostart disabled, going to the menu\n");
+                    free(info.rom);
+                    info.rom = nullptr;
+                    loadedFromFlashcartMenu = false;
+                }
+            }
+        }
+
+        if (loadedFromFlashcartMenu)
+        {
 #ifndef NDEBUG
             debugstdout("Press A button to continue\n");
-            controller_scan();
+            joypad_poll();
             console_render();
-            while (!get_keys_pressed().c[0].A)
+            while (!joypad_get_buttons(JOYPAD_PORT_1).a)
             {
                 wait_ms(10);
-                controller_scan();
+                joypad_poll();
             }
 #endif
             console_close();
@@ -759,60 +1638,22 @@ int main()
         else
         {
             debugstdout("Will start menu\n");
-            if (dfsStarted == false)
-            {
-                debugstdout("Mounting rom file system...");
-                if (dfs_init(DFS_DEFAULT_LOCATION) == DFS_ESUCCESS)
-                {
-                    dfsStarted = true;
-                    debugstdout("mounted.\nTrying to mount SD card...");
-                    if (!init_sdfs("sd:/", -1))
-                    {
-                        debugstdout("Error opening SD, using rom:/ filesystem...\n");
-                        strcpy(mountPoint, "rom:/");
-                    }
-                    else
-                    {
-                        debugstdout("SD card mounted\n");
-                        strcpy(mountPoint, "sd:/smsPlus64");
-                    }
-                }
-                else
-                {
-                    debugstdout("rom filesystem failed to start!\n");
-                    debugstdout("Exit program\n");
-                    isFatalError = true;
-                    strcpy(ErrorMessage, "Error opening rom filesystem.");
-                }
-            }
+            mountFilesystemsAndLoadSettings(&dfsStarted, mountPoint);
 #ifndef NDEBUG
             debugstdout("Press A button to continue\n");
-            controller_scan();
+            joypad_poll();
             console_render();
-            while (!get_keys_pressed().c[0].A)
+            while (!joypad_get_buttons(JOYPAD_PORT_1).a)
             {
                 wait_ms(10);
-                controller_scan();
+                joypad_poll();
             }
 
             console_close();
 #endif
 #if USEMENU == 1
 
-            header.signature[0] = 0;
-            header.signature[1] = 0;
-            header.signature[2] = 0;
-            header.signature[3] = 0;
-            header.signature[4] = 0;
-            header.signature[5] = 0;
-            header.signature[6] = 0;
-            header.signature[7] = 0;
-            debugf("Killing header\n");
-            dma_write_raw_async(&header, GetRomAddress() + 0x7FF0, sizeof(header));
-            dma_wait();
-            dma_write_raw_async(&header, GetRomAddress() + 0x7FF0 + 512, sizeof(header));
-            dma_wait();
-            debugf("Killed\n");
+            killInjectedRomHeader();
             display_init(RESOLUTION_320x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
             info = menu(mountPoint, 0, ErrorMessage, isFatalError, reset);
             display_close();
@@ -825,7 +1666,7 @@ int main()
 #endif
         }
         /* Initialize display */
-        display_init(RESOLUTION_256x240, DEPTH_16_BPP, FRAMEBUFFERS, GAMMA_NONE, FILTERS_RESAMPLE);
+        display_init(RESOLUTION_GAME, DEPTH_16_BPP, FRAMEBUFFERS, GAMMA_NONE, FILTERS_RESAMPLE);
         checkcontrollers();
         // dump info
         debugf("Starting game:\n");
@@ -834,8 +1675,13 @@ int main()
         debugf("- Address: %p\n", info.rom);
         debugf("- isGameGear: %d\n", info.isGameGear);
         reset = false;
+        // Set the audio hardware up for this game, and tear it down again when
+        // the game exits. Leaving it open across games left the AI stopped, so
+        // only the first game of a session had any sound. Emulation speed does
+        // not depend on this either way now - that is paced by the tick counter.
         debugf("Init audio\n");
         audio_init(44100, 4);
+        audioSamplesPushed = 0;
         load_rom(info.rom, info.size, info.isGameGear);
         // Initialize all systems and power on
         system_init(SMS_AUD_RATE);
@@ -847,6 +1693,7 @@ int main()
         romName[0] = 0;
         display_close();
         debugf("Closing audio\n");
+        flushAudioRing();
         audio_close();
 #ifdef USEMENU
         debugf("Freeing rom\n");

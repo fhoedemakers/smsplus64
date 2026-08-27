@@ -1,6 +1,5 @@
 
 #include "shared.h"
-#include "libdragon.h"
 #define MAX_OUTPUT  0x7FFF
 #define STEP        0x10000
 #define STEPSHIFT  16
@@ -74,11 +73,10 @@ void SN76496Write(int chip, int data) {
 }
 
 
-void SN76496Update(int chip, int length, unsigned char mask) {
+void SN76496Update(int chip, short *out_buf, int length, unsigned char mask) {
     int i, j;
     int buffer_index = 0;
     t_SN76496 *R = &sn[chip];
-    //short *p = audio_write_begin();
     /* If the volume is 0, increase the counter */
     for (i = 0; i < 4; i++) {
         if (R->Volume[i] == 0) {
@@ -152,17 +150,17 @@ void SN76496Update(int chip, int length, unsigned char mask) {
             if (mask & (1 << (0 + j))) out[1] += k;
         }
 
-        if (out[0] > MAX_OUTPUT << STEPSHIFT) out[0] = (MAX_OUTPUT << STEPSHIFT);
-        if (out[1] > MAX_OUTPUT << STEPSHIFT) out[1] = (MAX_OUTPUT << STEPSHIFT);
-        short p = ((out[0] >> STEPSHIFT) << STEPSHIFT) + (out[1] >> STEPSHIFT);
-        // push sample into N64 audio system
-        audio_push(&p,1,true);
-        /* Next sample set */
+        if (out[0] > (unsigned)(MAX_OUTPUT << STEPSHIFT)) out[0] = (MAX_OUTPUT << STEPSHIFT);
+        if (out[1] > (unsigned)(MAX_OUTPUT << STEPSHIFT)) out[1] = (MAX_OUTPUT << STEPSHIFT);
+        /* Stereo interleaved S16: [L0,R0,L1,R1,...]. Output is unsigned
+           0..0x7FFF; shift by one to recenter near zero so the AI DC-blocking
+           filter has less low-frequency content to swallow. */
+        out_buf[(buffer_index << 1) + 0] = (short)((out[0] >> STEPSHIFT) - 0x4000);
+        out_buf[(buffer_index << 1) + 1] = (short)((out[1] >> STEPSHIFT) - 0x4000);
         buffer_index += 1;
 
         length--;
     }
-    //audio_write_end();
 }
 
 

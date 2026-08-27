@@ -5,6 +5,7 @@ fh.log
 assets/sonic_gg.c
 assets/aladdin_gg.c
 assets/sonic_sms.c
+**/*Zone.Identifier
 **/*.gg
 **/*.sms
 **/*.gen

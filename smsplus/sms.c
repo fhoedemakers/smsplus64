@@ -1,5 +1,6 @@
 
 #include "shared.h"
+#include "profile.h"
 
 /* SMS context */
 t_sms sms;
@@ -27,46 +28,52 @@ void (sms_frame)(int skip_render) {
 
     if (snd.log) snd.callback(0x00);
 
+    /* Games stream digitized speech - the "Segaaa" shout among them - by
+       rewriting the PSG volume registers hundreds of times per frame. Filling
+       the whole buffer after the last scanline sampled that stream once per
+       frame and left only crackle, so the samples are rendered per scanline
+       instead: 262 lines x 60 fps is a 15.72 kHz update rate rather than 60 Hz. */
+    int render_audio = (snd.enabled && snd.buffer);
+    int samples_rendered = 0;
+
     for (vdp.line = 0; vdp.line < 262; vdp.line += 1) {
         /* Handle VDP line events */
         vdp_run();
 
-        /* Draw the current frame */
-        if (!skip_render) render_line(vdp.line);
+        /* Draw the current frame. A skipped frame still has to work out sprite
+           collisions: games poll the flag for hit detection, and it is the only
+           thing render_line() produces that the emulation itself can observe. */
+        {
+            PROF_BEGIN(PROF_RENDER);
+            if (!skip_render) {
+                render_line(vdp.line);
+            } else {
+                render_line_collision(vdp.line);
+            }
+            PROF_END(PROF_RENDER);
+        }
 
         /* Run the Z80 for a line */
-        z80_execute(227);
-    }
-
-    /* Update the emulated sound stream */
-    if (snd.enabled) {
-/*
-        int count;
-
-        SN76496Update(0, snd.psg_buffer, snd.bufsize, sms.psg_mask);
-
-//        if(sms.use_fm)
-//        {
-//            int i;
-//            for(i = 0; i < snd.bufsize; i++)
-//            {
-//                snd.fm_buffer[i] = OPLL_calc(opll);
-//            }
-//        }
-
-        for(count = 0; count < snd.bufsize; count += 1)
         {
-            signed short left   = 0;
-            signed short right  = 0;
-//            left = right = snd.fm_buffer[count];
-			left=0;
-            left  += snd.psg_buffer[0][count];
-            right += snd.psg_buffer[1][count];
-            snd.buffer[0][count] = left;
-            snd.buffer[1][count] = right;
+            PROF_BEGIN(PROF_Z80);
+            z80_execute(227);
+            PROF_END(PROF_Z80);
         }
-*/
-        SN76496Update(0, snd.bufsize, sms.psg_mask);
+
+        /* This scanline's share of the frame. Deriving each line's count from
+           a running target rather than adding a fixed step keeps the rounding
+           error from accumulating, so the 262 lines together produce exactly
+           snd.bufsize stereo pairs and the buffer is always filled. */
+        if (render_audio) {
+            int target = (vdp.line + 1) * snd.bufsize / 262;
+            int n = target - samples_rendered;
+            if (n > 0) {
+                PROF_BEGIN(PROF_AUDIO);
+                SN76496Update(0, snd.buffer + samples_rendered * 2, n, sms.psg_mask);
+                PROF_END(PROF_AUDIO);
+                samples_rendered = target;
+            }
+        }
     }
 }
 

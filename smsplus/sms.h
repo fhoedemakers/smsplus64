@@ -9,11 +9,6 @@
 #define SMS_HEIGHT 192
 #define SMS_AUD_RATE 44100
 #define SMS_FPS 60
-// rendering
-static uint8_t screenCropX = 0;
-static uint16_t screenBufferLine[256];
-static uint8_t smsBufferLine[SMS_WIDTH];
-
 // FH - 2019-06-30: Added support for RGB444 in stead of RGB565
 static int palette444[32];
 

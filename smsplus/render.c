@@ -7,12 +7,62 @@ void (*render_bg)(int line);
 /* Pointer to output buffer */
 uint8 *linebuf;
 
+/* Sprite occupancy for the line being scanned, one bit per x.
+
+   Collision is sprite against sprite: the background contributes nothing, which
+   is what lets a skipped frame work it out without drawing anything. This is
+   deliberately not the 0x40 marker the line buffer carries, which a priority
+   background suppresses (sprite_mix returns the background pixel untagged, so a
+   second sprite over that pixel went unreported) and which nothing ever clears
+   in the Game Gear margins, where it accumulated into permanent false hits.
+
+   32 bytes is two cache lines, so clearing it per line is a handful of stores. */
+static uint32 spr_cov[8];
+
+/* Fold one sprite's pixel coverage into the line and raise the collision flag if
+   it lands on anything already covered. `cov` has bit k set for the pixel at
+   x0 + k, for k < n.
+
+   Merging a whole sprite at once rather than testing each pixel keeps the inner
+   loops down to a shift and an or: the address arithmetic for a per-pixel test
+   gets hoisted above the transparency check, so it would be paid on every pixel
+   a sprite covers, opaque or not. Sprites within a line cannot overlap
+   themselves, so deferring the merge to the end of one changes nothing. */
+static __attribute__((noinline)) void (spr_cov_merge)(int x0, int n, uint32 cov)
+{
+    uint32 *word;
+    uint32 low;
+
+    if (!cov)
+        return;
+
+    word = &spr_cov[x0 >> 5];
+    x0 &= 31;
+    low = cov << x0;
+
+    if (*word & low)
+        vdp.status |= 0x20;
+    *word |= low;
+
+    /* A sprite is at most 16 pixels wide, so it straddles at most one word
+       boundary, and only when x0 is past 16 - which keeps the shift below
+       inside 1..15. */
+    if ((x0 + n) > 32)
+    {
+        uint32 high = cov >> (32 - x0);
+
+        word += 1;
+        if (*word & high)
+            vdp.status |= 0x20;
+        *word |= high;
+    }
+}
+
 /* Precalculated pixel table */
 //uint16 pixel[PALETTE_SIZE];
 
 // Each tile takes up 8*8=64 bytes. We have 512 tiles * 4 attribs, so 2K tiles max.
 #define CACHEDTILES 512
-#define ALIGN_DWORD 1 // esp doesn't support unaligned word writes
 
 int16 cachePtr[512 * 4];            //(tile+attr<<9) -> cache tile store index (i<<6); -1 if not cached
 uint8 cacheStore[CACHEDTILES * 64]; // Tile store
@@ -29,9 +79,187 @@ uint8 is_vram_dirty;
 int cacheKillPtr = 0;
 int freePtr = 0;
 
-/* Pixel look-up table */
-// uint8 lut[0x10000];
-#include "lut.h"
+/* Sprite/background priority resolution.
+   This replaces the old 65536-byte `lut` table (lut.h): a scattered read into
+   64K against the VR4300's 8K data cache missed on nearly every sprite pixel.
+   The table was pure combinational logic, reproduced here:
+
+     bg & 0x40          -> a sprite was already drawn here, it stays on top
+     bg & 0x20 and      -> background pixel has priority and is not transparent
+       bg & 0x0F
+     otherwise          -> the sprite pixel wins, tagged 0x10 (sprite palette)
+                           and 0x40 (marks the pixel as sprite-occupied)
+
+   Only ever called with sp != 0, which is why the transparent-sprite case of
+   the original table does not appear. */
+static __inline__ uint8 (sprite_mix)(uint8 bg, uint8 sp)
+{
+    if (bg & 0x40) return (bg & 0x7F);
+    if ((bg & 0x20) && (bg & 0x0F)) return (bg & 0x7F);
+    return (sp | 0x50);
+}
+
+/* Opacity of one row of a sprite pattern: bit k is set when pixel k is not
+   transparent. Left to right, so bit 0 is the leftmost pixel.
+
+   The pattern cache gathers the four bit-plane bits of a pixel into a nibble,
+   so a pixel is opaque exactly when any plane has its bit set - which the four
+   VRAM bytes answer directly, with no tile to expand. That keeps the collision
+   pass off the pattern cache: no getCacheSlow() expansions, no evictions and no
+   pollution of it on a frame nobody is going to look at. It also replaces the
+   per-pixel loop with straight-line code, which matters more than the
+   instruction count: the drawing loop unrolls to some 2.7K of code, and running
+   that on every scanline evicts the Z80 interpreter from the VR4300's 16K
+   direct-mapped instruction cache.
+
+   Sprites carry no flip bits - only background tiles do - so there is no
+   attribute to fold in here. */
+static __inline__ uint32 (spr_row_opacity)(int tile, int row)
+{
+    const uint8 *p = &vdp.vram[(tile << 5) | ((row & 7) << 2)];
+
+    /* Bit 7 is the leftmost pixel, as the pattern cache reads it */
+    uint32 op = p[0] | p[1] | p[2] | p[3];
+
+    /* Turn it around so bit k is pixel k */
+    op = ((op & 0xF0) >> 4) | ((op & 0x0F) << 4);
+    op = ((op & 0xCC) >> 2) | ((op & 0x33) << 2);
+    op = ((op & 0xAA) >> 1) | ((op & 0x55) << 1);
+
+    return op;
+}
+
+/* Which sprites land on each scanline, built once per frame instead of being
+   rediscovered per line. Both passes read this - render_obj() to draw them,
+   render_obj_collision() to work out hits on a frame nobody will see.
+
+   Both used to walk all 64 attribute table entries on every scanline to find the
+   few that cross it. Measured on Sonic and Aladdin that is 11750 entries
+   examined per frame against 186 sprite rows actually evaluated: over 95% of the
+   work is the y-range test, and neither game ever writes the 208 end-of-list
+   marker that would cut the scan short. Turning it inside out - once per sprite,
+   over the 8 or 16 lines it covers - replaces some 12000 y-tests with about 512
+   appends, 120 of them in practice.
+
+   Capped at the 8 sprites the hardware draws per line, so the list holds exactly
+   the set the drawing pass processed before its ninth-sprite bail-out. That
+   assumes vdp.limit is set, which it is throughout this port (vdp_reset raises
+   it and nothing clears it, and nothing outside this file reads it); were it
+   ever cleared, the ninth sprite onwards would go undrawn as well as unreported.
+
+   Nothing structural keeps this in step with the attribute table any more, now
+   that neither pass reads the table to decide what is on a line - that is
+   tools/collisioncheck's job, which re-derives the list with the old scan and
+   compares. Run it after touching anything here. */
+
+#define SPR_PER_LINE 8
+#define SPR_MAX_LINES 192
+static uint8 spr_line_list[SPR_MAX_LINES][SPR_PER_LINE];
+static uint8 spr_line_count[SPR_MAX_LINES];
+
+/* Rebuild triggers: a write into the attribute table, a move of the table, or a
+   change of sprite size. The x and pattern bytes do not affect which lines a
+   sprite covers, but they share the table and are not worth telling apart. */
+static int spr_list_dirty = 1;
+static int spr_list_satb = -1;
+static int spr_list_size = -1;
+
+#ifdef COLLISION_STATS
+/* Semantic counters for tools/collisioncheck: how much work the per-line lists
+   actually do, against the scan they replace. Never built for the Nintendo 64.
+   Two attempts at optimising this file went wrong from estimating cost instead
+   of counting it, so the counters are kept rather than re-derived each time. */
+long cstat_builds, cstat_appends;
+#endif
+
+/* noinline deliberately: this runs a fraction of a time per frame, but both
+   per-scanline paths call it through spr_list_sync() below. Left to itself GCC
+   inlines it - it did, into render_line_collision(), when that was its only
+   caller - which would put a couple of hundred bytes of once-a-frame code on a
+   path taken 192 times, competing with the Z80 interpreter for the VR4300's
+   direct-mapped instruction cache. */
+static __attribute__((noinline)) void (spr_list_build)(void)
+{
+    uint8 *st = (uint8 *)&vdp.vram[vdp.satb];
+    int height = (vdp.reg[1] & 0x02) ? 16 : 8;
+    int i;
+
+    if (vdp.reg[1] & 0x01)
+        height *= 2;
+
+    __builtin_memset(spr_line_count, 0, sizeof(spr_line_count));
+
+    for (i = 0; i < 64; i += 1)
+    {
+        /* Y position, as the drawing pass reads it */
+        int yp = st[i];
+        int y0, y1, y;
+
+        /* End of sprite list marker? */
+        if (yp == 208)
+            break;
+
+        /* Actual Y position is +1, and wraps for sprites > 240 */
+        yp += 1;
+        if (yp > 240)
+            yp -= 256;
+
+        y0 = yp;
+        y1 = yp + height;
+        if (y0 < 0)
+            y0 = 0;
+        if (y1 > SPR_MAX_LINES)
+            y1 = SPR_MAX_LINES;
+
+        for (y = y0; y < y1; y += 1)
+        {
+            if (spr_line_count[y] < SPR_PER_LINE)
+            {
+                spr_line_list[y][spr_line_count[y]++] = (uint8)i;
+#ifdef COLLISION_STATS
+                cstat_appends++;
+#endif
+            }
+        }
+    }
+
+#ifdef COLLISION_STATS
+    cstat_builds++;
+#endif
+
+    spr_list_dirty = 0;
+    spr_list_satb = vdp.satb;
+    spr_list_size = (vdp.reg[1] & 0x03);
+}
+
+/* Rebuild the lists if anything they are derived from has moved.
+
+   Called once per scanline by both passes rather than once per frame: a game
+   that rewrites the attribute table part way down the screen has to be picked
+   up on the next line, which is what the drawing pass used to get for free by
+   re-reading the table itself. Three loads and three compares against the
+   11750 y-tests this replaces. */
+static __inline__ void (spr_list_sync)(void)
+{
+    if (spr_list_dirty || spr_list_satb != vdp.satb ||
+        spr_list_size != (vdp.reg[1] & 0x03))
+    {
+        spr_list_build();
+    }
+}
+
+#ifdef SPR_LIST_CHECK
+/* For tools/collisioncheck, which re-derives this list with the plain per-line
+   attribute table scan render_obj() used to do and compares the two. Both
+   passes read the list now, so nothing else can tell whether it is right.
+   Never built for the Nintendo 64. */
+const uint8 *spr_list_for_line(int line, int *count)
+{
+    spr_list_sync();
+    *count = spr_line_count[line];
+    return spr_line_list[line];
+}
+#endif
 
 /* Attribute expansion table */
 uint32 atex[4] =
@@ -63,6 +291,13 @@ void render_init(void);
 void (vramMarkTileDirty)(int index)
 {
     int i = index;
+
+    /* The attribute table lives in VRAM, so the tile invalidation this already
+       gets on every changed byte doubles as the signal that the per-line sprite
+       lists are stale. The table is 256 bytes, which is 8 tiles' worth. */
+    if ((unsigned)(index - (vdp.satb >> 5)) < 8)
+        spr_list_dirty = 1;
+
     while (i < 0x800)
     {
         if (cachePtr[i] != -1)
@@ -77,18 +312,17 @@ void (vramMarkTileDirty)(int index)
 }
 
 
-uint8 *(getCache)(int tile, int attr)
+// Slow path: the tile is not expanded yet. Kept out of line so the hit path
+// below stays a handful of instructions - this is called ~6000 times per frame
+// and the old single function saved and restored nine registers on every hit.
+static uint8 *(getCacheSlow)(int tile, int attr)
 {
     int n, i, x, y, c;
     int b0, b1, b2, b3;
     int i0, i1, i2, i3;
-    int p;
     static bool isoverFlowed = false;
-    // See if we have this in cache.
-    if (cachePtr[tile + (attr << 9)] != -1)
-        return &cacheStore[cachePtr[tile + (attr << 9)]];
 
-    // Nope! Generate cache tile.
+    // Generate cache tile.
     // Find free cache idx first.
     do
     {
@@ -149,102 +383,47 @@ uint8 *(getCache)(int tile, int attr)
     return &cacheStore[i << 6];
 }
 
-/* Macros to access memory 32-bits at a time (from MAME's drawgfx.c) */
-
-#ifdef ALIGN_DWORD
-
-static __inline__ uint32 (read_dword)(void *address)
+// Fast path: the tile is already expanded in the pattern cache, which is the
+// overwhelmingly common case. Inlines to a load, a test and an add.
+static __inline__ uint8 *(getCache)(int tile, int attr)
 {
-    if ((uint32)address & 3)
-    {
-#ifdef LSB_FIRST /* little endian version */
-        return (*((uint8 *)address) +
-                (*((uint8 *)address + 1) << 8) +
-                (*((uint8 *)address + 2) << 16) +
-                (*((uint8 *)address + 3) << 24));
-#else /* big endian version */
-        return (*((uint8 *)address + 3) +
-                (*((uint8 *)address + 2) << 8) +
-                (*((uint8 *)address + 1) << 16) +
-                (*((uint8 *)address) << 24));
-#endif
-    }
-    else
-        return *(uint32 *)address;
+    int idx = cachePtr[tile + (attr << 9)];
+    if (__builtin_expect(idx >= 0, 1))
+        return &cacheStore[idx];
+    return getCacheSlow(tile, attr);
+}
+
+/* Access memory 32-bits at a time (from MAME's drawgfx.c).
+   The line buffer is written at a horizontal-scroll offset, so these are
+   potentially unaligned. Going through a byte-aligned type makes the compiler
+   emit MIPS lwl/lwr and swl/swr, which handle any alignment in two
+   instructions - the previous version tested alignment at runtime and
+   branched into a byte-wise fallback twice per background column.
+
+   Note the callers hand these a uint32*, so the alignment has to be spelled
+   out here: without it the compiler infers 4-byte alignment from the pointer
+   type and emits a plain sw, which faults on a horizontal scroll that is not
+   a multiple of four. */
+
+typedef struct { uint32 v; } __attribute__((packed, aligned(1))) unaligned_dword;
+
+static __inline__ uint32 (read_dword)(const void *address)
+{
+    return ((const unaligned_dword *)address)->v;
 }
 
 static __inline__ void (write_dword)(void *address, uint32 data)
 {
-    if ((uint32)address & 3)
-    {
-#ifdef LSB_FIRST
-        *((uint8 *)address) = data;
-        *((uint8 *)address + 1) = (data >> 8);
-        *((uint8 *)address + 2) = (data >> 16);
-        *((uint8 *)address + 3) = (data >> 24);
-#else
-        *((uint8 *)address + 3) = data;
-        *((uint8 *)address + 2) = (data >> 8);
-        *((uint8 *)address + 1) = (data >> 16);
-        *((uint8 *)address) = (data >> 24);
-#endif
-        return;
-    }
-    else
-        *(uint32 *)address = data;
+    ((unaligned_dword *)address)->v = data;
 }
-
-#else
-#define read_dword(address) *(uint32 *)address
-#define write_dword(address, data) *(uint32 *)address = data
-#endif
 
 /****************************************************************************/
 
 /* Initialize the rendering data */
 void render_init(void)
 {
-#if 0
-    int bx, sx, b, s, bp, bf, sf, c;
-
-    /* Generate 64k of data for the look up table */
-    for(bx = 0; bx < 0x100; bx += 1)
-    {
-        for(sx = 0; sx < 0x100; sx += 1)
-        {
-            /* Background pixel */
-            b  = (bx & 0x0F);
-
-            /* Background priority */
-            bp = (bx & 0x20) ? 1 : 0;
-
-            /* Full background pixel + priority + sprite marker */
-            bf = (bx & 0x7F);
-
-            /* Sprite pixel */
-            s  = (sx & 0x0F);
-
-            /* Full sprite pixel, w/ palette and marker bits added */
-            sf = (sx & 0x0F) | 0x10 | 0x40;
-
-            /* Overwriting a sprite pixel ? */
-            if(bx & 0x40)
-            {
-                /* Return the input */
-                c = bf;
-            }
-            else
-            {
-                /* Work out priority and transparency for both pixels */
-                c = bp ? b ? bf : s ? sf : bf : s ? sf : bf;
-            }
-
-            /* Store result */
-            lut[(bx << 8) | (sx)] = c;
-        }
-    }
-
-#endif
+    /* The 64K priority look-up table this used to build now lives as
+       arithmetic in sprite_mix(). */
     render_reset();
 }
 
@@ -253,9 +432,9 @@ void (render_reset)(void)
 {
     int i;
 
-    /* Clear display bitmap */
-    // memset(bitmap.data, 0, bitmap.pitch * bitmap.height);
-    __builtin_memset(bitmap.data, 0, bitmap.pitch);
+    /* Clear the CI8 frame the renderer draws into, so a reset does not leave
+       the previous game's image on screen. */
+    __builtin_memset(sms_line_target, 0, SMS_WIDTH * SMS_HEIGHT);
 
     /* Clear palette */
     for (i = 0; i < PALETTE_SIZE; i += 1)
@@ -263,11 +442,21 @@ void (render_reset)(void)
         palette_sync(i);
     }
 
-    /* Invalidate pattern cache */
+    /* Invalidate pattern cache.
+
+       cacheStoreUsed has to be cleared here explicitly. This used to rely on
+       vramMarkTileDirty(), but that only releases a slot while cachePtr still
+       points at it, and cachePtr is wiped just above - so it released nothing
+       and every slot stayed marked as occupied for the next game. Starting a
+       second game then had to scan ever further for a free slot, which showed
+       up as the renderer slowing down, and once all the slots were marked used
+       the search loop in getCacheSlow() could not terminate at all. */
     for (i = 0; i < 512 * 4; i++)
         cachePtr[i] = -1;
-    for (i = 0; i < 512; i++)
-        vramMarkTileDirty(i);
+    __builtin_memset(cacheStoreUsed, 0, sizeof(cacheStoreUsed));
+    freePtr = 0;
+    cacheKillPtr = 0;
+    spr_list_dirty = 1;
 
     /* Set up viewport size */
     if (IS_GG)
@@ -289,21 +478,54 @@ void (render_reset)(void)
     render_bg = IS_GG ? render_bg_gg : render_bg_sms;
 }
 
-extern void sms_render_line(int line, const uint8_t *buffer);
+/* Claim a range of the CI8 frame in the data cache without fetching it from
+   RDRAM first.
+
+   A normal write miss on the VR4300 reads the 16-byte line in before the store
+   can happen. Every scanline is completely overwritten here and is then only
+   ever read by the RDP, so that read is pure waste: 3072 line fills per frame
+   for data nobody looks at. "Create Dirty Exclusive" (cache op 0xD) marks the
+   line valid and dirty and skips the fetch.
+
+   The caller must overwrite every byte of the range afterwards. Whatever is
+   left untouched is stale cache contents and gets written back as if it were
+   pixel data. */
+#define DCACHE_LINE_SIZE 16
+static __inline__ void (claim_dcache_range)(uint8 *start, int bytes)
+{
+#ifdef N64
+    int i;
+    for (i = 0; i < bytes; i += DCACHE_LINE_SIZE)
+    {
+        __asm__ __volatile__("cache 0xD, 0(%0)" : : "r"(start + i) : "memory");
+    }
+#else
+    /* Host builds (the collision test harness) have no such instruction, and
+       nothing to gain from it - the caller overwrites the range regardless. */
+    (void)start; (void)bytes;
+#endif
+}
 
 /* Draw a line of the display */
 void (render_line)(int line)
 {
-    /* Ensure we're within the viewport range */
-    if ((line < vp_vstart) || (line >= vp_vend)) {
-        // Hack to render emulator display center correctly vertically by drawing black lines on top and bottom.
-        sms_render_line(line, 0);
+    /* Ensure we're within the viewport range. Lines outside it fall outside
+       the rectangle the RDP blits to the framebuffer, so there is nothing to
+       draw for them. */
+    if ((line < vp_vstart) || (line >= vp_vend))
         return;
-    }
 
-    /* Point to current line in output buffer */
-    // linebuf = &bitmap.data[(line * bitmap.pitch)];
-    linebuf = &bitmap.data[0];
+    /* Point straight at this line inside the CI8 frame the RDP will read.
+       Rendering here directly removes the 256-byte copy per scanline that
+       the old scratch line buffer needed. */
+    linebuf = sms_line_target + (line * SMS_WIDTH);
+
+    /* Claim exactly the span both branches below rewrite in full: the whole
+       256-byte row for the Master System, and only the visible window for the
+       Game Gear. The Game Gear margins are deliberately left out - nothing
+       rewrites them, and render_obj reads the line back to resolve sprite
+       priority, so stale bytes there must stay as they are. */
+    claim_dcache_range(linebuf + (vp_hstart << 3), BMP_WIDTH);
 
     /* Blank line */
     if ((!(vdp.reg[1] & 0x40)) || (((vdp.reg[2] & 1) == 0) && (IS_SMS)))
@@ -324,14 +546,6 @@ void (render_line)(int line)
             __builtin_memset(linebuf, BACKDROP_COLOR, 8);
         }
     }
-
-    sms_render_line(line, linebuf);
-    // if ( line == 191) {
-    //     __builtin_memset(linebuf, 0, SMS_WIDTH);
-    //     for (int i = line ; i <= 192 ; i++) {
-    //         sms_render_line(i, linebuf);
-    //     }
-    // }
 }
 
 /* Draw the Master System background */
@@ -466,152 +680,295 @@ void render_bg_gg(int line)
     }
 }
 
-/* Draw sprites */
+/* Draw sprites.
+
+   Walks the per-line list rather than rediscovering which sprites cross this
+   line: the same transformation the collision pass got, and for the same reason.
+   The scan this replaces examined 11750 attribute table entries per frame to
+   find 186 sprite rows worth drawing, because no game writes the 208 marker that
+   would cut it short.
+
+   The list encodes everything the scan used to work out - it breaks on 208,
+   covers exactly the lines a sprite crosses, appends in ascending entry order so
+   front-to-back priority is unchanged, and caps at the 8 sprites the hardware
+   draws, which is what the old count == 9 bail-out did. Only ever called for a
+   line inside the viewport, so `line` is always within the lists' 192. */
 void (render_obj)(int line)
 {
-    int i;
-    uint8_t *ctp;
-
-    /* Sprite count for current line (8 max.) */
-    int count = 0;
-
-    /* Sprite dimensions */
+    const uint8 *list;
+    int n_line;
+    uint8 *st;
     int width = 8;
-    int height = (vdp.reg[1] & 0x02) ? 16 : 8;
+    int k;
 
-    /* Pointer to sprite attribute table */
+    spr_list_sync();
+
+    n_line = spr_line_count[line];
+
+    /* Nothing to draw, and nothing to clear: spr_cov is only ever read by
+       spr_cov_merge() for a sprite on this same line. Measured on Aladdin and
+       Sonic, 70% of lines carry no sprite at all. */
+    if (n_line == 0)
+        return;
+
+    list = spr_line_list[line];
+    st = (uint8 *)&vdp.vram[vdp.satb];
+
+    /* Nothing is covered yet on this line */
+    __builtin_memset(spr_cov, 0, sizeof(spr_cov));
+
+    /* Double size sprites are twice as wide. Their height is the list's
+       business, not this loop's. */
+    if (vdp.reg[1] & 0x01)
+        width *= 2;
+
+    /* Draw sprites in front-to-back order */
+    for (k = 0; k < n_line; k += 1)
+    {
+        int i = list[k];
+        uint8_t *ctp;
+        uint8 *linebuf_ptr;
+
+        /* Y as the list was built from it */
+        int yp = st[i] + 1;
+        int row;
+
+        /* Width of sprite */
+        int start = 0;
+        int end = width;
+
+        /* Sprite X position */
+        int xp = st[0x80 + (i << 1)];
+
+        /* Pattern name */
+        int n = st[0x81 + (i << 1)];
+
+        /* Wrap Y coordinate for sprites > 240 */
+        if (yp > 240)
+            yp -= 256;
+
+        /* Row of the sprite this line lands on. The list guarantees it is
+           inside the sprite, which is what the y-range test used to do. */
+        row = line - yp;
+
+        /* X position shift */
+        if (vdp.reg[0] & 0x08)
+            xp -= 8;
+
+        /* Add MSB of pattern name */
+        if (vdp.reg[6] & 0x04)
+            n |= 0x0100;
+
+        /* Mask LSB for 8x16 sprites */
+        if (vdp.reg[1] & 0x02)
+            n &= 0x01FE;
+
+        /* Point to offset in line buffer */
+        linebuf_ptr = (uint8 *)&linebuf[xp];
+
+        /* Clip sprites on left edge */
+        if (xp < 0)
+        {
+            start = (0 - xp);
+        }
+
+        /* Clip sprites on right edge */
+        if ((xp + width) > 256)
+        {
+            end = (256 - xp);
+        }
+
+        /* Where the sprite lands, bit k for the pixel at xp + start + k.
+           The clipping above keeps xp + start inside 0..255. */
+        uint32 cov = 0;
+
+        /* Draw double size sprite */
+        if (vdp.reg[1] & 0x01)
+        {
+            int x;
+            uint32 bit = 1;
+            ctp = getCache((n & 0x1ff) + (row >> 3), (n >> 9) & 3);
+            /* The mask keeps this inside the 64-byte tile. Without it a
+               zoomed 8x16 sprite runs off the end of its cache entry and
+               reads whichever tile happens to sit in the next slot. */
+            uint8 *cache_ptr = (uint8 *)&ctp[((row >> 1) << 3) & 0x38];
+
+            /* Draw sprite line */
+            for (x = start; x < end; x += 1, bit <<= 1)
+            {
+                /* Source pixel from cache */
+                uint8 sp = cache_ptr[(x >> 1)];
+
+                /* Only draw opaque sprite pixels */
+                if (sp)
+                {
+                    /* Note where the sprite is for collision detection */
+                    cov |= bit;
+
+                    /* Resolve sprite against background */
+                    linebuf_ptr[x] = sprite_mix(linebuf_ptr[x], sp);
+                }
+            }
+        }
+        else /* Regular size sprite (8x8 / 8x16) */
+        {
+            int x;
+            uint32 bit = 1;
+            ctp = getCache((n & 0x1ff) + (row >> 3), (n >> 9) & 3);
+            uint8 *cache_ptr = (uint8 *)&ctp[(row << 3) & 0x38];
+
+            /* Draw sprite line */
+            for (x = start; x < end; x += 1, bit <<= 1)
+            {
+                /* Source pixel from cache */
+                uint8 sp = cache_ptr[x];
+
+                /* Only draw opaque sprite pixels */
+                if (sp)
+                {
+                    /* Note where the sprite is for collision detection */
+                    cov |= bit;
+
+                    /* Resolve sprite against background */
+                    linebuf_ptr[x] = sprite_mix(linebuf_ptr[x], sp);
+                }
+            }
+        }
+
+        spr_cov_merge(xp + start, end - start, cov);
+    }
+}
+
+/* Work out sprite collisions without drawing anything.
+
+   Walks the same per-line list the drawing pass above does. Rediscovering the
+   sprites per scanline measured at 11750 attribute table entries examined per
+   frame against 186 sprite rows actually evaluated - a 63x overhead that
+   dwarfed everything else and is what made this too slow to ship at first.
+
+   What is left here that the drawing pass does not do: opacity comes straight
+   out of the VRAM bit-planes instead of the pattern cache, so a skipped frame
+   neither expands tiles nor evicts anything from a cache only a drawn frame
+   reads. */
+static void (render_obj_collision)(int line)
+{
+    const uint8 *list = spr_line_list[line];
+    int n_line = spr_line_count[line];
     uint8 *st = (uint8 *)&vdp.vram[vdp.satb];
+    int height = (vdp.reg[1] & 0x02) ? 16 : 8;
+    int width = 8;
+    int k;
 
-    /* Adjust dimensions for double size sprites */
     if (vdp.reg[1] & 0x01)
     {
         width *= 2;
         height *= 2;
     }
 
-    /* Draw sprites in front-to-back order */
-    for (i = 0; i < 64; i += 1)
+    /* Nothing is covered yet on this line */
+    __builtin_memset(spr_cov, 0, sizeof(spr_cov));
+
+    for (k = 0; k < n_line; k += 1)
     {
-        /* Sprite Y position */
-        int yp = st[i];
+        int i = list[k];
 
-        /* End of sprite list marker? */
-        if (yp == 208)
-            return;
+        /* Y as the list was built from it */
+        int yp = st[i] + 1;
+        int row;
 
-        /* Actual Y position is +1 */
-        yp += 1;
+        int start = 0;
+        int end = width;
 
-        /* Wrap Y coordinate for sprites > 240 */
+        int xp = st[0x80 + (i << 1)];
+        int n = st[0x81 + (i << 1)];
+        uint32 cov;
+
         if (yp > 240)
             yp -= 256;
+        row = line - yp;
 
-        /* Check if sprite falls on current line */
-        if ((line >= yp) && (line < (yp + height)))
+        /* X position shift */
+        if (vdp.reg[0] & 0x08)
+            xp -= 8;
+
+        /* Add MSB of pattern name */
+        if (vdp.reg[6] & 0x04)
+            n |= 0x0100;
+
+        /* Mask LSB for 8x16 sprites */
+        if (vdp.reg[1] & 0x02)
+            n &= 0x01FE;
+
+        /* Clip sprites on left and right edge */
+        if (xp < 0)
+            start = (0 - xp);
+        if ((xp + width) > 256)
+            end = (256 - xp);
+
+        /* The row's opacity comes straight out of VRAM, so there is no pattern
+           cache to touch and no pixel loop. */
+        if (vdp.reg[1] & 0x01)
         {
-            uint8 *linebuf_ptr;
+            /* Double size: every source pixel covers two columns */
+            uint32 src = spr_row_opacity((n & 0x1ff) + (row >> 3), row >> 1);
+            int b;
 
-            /* Width of sprite */
-            int start = 0;
-            int end = width;
-
-            /* Sprite X position */
-            int xp = st[0x80 + (i << 1)];
-
-            /* Pattern name */
-            int n = st[0x81 + (i << 1)];
-
-            /* Bump sprite count */
-            count += 1;
-
-            /* Too many sprites on this line ? */
-            if ((vdp.limit) && (count == 9))
-                return;
-
-            /* X position shift */
-            if (vdp.reg[0] & 0x08)
-                xp -= 8;
-
-            /* Add MSB of pattern name */
-            if (vdp.reg[6] & 0x04)
-                n |= 0x0100;
-
-            /* Mask LSB for 8x16 sprites */
-            if (vdp.reg[1] & 0x02)
-                n &= 0x01FE;
-
-            /* Point to offset in line buffer */
-            linebuf_ptr = (uint8 *)&linebuf[xp];
-
-            /* Clip sprites on left edge */
-            if (xp < 0)
+            cov = 0;
+            for (b = 0; b < 8; b += 1)
             {
-                start = (0 - xp);
-            }
-
-            /* Clip sprites on right edge */
-            if ((xp + width) > 256)
-            {
-                end = (256 - xp);
-            }
-
-            /* Draw double size sprite */
-            if (vdp.reg[1] & 0x01)
-            {
-                int x;
-                ctp = getCache((n & 0x1ff) + ((line - yp) >> 3), (n >> 9) & 3);
-                uint8 *cache_ptr = (uint8 *)&ctp[(((line - yp) >> 1) << 3)];
-
-                /* Draw sprite line */
-                for (x = start; x < end; x += 1)
-                {
-                    /* Source pixel from cache */
-                    uint8 sp = cache_ptr[(x >> 1)];
-
-                    /* Only draw opaque sprite pixels */
-                    if (sp)
-                    {
-                        /* Background pixel from line buffer */
-                        uint8 bg = linebuf_ptr[x];
-
-                        /* Look up result */
-                        linebuf_ptr[x] = lut[(bg << 8) | (sp)];
-
-                        /* Set sprite collision flag */
-                        if (bg & 0x40)
-                            vdp.status |= 0x20;
-                    }
-                }
-            }
-            else /* Regular size sprite (8x8 / 8x16) */
-            {
-                int x;
-                ctp = getCache((n & 0x1ff) + ((line - yp) >> 3), (n >> 9) & 3);
-                uint8 *cache_ptr = (uint8 *)&ctp[((line - yp) << 3) & 0x38];
-
-                /* Draw sprite line */
-                for (x = start; x < end; x += 1)
-                {
-                    /* Source pixel from cache */
-                    uint8 sp = cache_ptr[x];
-
-                    /* Only draw opaque sprite pixels */
-                    if (sp)
-                    {
-                        /* Background pixel from line buffer */
-                        uint8 bg = linebuf_ptr[x];
-
-                        /* Look up result */
-                        linebuf_ptr[x] = lut[(bg << 8) | (sp)];
-
-                        /* Set sprite collision flag */
-                        if (bg & 0x40)
-                            vdp.status |= 0x20;
-                    }
-                }
+                if (src & (1u << b))
+                    cov |= 3u << (b << 1);
             }
         }
+        else
+        {
+            cov = spr_row_opacity((n & 0x1ff) + (row >> 3), row);
+        }
+
+        /* Drop the pixels the clipping took off either edge */
+        cov = (cov >> start) & ((1u << (end - start)) - 1);
+
+        spr_cov_merge(xp + start, end - start, cov);
     }
+}
+
+/* Sprite collision for a frame whose pixels are being skipped.
+
+   Games poll the collision flag for hit detection, and it is the only thing
+   render_line() produces that the emulation itself can observe - so it has to
+   be worked out on skipped frames too, or frameskip changes how a game plays.
+
+   Mirrors render_line()'s gates so the flag goes up on exactly the scanlines it
+   would have on a drawn frame. Touches neither linebuf nor sms_line_target: the
+   buffer still holds the last displayed image while frames are being skipped. */
+void (render_line_collision)(int line)
+{
+    /* The flag is sticky until the game reads the status port, and the Z80 only
+       runs between scanlines, so once it is up nothing later in this frame can
+       change the outcome. */
+    if (vdp.status & 0x20)
+        return;
+
+    if ((line < vp_vstart) || (line >= vp_vend))
+        return;
+
+    /* Blank line - render_line() does not reach the sprites either */
+    if ((!(vdp.reg[1] & 0x40)) || (((vdp.reg[2] & 1) == 0) && (IS_SMS)))
+        return;
+
+    spr_list_sync();
+
+    /* One sprite cannot collide with anything, and the coverage map starts
+       empty on every line, so fewer than two is nothing to work out. This has
+       to come before render_obj_collision() rather than inside it: measured on
+       Aladdin and Sonic, 70% of lines carry no sprite at all and only 21% to
+       31% carry two or more, so on most lines the setup - the call, the 32-byte
+       coverage clear, the register and attribute table reads - was the entire
+       cost. */
+    if (spr_line_count[line] < 2)
+        return;
+
+    render_obj_collision(line);
 }
 
 /* Update pattern cache with modified tiles */

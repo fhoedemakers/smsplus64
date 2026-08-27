@@ -22,6 +22,8 @@ void render_obj(int line);
 
 void render_line(int line);
 
+void render_line_collision(int line);
+
 void update_cache(void);
 
 void palette_sync(int index);

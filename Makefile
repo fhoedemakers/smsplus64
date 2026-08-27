@@ -14,12 +14,20 @@ endif
 #N64_CXXFLAGS := $(shell echo $(N64_CXXFLAGS) | sed 's/-O2/-O3/' | sed 's/-Werror//g' | sed 's/-Wall//g' | sed 's/-Wno-error=[^ ]*//g')
 N64_CFLAGS := $(shell echo $(N64_CFLAGS) | sed 's/-Werror//g' | sed 's/-Wall//g'  | sed 's/-Wno-error=[^ ]*//g')
 N64_CXXFLAGS := $(shell echo $(N64_CXXFLAGS) | sed 's/-Werror//g' | sed 's/-Wall//g' | sed 's/-Wno-error=[^ ]*//g')
+# NODFS=1 builds a rom with no dfs filesystem attached, so nothing in
+# filesystem/ is packed into the z64 and the rom carries no games of its own.
+# It can then only load from the SD card. Code that would otherwise mount or
+# fall back on rom:/ is compiled out via NO_DFS.
+# Build one with: make RELEASE=1 NODFS=1   (this is what ./build.sh does;
+# ./build_dfs.sh builds the variant with the filesystem baked in)
+NODFS ?= 0
+
 # add current folder and infones subfolder to include path
 INCDIR = -I. -Ismsplus -Iassets
 # add INCDIR to CFLAGS
-CFLAGS += $(INCDIR) -DUSEMENU=1 # -DLSB_FIRST=0
+CFLAGS += $(INCDIR) -DUSEMENU=1 -DNO_DFS=$(NODFS) # -DLSB_FIRST=0
 # add INCDIR to CXXFLAGS
-CXXFLAGS += $(INCDIR) -DUSEMENU=1 #-DLSB_FIRST=0
+CXXFLAGS += $(INCDIR) -DUSEMENU=1 -DNO_DFS=$(NODFS) #-DLSB_FIRST=0
 
 SUBDIRS = $(SOURCE_DIR) $(SOURCE_DIR)/smsplus $(SOURCE_DIR)/assets
 
@@ -27,11 +35,59 @@ vpath %.cpp $(SUBDIRS)
 vpath %.c $(SUBDIRS)
 # 
 
-OBJS = $(BUILD_DIR)/smsPlus64.o $(BUILD_DIR)/libdragonsprite.o $(BUILD_DIR)/loadrom.o $(BUILD_DIR)/render.o $(BUILD_DIR)/sms.o $(BUILD_DIR)/builtinrom.o  $(BUILD_DIR)/sn76496.o $(BUILD_DIR)/system.o $(BUILD_DIR)/vdp.o $(BUILD_DIR)/z80.o $(BUILD_DIR)/menu.o $(BUILD_DIR)/RomLister.o $(BUILD_DIR)/FrensHelpers.o 
+OBJS = $(BUILD_DIR)/smsPlus64.o $(BUILD_DIR)/libdragonsprite.o $(BUILD_DIR)/loadrom.o $(BUILD_DIR)/render.o $(BUILD_DIR)/sms.o $(BUILD_DIR)/builtinrom.o  $(BUILD_DIR)/sn76496.o $(BUILD_DIR)/system.o $(BUILD_DIR)/vdp.o $(BUILD_DIR)/z80.o $(BUILD_DIR)/menu.o $(BUILD_DIR)/RomLister.o $(BUILD_DIR)/FrensHelpers.o $(BUILD_DIR)/settings.o
+
+# Lift the per-scanline renderer and sound hotspots to -O3. Keep the rest at
+# the libdragon default (-O2) so libdragon-facing code is unaffected.
+# vdp.c is deliberately absent: it carries a #pragma GCC optimize ("O2") that
+# overrides any -O3 given here, so listing it only made the flag look like it
+# was doing something.
+HOT_OBJS = $(BUILD_DIR)/render.o $(BUILD_DIR)/sn76496.o \
+           $(BUILD_DIR)/sms.o $(BUILD_DIR)/system.o
+$(HOT_OBJS): N64_CFLAGS := $(patsubst -O2,-O3,$(N64_CFLAGS))
+
+# The Z80 interpreter is the largest single CPU cost (~43% of frame time),
+# so its optimization level is worth choosing deliberately. z80.c used to pin
+# itself to -O2 with a #pragma, which silently overrode the command line; the
+# level now comes from here so the trade-off can actually be measured.
+#
+# Measured on real hardware, Sonic the Hedgehog, frameskip off:
+#
+#   Os   z80_execute =  4176 bytes   38 fps, Z 49%   opcodes become calls
+#   O2   z80_execute = 10992 bytes   47 fps, Z 43%   opcodes inlined (default)
+#   O3   z80_execute = 13844 bytes   45 fps, Z 37%   more inlining
+#
+# -O2 is a genuine optimum, and both neighbours lose for opposite reasons.
+#
+# -Os shrinks the interpreter 2.6x but turns each opcode into a call, and runs
+# 41% slower: this loop is bound by work per instruction, not code size.
+#
+# -O3 is the subtle one. It makes the Z80 itself 10% faster (9.15 -> 8.22 ms
+# per frame) yet the build is slower overall, because everything else slows by
+# 15% without any of that code changing. sms_frame() alternates render_line()
+# and z80_execute() 262 times per frame, so the two share the VR4300's 16K
+# direct-mapped instruction cache. At -O2 the pair fits; at -O3 z80_execute
+# grows past the point where it does, and they evict each other every
+# scanline. Judge a change here by total fps, never by the Z share alone, and
+# keep an eye on the size of the renderer's hot path for the same reason.
+#
+# Build a variant to compare with:  make RELEASE=1 Z80OPT=O3
+Z80OPT ?= O2
+$(BUILD_DIR)/z80.o: N64_CFLAGS := $(patsubst -O2,-$(Z80OPT),$(N64_CFLAGS))
 
 smsPlus64.z64: N64_ROM_TITLE = "SMSPlus emulator"
+
+# n64tool only attaches a filesystem when a .dfs is among the rom's prereqs,
+# so leaving it out here is all a NODFS build needs on the packaging side.
+ifneq ($(NODFS),1)
 smsPlus64.z64: $(BUILD_DIR)/smsPlus64.dfs
-$(BUILD_DIR)/smsPlus64.dfs: $(wildcard filesystem/*)
+# Filenames in filesystem/ may contain spaces (game ROMs), which GNU make
+# cannot represent as individual prereqs. Use a phony stamp so the dfs is
+# always considered out-of-date — packing it is fast.
+.PHONY: filesystem-stamp
+filesystem-stamp:
+$(BUILD_DIR)/smsPlus64.dfs: filesystem-stamp
+endif
 $(BUILD_DIR)/smsPlus64.elf: $(OBJS)
 
 clean:

@@ -6,6 +6,7 @@
 #include <memory>
 #include "RomLister.h"
 #include "menu.h"
+#include "settings.h"
 #include "shared.h"
 
 #ifdef __cplusplus
@@ -148,9 +149,26 @@ void displayRoms(Frens::RomLister romlister, int startIndex)
     auto y = STARTROW;
     auto entries = romlister.GetEntries();
     ClearScreen(screenBuffer, bgcolor);
-    putText(1, 0, "Choose a rom to play:", fgcolor, bgcolor);
-    putText(1, SCREEN_ROWS - 1, "A: Select, B: Back", fgcolor, bgcolor);
+    // Show where we are actually looking. An empty list is otherwise silent
+    // about whether the SD card mounted or the folder simply has no roms.
+    putText(1, 0, dirstack[dirstackindex], fgcolor, bgcolor);
+    putText(1, SCREEN_ROWS - 1, "A:Select B:Back START:Settings", fgcolor, bgcolor);
     putText(SCREEN_COLS - strlen(SWVERSION), SCREEN_ROWS - 1, SWVERSION, fgcolor, bgcolor);
+    if (romlister.Count() == 0)
+    {
+        putText(1, STARTROW, "No .sms or .gg files here.", fgcolor, bgcolor);
+        putText(1, STARTROW + 2, sdStatus, fgcolor, bgcolor);
+        putText(1, STARTROW + 4, "Roms go in a smsPlus64 folder on", fgcolor, bgcolor);
+#if NO_DFS == 0
+        putText(1, STARTROW + 5, "the SD card. rom:/ above means the", fgcolor, bgcolor);
+        putText(1, STARTROW + 6, "card did not mount.", fgcolor, bgcolor);
+#else
+        // A NODFS build carries no roms of its own, so there is no rom:/ to
+        // end up in and the card is the only place a game can come from.
+        putText(1, STARTROW + 5, "the SD card. This build has no", fgcolor, bgcolor);
+        putText(1, STARTROW + 6, "built-in roms of its own.", fgcolor, bgcolor);
+#endif
+    }
     for (auto index = startIndex; index < romlister.Count(); index++)
     {
         if (y <= ENDROW)
@@ -323,6 +341,124 @@ void clearinput()
         }
     }
 }
+#define NUMSETTINGS 7
+
+// Settings screen, so the in-game button combinations do not have to be
+// remembered. Reachable with START from the rom browser.
+static void settingsScreen(const char *mountPoint)
+{
+    DWORD PAD1_Latch, PAD1_Latch2, pdwSystem;
+    char line[SCREEN_COLS + 1];
+    int row = 0;
+    bool changed = false;
+
+    // Pick up anything the in-game combinations changed, so this screen always
+    // opens showing what is actually in effect.
+    settings_capture();
+    clearinput();
+
+    while (1)
+    {
+        ClearScreen(screenBuffer, bgcolor);
+        putText(1, 0, "Settings", fgcolor, bgcolor);
+
+        snprintf(line, sizeof(line), "Frameskip  : %s", settings_frameskip_name(settings.frameskip));
+        putText(1, STARTROW + 0, line, fgcolor, bgcolor);
+        snprintf(line, sizeof(line), "Blink fix  : %s", settings.blinkFix ? "On" : "Off");
+        putText(1, STARTROW + 1, line, fgcolor, bgcolor);
+        snprintf(line, sizeof(line), "Sound      : %s", settings.sound ? "On" : "Off");
+        putText(1, STARTROW + 2, line, fgcolor, bgcolor);
+        snprintf(line, sizeof(line), "Frame rate : %s", settings.showFps ? "Shown" : "Hidden");
+        putText(1, STARTROW + 3, line, fgcolor, bgcolor);
+        snprintf(line, sizeof(line), "Profiler   : %s", settings.showProfiler ? "Shown" : "Hidden");
+        putText(1, STARTROW + 4, line, fgcolor, bgcolor);
+        snprintf(line, sizeof(line), "Upscale    : %s", settings.upscale ? "On" : "Off");
+        putText(1, STARTROW + 5, line, fgcolor, bgcolor);
+        snprintf(line, sizeof(line), "Autostart  : %s", settings.autostart ? "On" : "Off");
+        putText(1, STARTROW + 6, line, fgcolor, bgcolor);
+
+        putText(1, STARTROW + 8,  "Some games blink a character on and", fgcolor, bgcolor);
+        putText(1, STARTROW + 9,  "off after it is hit. Frameskip can", fgcolor, bgcolor);
+        putText(1, STARTROW + 10, "drop just the frames it is drawn on,", fgcolor, bgcolor);
+        putText(1, STARTROW + 11, "so it seems to disappear instead.", fgcolor, bgcolor);
+        putText(1, STARTROW + 12, "Blink fix varies which frames are", fgcolor, bgcolor);
+        putText(1, STARTROW + 13, "drawn so the blink stays visible,", fgcolor, bgcolor);
+        putText(1, STARTROW + 14, "at a little smoothness. Try it if a", fgcolor, bgcolor);
+        putText(1, STARTROW + 15, "character vanishes when it is hit.", fgcolor, bgcolor);
+
+        putText(1, STARTROW + 17, "Upscale fills the screen with the", fgcolor, bgcolor);
+        putText(1, STARTROW + 18, "picture instead of leaving a border.", fgcolor, bgcolor);
+        putText(1, STARTROW + 20, "Autostart runs the game picked in", fgcolor, bgcolor);
+        putText(1, STARTROW + 21, "the flashcart menu. Turn it off if", fgcolor, bgcolor);
+        putText(1, STARTROW + 22, "the last game keeps restarting.", fgcolor, bgcolor);
+        putText(1, STARTROW + 24, "Saved to the SD card on exit.", fgcolor, bgcolor);
+
+        putText(1, SCREEN_ROWS - 1, "Left/Right: change, B: Back", fgcolor, bgcolor);
+        DrawScreen(STARTROW + row);
+        processinput(&PAD1_Latch, &PAD1_Latch2, &pdwSystem, false);
+
+        if ((PAD1_Latch & UP) == UP)
+        {
+            row = (row + NUMSETTINGS - 1) % NUMSETTINGS;
+        }
+        else if ((PAD1_Latch & DOWN) == DOWN)
+        {
+            row = (row + 1) % NUMSETTINGS;
+        }
+        else if ((PAD1_Latch & B) == B)
+        {
+            break;
+        }
+        else if ((PAD1_Latch & (LEFT | RIGHT | A)) != 0)
+        {
+            int direction = ((PAD1_Latch & LEFT) == LEFT) ? -1 : 1;
+            switch (row)
+            {
+            case 0:
+                settings.frameskip += direction;
+                if (settings.frameskip > 3) settings.frameskip = -1;
+                if (settings.frameskip < -1) settings.frameskip = 3;
+                break;
+            case 1: settings.blinkFix = !settings.blinkFix; break;
+            case 2: settings.sound = !settings.sound; break;
+            case 3: settings.showFps = !settings.showFps; break;
+            case 4: settings.showProfiler = !settings.showProfiler; break;
+            case 5: settings.upscale = !settings.upscale; break;
+            case 6: settings.autostart = !settings.autostart; break;
+            }
+            changed = true;
+        }
+    }
+
+    settings_apply();
+    if (changed && !settings_save(mountPoint))
+    {
+        // Say so on screen rather than losing the change silently. Usually the
+        // smsPlus64 folder does not exist yet, or there is no SD card and we are
+        // running from the read-only rom:/ filesystem.
+        debugf("Could not save settings to %s\n", mountPoint);
+        ClearScreen(screenBuffer, bgcolor);
+        putText(1, 0, "Settings", fgcolor, bgcolor);
+        putText(1, STARTROW, "Could not save your settings.", fgcolor, bgcolor);
+        putText(1, STARTROW + 2, "They stay in effect until you", fgcolor, bgcolor);
+        putText(1, STARTROW + 3, "switch the console off.", fgcolor, bgcolor);
+        putText(1, STARTROW + 5, "To keep them, create a folder", fgcolor, bgcolor);
+        putText(1, STARTROW + 6, "named smsPlus64 on the SD card.", fgcolor, bgcolor);
+        putText(1, SCREEN_ROWS - 1, "Press a button to continue", fgcolor, bgcolor);
+        clearinput();
+        while (1)
+        {
+            DrawScreen(-1);
+            processinput(&PAD1_Latch, &PAD1_Latch2, &pdwSystem, false);
+            if (PAD1_Latch > 0 || pdwSystem > 0)
+            {
+                break;
+            }
+        }
+    }
+    clearinput();
+}
+
 // Global instances of local vars in romselect() some used in Lambda expression later on
 static char *selectedRomOrFolder;
 static uintptr_t FLASH_ADDRESS;
@@ -483,7 +619,8 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
             }
             else if ((pdwSystem & START) == START && (pdwSystem & SELECT) != SELECT)
             {
-                // Do nothing for now. Intended for starting the last played game. (TODO)
+                settingsScreen(mountPoint);
+                displayRoms(romlister, firstVisibleRowINDEX);
             }
             else if ((PAD1_Latch & A) == A && selectedRomOrFolder)
             {
@@ -529,10 +666,24 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
                         break;
                     }
                     int size = filesize(pFile);
+                    // A copier header makes the file an odd number of 512 byte
+                    // blocks; a rom on its own never is. It is not part of the
+                    // rom, so it comes off the size here, before anything is
+                    // allocated. Taking it off afterwards - as this used to -
+                    // left the last 512 bytes of the buffer never read while
+                    // romInfo.size still counted them as rom, so whatever the
+                    // allocator handed over was passed to the emulator as
+                    // cartridge data.
+                    int romheader = ((size / 512) & 1) ? 512 : 0;
+                    if (romheader)
+                    {
+                        debugf("Skipping 512 byte header\n");
+                        size -= romheader;
+                    }
                     if (size > 0)
                     {
                         showLoadScreen();
-                        debugf("Size of file %s is %d\n", filetoopen, size);
+                        debugf("Size of rom in %s is %d\n", filetoopen, size);
                         romInfo.size = size;
                         romInfo.rom = (uint8_t *)malloc(size);
                         romInfo.isGameGear = Frens::cstr_endswith(selectedRomOrFolder, ".gg");
@@ -546,22 +697,30 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
                         else
                         {
                             debugf("Allocated %d bytes for rom, reading file\n", size);
-                            // skip possible 512 byte header if size / 512 has the lsb bit set
-                            if ((size / 512) & 1)
+                            fseek(pFile, romheader, SEEK_SET);
+                            // A short read would leave the tail of the buffer
+                            // uninitialised, which is the thing this block is
+                            // careful not to do, so it is an error rather than
+                            // something to run anyway.
+                            if ((int)fread(romInfo.rom, 1, size, pFile) != size)
                             {
-                                debugf("Skipping 512 byte header\n");
-                                fseek(pFile, 512, SEEK_SET);
-                                size -= 512;
+                                snprintf(globalErrorMessage, 40, "Cannot read rom");
+                                errorInSavingRom = true;
+                                debugf("Short read on %s\n", filetoopen);
+                                free(romInfo.rom);
+                                romInfo.rom = nullptr;
+                                romInfo.size = 0;
                             }
-                            
-                            fread(romInfo.rom, 1, size, pFile);
-                            fclose(pFile);
-                            break;
+                            else
+                            {
+                                fclose(pFile);
+                                break;
+                            }
                         }
                     }
                     else
                     {
-                        debugf("Size of file %s is 0\n", filetoopen);
+                        debugf("Nothing to load from %s\n", filetoopen);
                     }
                     fclose(pFile);
                 }

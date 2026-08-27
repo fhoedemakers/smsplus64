@@ -95,20 +95,77 @@ typedef struct
 
 //     return 1;
 // }
+/* Writes to ROM space land here. cpu_writemem16() indexes a page with the low
+   13 bits of the address, so this has to be a full 8K page - it used to alias
+   the 256-byte line buffer, which meant such writes ran 8K past the end of it
+   and scribbled over the scanline being rendered. */
+static uint8_t dummy_page[0x2000];
+
+/* Believe the cartridge over the file name.
+
+   The caller derives isGameGear from the file extension, which is only a hint:
+   a Game Gear ROM saved as .sms is loaded as a Master System cartridge, and its
+   CRAM is then decoded one byte per colour instead of two. That reads as a
+   completely broken palette rather than as a misdetected cartridge, so it is
+   worth correcting when the ROM says so itself.
+
+   ROMs from about 1990 on carry a "TMR SEGA" header at 0x7FF0 whose top nibble
+   of the last byte is a region code: 3 and 4 are Master System, 5 to 7 are Game
+   Gear. Anything else - including the many early ROMs with no header at all -
+   leaves the caller's guess alone. */
+static bool header_console_type(const uint8_t *rom, int size, bool *is_game_gear)
+{
+    int region;
+
+    if (size < 0x8000) return false;
+    if (__builtin_memcmp(rom + 0x7FF0, "TMR SEGA", 8) != 0) return false;
+
+    region = (rom[0x7FFF] >> 4) & 0x0F;
+    if (region >= 5 && region <= 7) { *is_game_gear = true;  return true; }
+    if (region == 3 || region == 4) { *is_game_gear = false; return true; }
+    return false;
+}
+
 int load_rom(uint8_t *rom, int size, bool isGameGear)
 {
     uint8_t *start = (uint8_t *)rom;
+    bool from_header = isGameGear;
+
+    if (header_console_type(rom, size, &from_header) && from_header != isGameGear)
+    {
+        printf("ROM header says %s, overriding file extension\n",
+               from_header ? "Game Gear" : "Master System");
+        isGameGear = from_header;
+    }
+
     sms.use_fm = 0;
     sms.country = TYPE_OVERSEAS;
     sms.sram = sram;
-    sms.dummy = smsBufferLine;
-    bitmap.data = smsBufferLine;
+    sms.dummy = dummy_page;
+    /* The renderer writes scanlines straight into sms_line_target, which flips
+       between two buffers, so there is no single bitmap to point at any more.
+       The geometry below is kept because it describes the emulated display. */
+    bitmap.data = NULL;
     bitmap.width = BMP_WIDTH;
     bitmap.height = BMP_HEIGHT;
     bitmap.pitch = BMP_WIDTH;
     bitmap.depth = 8;
     cart.rom = start;
+
+    /* Never zero. sms_mapper_w() reduces every bank number modulo this, and a
+       rom under 16K rounds down to no pages at all - which is not a wrong
+       picture but a dead console: gcc compiles the modulo to a divu preceded by
+       "teq v1,zero,0x7", so the first bank switch a game does raises a trap
+       exception. A rom that small has one page as far as the mapper is
+       concerned, and every bank number resolves to it, which is what the
+       hardware does when the cartridge has no bank lines to drive.
+
+       This is a floor, not a rounding: rounding a partial page up would let the
+       mapper select a page the buffer does not hold. */
     cart.pages = (size / 0x4000);
+    if (cart.pages == 0)
+        cart.pages = 1;
+
     cart.type = isGameGear ? TYPE_GG : TYPE_SMS;
     return 1;
 }
