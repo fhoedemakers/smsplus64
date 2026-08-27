@@ -10,7 +10,7 @@ Settings settings;
 
 void settings_setdefaults(void)
 {
-    settings.frameskip = 1; /* Every frame */
+    settings.frameskip = 1; /* draw every second frame */
     settings.blinkFix = 0;   /* costs a little smoothness, so ask for it */
     settings.sound = 1;
     settings.showFps = 0;

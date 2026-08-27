@@ -12,7 +12,8 @@ speed.
 | Master System | 30-40 | 59 |
 | Game Gear | not measured | 58 |
 
-Master System draws every second frame to hold that speed, Game Gear draws them all.
+At the default setting both draw every second frame. The numbers above are how fast
+the games themselves run, which is what the frameskip setting is there to hold up.
 
 ### Features
 
@@ -24,11 +25,14 @@ Master System draws every second frame to hold that speed, Game Gear draws them 
   time you start the emulator.
 - Blink fix setting, off by default. Turn it on if a character disappears for a
   moment when it is hit instead of blinking.
-- Frameskip, set to automatic by default. Games keep running at the right speed
-  even when the Nintendo 64 cannot draw every frame, and games that already run
-  at full speed are left alone. Change it in the settings if you prefer.
+- Frameskip, drawing every second frame by default. Games keep running at the
+  right speed even when the Nintendo 64 cannot draw every frame. Set it to
+  automatic in the settings to have that decided per game, so games that already
+  run at full speed draw every frame, or turn it off altogether.
 - The frame rate display now also shows which console is being emulated and how
   many frames are actually being drawn.
+- Autostart setting, on by default. A game picked in the Everdrive or flashcart
+  menu starts straight away. Turn it off to always get the game browser first.
 - `build.sh` now builds a rom with no filesystem attached, which loads only from
   the SD card. Use the new `build_dfs.sh` to bake your own roms from the
   `filesystem` folder into the rom as before.
@@ -51,10 +55,9 @@ Master System draws every second frame to hold that speed, Game Gear draws them 
   [#14](https://github.com/fhoedemakers/smsplus64/issues/14)
 - Replaced deprecated controller functions.
 - Starting the emulator on its own no longer starts the last game you played from the
-  Everdrive menu instead of showing the game browser. 
+  Everdrive menu instead of showing the game browser.
 
 ### Known issues
-
 
 - The emulator does not start on the EverDrive 64 PRO. [#13](https://github.com/fhoedemakers/smsplus64/issues/13)
 - On an EverDrive 64 V3 the emulator shows an invalid checksum warning on boot. It runs
@@ -85,7 +88,7 @@ Thanks to Wayne Reilly and Dan Moore for testing this release.
 
 Using a [SummerCart64](https://github.com/Polprzewodnikowy/SummerCart64), Master system and GameGear roms can be started directly from [N64FlashCartmenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu). [#4](https://github.com/fhoedemakers/smsplus64/issues/4)
 
-For this to work with N64FlashCartmenu, copy smsPlus64.z64 to the menu/emulators folder of your SD-card. More info in the N64FlashcartMenu [Getting Started Guide](https://github.com/Polprzewodnikowy/N64FlashcartMenu/blob/main/docs/00_getting_started_sd.md)
+For this to work with N64FlashCartmenu, copy smsPlus64.z64 to the menu/emulators folder of your SD-card. More info in the N64FlashcartMenu [Getting Started Guide](https://github.com/Polprzewodnikowy/N64FlashcartMenu/blob/main/docs/10_getting_started_sd.md)
 
 > [!NOTE]
 > According to the Everdrive manual, roms could also be run this way via the Everdrive menu by saving smsPlus64.z64 as ED64/emu/gg.v64 and ED64/emu/sms.v64. This does not work however.

@@ -106,7 +106,8 @@ To run the emulator as a standalone ROM:
 - Start: Pause / Start
 - B: Button 1
 - A: Button 2
-- Z + Start: return to the game browser
+- Z + Start: return to the game browser. Does nothing for a game started straight
+  from the Everdrive or N64FlashcartMenu; reset the console to get back to that menu.
 - Z + C-Right: open the settings
 
 The settings can also be changed with these shortcuts while playing:
@@ -199,7 +200,7 @@ first, or you will just get a bigger rom with nothing in it.
 
 ## Using an Emulator
 
-You can also use an Emulator. Libdragon suggests [Ares](https://ares-emu.net/download). This however requires building from source. Since an Everdrive is not used, copy your .gg or .sms files to the `filesystem` folder of this repoistory, then run `build_dfs.sh`. The roms will be baked into `smsPlus64.z64` 
+You can also use an Emulator. Libdragon suggests [Ares](https://ares-emu.net/download). This however requires building from source. Since an Everdrive is not used, copy your .gg or .sms files to the `filesystem` folder of this repository, then run `build_dfs.sh`. The roms will be baked into `smsPlus64.z64` 
 
 The files `run64.sh`, `cp64.sh` are used to  run or copy `smsPlus64.z64` to the Everdrive, using an USB cable. (using `usb64.exe`). Since usb64.exe runs on Windows, you need to build the project using WSL (Windows Subsystem for Linux) in order to use these scripts. If you are using Linux, you have to copy the file manually to the Everdrive.
 
