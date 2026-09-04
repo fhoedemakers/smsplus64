@@ -62,6 +62,25 @@ static constexpr int B = 0x00000010;
 // static constexpr int X = 1 << 8;
 // static constexpr int Y = 1 << 9;
 
+/* Join a directory and a name with exactly one separator.
+ *
+ * A plain "%s/%s" doubles it when the directory is a filesystem root that
+ * already ends in one, which is what "sd:/" is when the browser starts at the
+ * card root. */
+static void joinPath(char *out, size_t cap, const char *dir, const char *name)
+{
+    size_t len = strlen(dir);
+
+    if (len && dir[len - 1] == '/')
+    {
+        snprintf(out, cap, "%s%s", dir, name);
+    }
+    else
+    {
+        snprintf(out, cap, "%s/%s", dir, name);
+    }
+}
+
 /* Gets the file size - used to know how much to allocate */
 int filesize(FILE *pFile)
 {
@@ -70,6 +89,80 @@ int filesize(FILE *pFile)
     rewind(pFile);
 
     return lSize;
+}
+
+/* Read a Sega rom off the filesystem into a freshly allocated buffer.
+ *
+ * Lives here, next to the browser that has always done this, but it is called
+ * from two places now: picking a game in the browser, and starting one that
+ * the EverDrive-64 PRO menu handed us by name. Keeping it in one function is
+ * what stops the two from disagreeing about copier headers.
+ *
+ * displayName is the bare file name: it decides Game Gear versus Master
+ * System and becomes the title.
+ */
+RomLoadResult loadRomFile(const char *fullPath, const char *displayName, RomInfo *info, char *errorMessage, size_t errCap)
+{
+    debugf("Opening %s\n", fullPath);
+    FILE *pFile = fopen(fullPath, "rb");
+    if (pFile == nullptr)
+    {
+        if (errorMessage) snprintf(errorMessage, errCap, "Cannot open %s", fullPath);
+        debugf("Cannot open %s\n", fullPath);
+        return ROMLOAD_CANNOT_OPEN;
+    }
+    int size = filesize(pFile);
+    // A copier header makes the file an odd number of 512 byte
+    // blocks; a rom on its own never is. It is not part of the
+    // rom, so it comes off the size here, before anything is
+    // allocated. Taking it off afterwards - as this used to -
+    // left the last 512 bytes of the buffer never read while
+    // info->size still counted them as rom, so whatever the
+    // allocator handed over was passed to the emulator as
+    // cartridge data.
+    int romheader = ((size / 512) & 1) ? 512 : 0;
+    if (romheader)
+    {
+        debugf("Skipping 512 byte header\n");
+        size -= romheader;
+    }
+    if (size <= 0)
+    {
+        debugf("Nothing to load from %s\n", fullPath);
+        fclose(pFile);
+        return ROMLOAD_EMPTY;
+    }
+    debugf("Size of rom in %s is %d\n", fullPath, size);
+    info->size = size;
+    info->rom = (uint8_t *)malloc(size);
+    info->isGameGear = Frens::cstr_endswith(displayName, ".gg");
+    snprintf(info->title, sizeof(info->title), "%s", displayName);
+    if (info->rom == nullptr)
+    {
+        if (errorMessage) snprintf(errorMessage, errCap, "Cannot allocate memory for rom");
+        debugf("Cannot allocate memory for rom\n");
+        info->size = 0;
+        fclose(pFile);
+        return ROMLOAD_FAILED;
+    }
+    debugf("Allocated %d bytes for rom, reading file\n", size);
+    fseek(pFile, romheader, SEEK_SET);
+    // A short read would leave the tail of the buffer
+    // uninitialised, which is the thing this block is
+    // careful not to do, so it is an error rather than
+    // something to run anyway.
+    if ((int)fread(info->rom, 1, size, pFile) != size)
+    {
+        if (errorMessage) snprintf(errorMessage, errCap, "Cannot read rom");
+        debugf("Short read on %s\n", fullPath);
+        free(info->rom);
+        info->rom = nullptr;
+        info->size = 0;
+        fclose(pFile);
+        return ROMLOAD_FAILED;
+    }
+    fclose(pFile);
+    return ROMLOAD_OK;
 }
 
 static uint32_t getrandomcolor()
@@ -470,7 +563,7 @@ BYTE *dirbuffer;
 
 RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool isFatal, bool reset)
 {
-    RomInfo romInfo;
+    RomInfo romInfo = {};
     FLASH_ADDRESS = NES_FILE_ADDR;
     int firstVisibleRowINDEX = 0;
     int selectedRow = STARTROW;
@@ -635,7 +728,7 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
                         // }
                         // else
                         // {
-                        sprintf(dirstack[dirstackindex], "%s/%s", dirstack[dirstackindex - 1], selectedRomOrFolder);
+                        joinPath(dirstack[dirstackindex], MAX_FILENAME_LEN, dirstack[dirstackindex - 1], selectedRomOrFolder);
                         //}
                         debugf("Pushing %s\n", dirstack[dirstackindex]);
                     }
@@ -654,75 +747,19 @@ RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool
                     // start game
                     debugf("Selected %s\n", selectedRomOrFolder);
                     char filetoopen[MAX_FILENAME_LEN];
-                    sprintf(filetoopen, "%s/%s", dirstack[dirstackindex], selectedRomOrFolder);
-                    debugf("Opening %s\n", filetoopen);
-                    // Load the rom into the emulator
-                    FILE *pFile = fopen(filetoopen, "rb");
-                    if (pFile == nullptr)
+                    joinPath(filetoopen, sizeof(filetoopen), dirstack[dirstackindex], selectedRomOrFolder);
+                    showLoadScreen();
+                    RomLoadResult loaded = loadRomFile(filetoopen, selectedRomOrFolder, &romInfo, globalErrorMessage, 40);
+                    if (loaded == ROMLOAD_OK)
                     {
-                        snprintf(globalErrorMessage, 40, "Cannot open %s", filetoopen);
-                        errorInSavingRom = true;
-                        debugf("Cannot open %s\n", filetoopen);
                         break;
                     }
-                    int size = filesize(pFile);
-                    // A copier header makes the file an odd number of 512 byte
-                    // blocks; a rom on its own never is. It is not part of the
-                    // rom, so it comes off the size here, before anything is
-                    // allocated. Taking it off afterwards - as this used to -
-                    // left the last 512 bytes of the buffer never read while
-                    // romInfo.size still counted them as rom, so whatever the
-                    // allocator handed over was passed to the emulator as
-                    // cartridge data.
-                    int romheader = ((size / 512) & 1) ? 512 : 0;
-                    if (romheader)
-                    {
-                        debugf("Skipping 512 byte header\n");
-                        size -= romheader;
-                    }
-                    if (size > 0)
-                    {
-                        showLoadScreen();
-                        debugf("Size of rom in %s is %d\n", filetoopen, size);
-                        romInfo.size = size;
-                        romInfo.rom = (uint8_t *)malloc(size);
-                        romInfo.isGameGear = Frens::cstr_endswith(selectedRomOrFolder, ".gg");
-                        strcpy(romInfo.title, selectedRomOrFolder);
-                        if (romInfo.rom == nullptr)
-                        {
-                            snprintf(globalErrorMessage, 40, "Cannot allocate memory for rom");
-                            errorInSavingRom = true;
-                            debugf("Cannot allocate memory for rom\n");
-                        }
-                        else
-                        {
-                            debugf("Allocated %d bytes for rom, reading file\n", size);
-                            fseek(pFile, romheader, SEEK_SET);
-                            // A short read would leave the tail of the buffer
-                            // uninitialised, which is the thing this block is
-                            // careful not to do, so it is an error rather than
-                            // something to run anyway.
-                            if ((int)fread(romInfo.rom, 1, size, pFile) != size)
-                            {
-                                snprintf(globalErrorMessage, 40, "Cannot read rom");
-                                errorInSavingRom = true;
-                                debugf("Short read on %s\n", filetoopen);
-                                free(romInfo.rom);
-                                romInfo.rom = nullptr;
-                                romInfo.size = 0;
-                            }
-                            else
-                            {
-                                fclose(pFile);
-                                break;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        debugf("Nothing to load from %s\n", filetoopen);
-                    }
-                    fclose(pFile);
+                    // Stay in the browser and say what went wrong. A file that
+                    // would not open used to break out of the loop here, which
+                    // returned a RomInfo nothing had written to and handed the
+                    // emulator a rom pointer made of whatever was on the stack.
+                    // An empty file is not worth a message; anything else is.
+                    errorInSavingRom = (loaded != ROMLOAD_EMPTY);
                 }
             }
         }

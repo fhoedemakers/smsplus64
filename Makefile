@@ -22,8 +22,19 @@ N64_CXXFLAGS := $(shell echo $(N64_CXXFLAGS) | sed 's/-Werror//g' | sed 's/-Wall
 # ./build_dfs.sh builds the variant with the filesystem baked in)
 NODFS ?= 0
 
-# add current folder and infones subfolder to include path
-INCDIR = -I. -Ismsplus -Iassets
+# Where this project's own headers live. -iquote rather than -I, so they are
+# searched for #include "..." only.
+#
+# The emulator core ships a system.h, and so does libdragon - and libdragon's
+# is the one that declares attach_filesystem() and filesystem_t, which
+# ed64pro.c needs. With -I the core's copy shadowed it, and promoting
+# libdragon's directory instead does not work: gcc drops a -I that names a
+# directory already on its standard search path. -iquote keeps every existing
+# include working (every project header is included in quotes, and a quoted
+# include always searches the including file's own directory first, so
+# smsplus/shared.h still gets smsplus/system.h) while leaving <system.h> to
+# resolve to libdragon's.
+INCDIR = -iquote . -iquote smsplus -iquote assets
 # add INCDIR to CFLAGS
 CFLAGS += $(INCDIR) -DUSEMENU=1 -DNO_DFS=$(NODFS) # -DLSB_FIRST=0
 # add INCDIR to CXXFLAGS
@@ -35,7 +46,7 @@ vpath %.cpp $(SUBDIRS)
 vpath %.c $(SUBDIRS)
 # 
 
-OBJS = $(BUILD_DIR)/smsPlus64.o $(BUILD_DIR)/libdragonsprite.o $(BUILD_DIR)/loadrom.o $(BUILD_DIR)/render.o $(BUILD_DIR)/sms.o $(BUILD_DIR)/builtinrom.o  $(BUILD_DIR)/sn76496.o $(BUILD_DIR)/system.o $(BUILD_DIR)/vdp.o $(BUILD_DIR)/z80.o $(BUILD_DIR)/menu.o $(BUILD_DIR)/RomLister.o $(BUILD_DIR)/FrensHelpers.o $(BUILD_DIR)/settings.o
+OBJS = $(BUILD_DIR)/smsPlus64.o $(BUILD_DIR)/libdragonsprite.o $(BUILD_DIR)/loadrom.o $(BUILD_DIR)/render.o $(BUILD_DIR)/sms.o $(BUILD_DIR)/builtinrom.o  $(BUILD_DIR)/sn76496.o $(BUILD_DIR)/system.o $(BUILD_DIR)/vdp.o $(BUILD_DIR)/z80.o $(BUILD_DIR)/menu.o $(BUILD_DIR)/RomLister.o $(BUILD_DIR)/FrensHelpers.o $(BUILD_DIR)/settings.o $(BUILD_DIR)/ed64pro.o $(BUILD_DIR)/ed64pro_drv.o
 
 # Lift the per-scanline renderer and sound hotspots to -O3. Keep the rest at
 # the libdragon default (-O2) so libdragon-facing code is unaffected.

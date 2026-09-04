@@ -13,6 +13,7 @@
 #include <stdarg.h>
 
 #include "libcart/cart.h"
+#include "ed64pro.h"
 #define ERRORMESSAGESIZE 40
 #define GAMESAVEDIR "/SAVES"
 
@@ -1206,6 +1207,13 @@ extern "C"
 }
 #endif
 
+// Where a flashcart menu leaves a rom it wants this emulator to run.
+//
+// The EverDrive-64 PRO is not in this list on purpose. It passes the file's
+// name rather than injecting the game, so nothing is ever waiting at a fixed
+// address for it; cart_type stays CART_NULL on a PRO because libcart is not
+// allowed to run there, and the 0 below is what says "there is no such
+// address". See startEd64ProRom().
 uint32_t GetRomAddress()
 {
     switch (cart_type)
@@ -1329,6 +1337,12 @@ bool IsRomInjected(RomInfo *info, bool withOffset)
 }
 static const char *format_cart_type()
 {
+    // libcart has no constant for the PRO, and would call it a Series X if it
+    // were asked, so answer before looking at cart_type at all.
+    if (ed64pro_present())
+    {
+        return "EverDrive-64 PRO";
+    }
     switch (cart_type)
     {
     case CART_CI:
@@ -1356,6 +1370,15 @@ static const char *format_cart_type()
 // fresh header and works as before.
 static void killInjectedRomHeader()
 {
+    // Nothing was injected on a cart this emulator does not recognise, and on
+    // one of those GetRomAddress() is 0 - so the writes below would land at
+    // PI address 0x7FF0, which is not cartridge space at all. That is the case
+    // on an emulator and on the EverDrive-64 PRO, both of which reach here on
+    // every trip to the game browser.
+    if (GetRomAddress() == 0)
+    {
+        return;
+    }
     __builtin_memset(&header, 0, sizeof(header));
     debugf("Clearing injected rom header\n");
     // The memset above only reached the data cache. The DMA reads RDRAM
@@ -1396,14 +1419,26 @@ static void mountFilesystemsAndLoadSettings(bool *dfsStarted, char *mountPoint)
 #endif
     *dfsStarted = true;
     debugstdout("Trying to mount SD card...");
-    // -1 asks for the first usable partition. Some cards only come up when a
-    // partition is named explicitly, so fall back to trying the first two
-    // before giving up.
-    bool sdMounted = init_sdfs("sd:/", -1);
-    for (int part = 0; !sdMounted && part < 2; part++)
+    bool sdMounted;
+    if (ed64pro_present())
     {
-        debugstdout("Retrying SD with partition %d\n", part);
-        sdMounted = init_sdfs("sd:/", part);
+        // The PRO has no SD registers for libcart to drive: the card belongs
+        // to a controller on the cartridge, which serves whole files rather
+        // than sectors. ed64pro_attach_fs puts that behind the same "sd:/"
+        // everything downstream already uses.
+        sdMounted = ed64pro_attach_fs("sd:/");
+    }
+    else
+    {
+        // -1 asks for the first usable partition. Some cards only come up when a
+        // partition is named explicitly, so fall back to trying the first two
+        // before giving up.
+        sdMounted = init_sdfs("sd:/", -1);
+        for (int part = 0; !sdMounted && part < 2; part++)
+        {
+            debugstdout("Retrying SD with partition %d\n", part);
+            sdMounted = init_sdfs("sd:/", part);
+        }
     }
     if (!sdMounted)
     {
@@ -1424,6 +1459,15 @@ static void mountFilesystemsAndLoadSettings(bool *dfsStarted, char *mountPoint)
     {
         debugstdout("SD card mounted\n");
         strcpy(mountPoint, "sd:/smsPlus64");
+        // On the PRO the Everdrive menu is the usual way in, so games are as
+        // likely to be anywhere on the card as in the folder this emulator
+        // asks for. Start at the card root when that folder is not there,
+        // rather than opening an empty browser the user cannot climb out of.
+        if (ed64pro_present() && !ed64pro_dir_exists("smsPlus64"))
+        {
+            debugstdout("No smsPlus64 folder, browsing from the card root\n");
+            strcpy(mountPoint, "sd:/");
+        }
         snprintf(sdStatus, sizeof(sdStatus), "SD ok. Cart: %s", format_cart_type());
     }
     // Saved settings live beside the roms. Defaults are used when there is no
@@ -1439,6 +1483,80 @@ static void mountFilesystemsAndLoadSettings(bool *dfsStarted, char *mountPoint)
     settings_apply();
 }
 
+// Start the game the EverDrive-64 PRO menu launched this rom with, if there
+// is one.
+//
+// Copy this rom into /ED64/edapp/sms/ and /ED64/edapp/gg/ on the card and the
+// Everdrive menu will run it when a .sms or .gg file is picked. Unlike the
+// Series X and the SummerCart64, which copy the chosen game into cartridge
+// memory for IsRomInjected() to find, the PRO just remembers the file's name
+// and lets the app ask for it - so the name is the whole handover, and it is
+// read through the same filesystem the game browser uses.
+//
+// The settings must already be loaded when this is called: autostart is
+// checked here, before half a megabyte is read that would only be thrown away.
+static bool startEd64ProRom(bool zPressed, RomInfo *info)
+{
+    // One chance per power-on, taken here whatever comes of it. The loop in
+    // main() comes back through this function every time a game ends, and the
+    // cartridge would still be naming the same file - so without this, leaving
+    // a game would start it again, and so would holding Z to ask for the game
+    // browser. This is what killInjectedRomHeader() does for the other carts,
+    // without needing the cartridge to agree to forget anything.
+    static bool consumed = false;
+
+    char appfile[MAX_FILENAME_LEN];
+    char fullpath[MAX_FILENAME_LEN];
+
+    if (consumed)
+    {
+        return false;
+    }
+    consumed = true;
+
+    if (zPressed)
+    {
+        return false;
+    }
+    if (!ed64pro_app_file(appfile, sizeof(appfile)))
+    {
+        debugstdout("Everdrive menu did not name a file\n");
+        return false;
+    }
+    debugstdout("Everdrive menu picked %s\n", appfile);
+
+    if (!Frens::cstr_endswith(appfile, ".sms") && !Frens::cstr_endswith(appfile, ".gg"))
+    {
+        debugstdout("Not a Master System or Game Gear rom, ignoring\n");
+        return false;
+    }
+
+    if (!settings.autostart)
+    {
+        debugstdout("Autostart disabled, going to the menu\n");
+        return false;
+    }
+    if (snprintf(fullpath, sizeof(fullpath), "sd:/%s", appfile) >= (int)sizeof(fullpath))
+    {
+        debugstdout("Path is too long to open: %s\n", appfile);
+        return false;
+    }
+
+    // The title and the Game Gear decision come from the file name, exactly as
+    // they do when a game is picked in the browser.
+    const char *name = strrchr(appfile, '/');
+    name = name ? name + 1 : appfile;
+
+    if (loadRomFile(fullpath, name, info, ErrorMessage, ERRORMESSAGESIZE) != ROMLOAD_OK)
+    {
+        return false;
+    }
+    // The rom is in RAM now, so let the cartridge forget it named it. Best
+    // effort - the guard above is what actually makes this stick.
+    ed64pro_clear_app_file();
+    return true;
+}
+
 int main()
 {
 
@@ -1452,11 +1570,27 @@ int main()
     ErrorMessage = errMSG;
     RomInfo info;
 
-    debug_init(DEBUG_FEATURE_LOG_ISVIEWER | DEBUG_FEATURE_LOG_USB);
+    // Look for an EverDrive-64 PRO before anything else touches the cartridge.
+    //
+    // Two things here would otherwise get it wrong. libcart's Series X probe
+    // accepts any cartridge answering 0xED64 at 0x1F800014, which the PRO does
+    // - and then drives SD registers the PRO does not have, which is why the
+    // card came up as "SD not mounted. Cart: Series X EverDrive-64". And
+    // debug_init's USB logging runs a cartridge probe of its own that writes
+    // keys to addresses picked for other carts. The PRO needs neither: it has
+    // no unlock key, and its own driver takes over from here.
+    bool isPro = ed64pro_detect();
+
+    debug_init(DEBUG_FEATURE_LOG_ISVIEWER | (isPro ? 0 : DEBUG_FEATURE_LOG_USB));
     debugf("Starting SMSPlus64, a Sega Master System emulator for the Nintendo 64 - https://github.com/fhoedemakers/smsplus64\n");
     debugf("Built on %s %s using libdragon - https://github.com/DragonMinded/libdragon\n", __DATE__, __TIME__);
+    debugf("EverDrive-64 PRO: %s (device id %08lx)\n", isPro ? "yes" : "no",
+           (unsigned long)ed64pro_edid());
 
-    cart_init();
+    if (!isPro)
+    {
+        cart_init();
+    }
     joypad_init();
     timer_init();
     rdpq_init();
@@ -1546,7 +1680,12 @@ int main()
         if (!zPressed)
         {
             debugstdout("Detecting flash cart type\n");
-            if (cart_type != CART_NULL)
+            if (ed64pro_present())
+            {
+                debugstdout("Cart type: %s\n", format_cart_type());
+                debugstdout("Check if a game was picked in the Everdrive menu\n");
+            }
+            else if (cart_type != CART_NULL)
             {
                 debugstdout("Cart type: %s\n", format_cart_type());
                 debugstdout("Cart size: %d\n", cart_size);
@@ -1561,7 +1700,17 @@ int main()
             debugstdout("Z button pressed, skipping to menu\n");
         }
         loadedFromFlashcartMenu = false;
-        if (!zPressed && cart_type != CART_NULL && (loadedFromFlashcartMenu = IsRomInjected(&info, false)) == false)
+        if (ed64pro_present())
+        {
+            // Nothing is injected on a PRO, so there is no header to look for.
+            // Mounting first is safe here in a way it is not below: that
+            // ordering exists because libcart reconfigures the cartridge
+            // interface when it mounts, and libcart never runs on this cart.
+            // It also has to come first, because autostart is a saved setting.
+            mountFilesystemsAndLoadSettings(&dfsStarted, mountPoint);
+            loadedFromFlashcartMenu = startEd64ProRom(zPressed, &info);
+        }
+        else if (!zPressed && cart_type != CART_NULL && (loadedFromFlashcartMenu = IsRomInjected(&info, false)) == false)
         {
             if ((loadedFromFlashcartMenu = IsRomInjected(&info, true)) == true)
             {
@@ -1573,7 +1722,7 @@ int main()
             }
         }
 
-        if (loadedFromFlashcartMenu)
+        if (loadedFromFlashcartMenu && !ed64pro_present())
         {
             debugstdout("Allocating memory for rom\n");
             info.rom = (uint8_t *)malloc(info.size);
