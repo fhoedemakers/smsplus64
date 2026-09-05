@@ -1,5 +1,16 @@
 # CHANGELOG
 
+Now works on the Everdrive 64 PRO.
+
+## v0.9
+
+- The emulator now works on the EverDrive-64 PRO. The game browser sees the SD card, and
+  picking a `.sms` or `.gg` file in the Everdrive menu starts it straight away - copy the
+  emulator to `/ED64/edapp/sms/` and `/ED64/edapp/gg/` on the card for that.
+- The game browser now starts at the root of the card when there is no `smsPlus64` folder
+  on it, instead of coming up empty.
+- A game that cannot be opened no longer takes the browser down with it.
+
 ## v0.8
 
 ### Speed

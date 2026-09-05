@@ -42,6 +42,16 @@ namespace Frens
 		numberOfEntries = 0;
 		while (err == 0)
 		{
+			// The buffer is the emulator's tile cache on loan, so it holds a
+			// fixed number of entries. A card root can easily have more files
+			// than that - which matters now that the browser can start there -
+			// and writing past the end would land in the emulator's own state.
+			if (numberOfEntries >= max_entries)
+			{
+				debugf("Directory has more than %d entries, listing the first %d\n",
+					   (int)max_entries, (int)max_entries);
+				break;
+			}
 			if (strlen(dir.d_name) < ROMLISTER_MAXPATH)
 			{
 				struct RomEntry romInfo;

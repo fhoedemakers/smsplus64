@@ -34,7 +34,14 @@ const char *settings_frameskip_name(int frameskip)
 
 static void settings_path(char *out, size_t size, const char *mountPoint)
 {
-    snprintf(out, size, "%s/%s", mountPoint, SETTINGS_FILE);
+    /* mountPoint is a filesystem root such as "sd:/" when the browser is
+       started at the card root, and already ends in a separator. */
+    size_t len = strlen(mountPoint);
+
+    if (len && mountPoint[len - 1] == '/')
+        snprintf(out, size, "%s%s", mountPoint, SETTINGS_FILE);
+    else
+        snprintf(out, size, "%s/%s", mountPoint, SETTINGS_FILE);
 }
 
 static int clamp(int value, int low, int high)

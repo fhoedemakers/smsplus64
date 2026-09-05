@@ -1,6 +1,7 @@
 fh.log
 **/*.z64
 **/*.n64
+**/*.zip
 # you need to provide your own roms
 assets/sonic_gg.c
 assets/aladdin_gg.c

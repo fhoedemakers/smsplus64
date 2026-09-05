@@ -16,7 +16,7 @@ Built with [Libdragon](https://github.com/DragonMinded/libdragon)
 
 | Console | Status | Notes |
 | --- | --- | --- |
-| Nintendo 64, NTSC | ✅ | Tested with a SummerCart64 and an EverDrive-64 X7. |
+| Nintendo 64, NTSC | ✅ | Tested with a SummerCart64, an EverDrive-64 X7 and an EverDrive-64 PRO. |
 | Nintendo 64, PAL | ❔ | Untested, but will probably work |
 | ModRetro M64 (FPGA) | ⚠️ | With an EverDrive-64 X7, games start from the Everdrive menu, but the built-in game browser does not see the SD card. [#12](https://github.com/fhoedemakers/smsplus64/issues/12) Other flashcarts are untested. |
 | Analogue 3D (FPGA) | ✅ | Tested with a SummerCart64 and an EverDrive-64 X7. |
@@ -28,7 +28,7 @@ Built with [Libdragon](https://github.com/DragonMinded/libdragon)
 | [SummerCart64](https://summercart64.dev/) | ✅ | Games can also be started straight from [N64FlashcartMenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu), see [below](#how-to-use-on-real-hardware-with-a-summercart64-and-n64flashcartmenu). |
 | [EverDrive-64 X7](https://krikzz.com/our-products/cartridges/ed64x7.html) | ✅ | Games can also be started straight from the Everdrive menu, see [below](#how-to-use-on-real-hardware-with-an-everdrive-64-x7). Needs Everdrive OS v3.09 or higher. |
 | EverDrive-64 V3 | ⚠️ | Shows an invalid checksum warning on boot. The emulator itself runs fine. [#11](https://github.com/fhoedemakers/smsplus64/issues/11) |
-| [EverDrive-64 PRO](https://krikzz.com/our-products/cartridges/everdrive-64-pro.html) | ❌ | The emulator does not start yet. [#13](https://github.com/fhoedemakers/smsplus64/issues/13) |
+| [EverDrive-64 PRO](https://krikzz.com/our-products/cartridges/everdrive-64-pro.html) | ✅ | Games can also be started straight from the Everdrive menu, see [below](#how-to-use-on-real-hardware-with-an-everdrive-64-pro). |
 | 64drive | ❔ | Untested. |
 
 ### Emulators
@@ -60,6 +60,31 @@ Selecting a `.sms` or `.gg` rom in the Everdrive menu then starts it in the emul
 > [!NOTE]  
 > Everdrive OS **v3.09 or higher** is required.  
 > Downloads: https://krikzz.com/pub/support/everdrive-64/x-series/OS/
+
+---
+
+## How to use on real hardware with an Everdrive 64 PRO
+
+Copy **smsPlus64.z64** to the SD card and start it from the Everdrive menu. The built-in
+game browser reads the card directly, so roms in a `smsPlus64` folder at the root of the
+card are found straight away. If there is no such folder, the browser starts at the root
+of the card instead.
+
+You can also launch roms directly from the Everdrive menu. Copy **smsPlus64.z64** into both
+of these folders on the SD card:
+
+```
+/ED64/edapp/sms/
+/ED64/edapp/gg/
+```
+
+Selecting a `.sms` or `.gg` rom in the Everdrive menu then starts it in the emulator. The
+file name does not matter, unlike on the X-series.
+
+The `cp64pro.sh` script in this repository does all three copies over USB.
+
+How the PRO is driven, and why it does not go through libcart like the other flashcarts, is
+described in [ED64PRO.md](ED64PRO.md).
 
 ---
 
@@ -204,6 +229,10 @@ You can also use an Emulator. Libdragon suggests [Ares](https://ares-emu.net/dow
 
 The files `run64.sh`, `cp64.sh` are used to  run or copy `smsPlus64.z64` to the Everdrive, using an USB cable. (using `usb64.exe`). Since usb64.exe runs on Windows, you need to build the project using WSL (Windows Subsystem for Linux) in order to use these scripts. If you are using Linux, you have to copy the file manually to the Everdrive.
 
+For the EverDrive-64 PRO the equivalents are `run64pro.sh` and `cp64pro.sh`, which use
+[edlink.exe](https://github.com/krikzz/ed64-pro-pub/blob/main/edlink.exe) instead. `cp64pro.sh`
+copies the emulator to the root of the card and to both `edapp` folders in one go.
+
 ## Credits
 
 This emulator is other people's work brought together on a Nintendo 64.
@@ -218,6 +247,8 @@ This emulator is other people's work brought together on a Nintendo 64.
 
 - [Libdragon](https://github.com/DragonMinded/libdragon) by **DragonMinded** and its contributors — the open source SDK everything here is built with: display and RDP, audio, controllers, and the filesystem code. The dragon in the game browser is its logo.
 - [libcart](https://github.com/devwizard64/libcart) by **devwizard** ([@devwizard64](https://github.com/devwizard64)), as bundled with Libdragon — flashcart detection and SD card access on the EverDrive-64 and the SummerCart64.
+
+- [ed64-pro-pub](https://github.com/krikzz/ed64-pro-pub) by **krikzz** — the EverDrive-64 PRO developer sources, MIT licensed. `ed64pro_drv.c` is a trimmed port of the cartridge command protocol from those sources.
 - [FatFs](http://elm-chan.org/fsw/ff/00index_e.html) by **ChaN**, also by way of Libdragon — reading the SD card.
 - [SummerCart64](https://summercart64.dev/) and [N64FlashcartMenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu) by **Mateusz Faderewski** ([@Polprzewodnikowy](https://github.com/Polprzewodnikowy)) — the flashcart and menu that games can be started from directly.
 - Thanks to **Wayne Reilly** and **Dan Moore** for testing releases on hardware this project does not have and reporting back.
