@@ -1,6 +1,10 @@
 # CHANGELOG
 
-Now works on the Everdrive 64 PRO.
+Now works on the Everdrive 64 PRO, rom header fix.
+
+## v0.10
+
+- Rom header fix, so it conforms with the homebrew header and would be better supported across all flashcarts and Ares.
 
 ## v0.9
 
