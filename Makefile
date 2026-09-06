@@ -5,6 +5,10 @@ all: smsPlus64.z64
 BUILD_DIR = build
 
 include  $(N64_INST)/include/n64.mk
+N64_ROM_SAVETYPE = none
+N64_ROM_RTC = 0
+N64_ROM_REGIONFREE = 1
+N64_ROM_REGION = E
 ifeq ($(RELEASE),1)
 N64_CFLAGS += -DNDEBUG
 N64_CXXFLAGS += -DNDEBUG
