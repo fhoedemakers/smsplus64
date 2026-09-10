@@ -16,10 +16,10 @@ Built with [Libdragon](https://github.com/DragonMinded/libdragon)
 
 | Console | Status | Notes |
 | --- | --- | --- |
-| Nintendo 64, NTSC | ✅ | Tested with a SummerCart64, an EverDrive-64 X7 and an EverDrive-64 PRO. |
-| Nintendo 64, PAL | ❔ | Untested, but will probably work |
-| ModRetro M64 (FPGA) | ⚠️ | With an EverDrive-64 X7, games start from the Everdrive menu, but the built-in game browser does not see the SD card. [#12](https://github.com/fhoedemakers/smsplus64/issues/12) Other flashcarts are untested. |
-| Analogue 3D (FPGA) | ✅ | Tested with a SummerCart64 and an EverDrive-64 X7. |
+| Nintendo 64, NTSC | ✅ | Tested with a SummerCart64, an Everdrive-64 V3, an EverDrive-64 X7 and an EverDrive-64 PRO. |
+| Nintendo 64, PAL | ✅ | Tested with a SummerCart64, an Everdrive-64 V3, an EverDrive-64 X7 and an EverDrive-64 PRO. |
+| [ModRetro M64 (FPGA)](https://modretro.com/products/m64) | ⚠️ | Tested with a SummerCart64, an Everdrive-64 V3, an EverDrive-64 X7 and an EverDrive-64 PRO. With an EverDrive-64 X7, games start from the Everdrive menu, but the built-in game browser does not see the SD card. [#12](https://github.com/fhoedemakers/smsplus64/issues/12)|
+| [Analogue 3D (FPGA)](https://www.analogue.co/3d) | ✅ | Tested with a SummerCart64 and an EverDrive-64 X7. |
 
 ### Flashcarts
 
@@ -27,8 +27,8 @@ Built with [Libdragon](https://github.com/DragonMinded/libdragon)
 | --- | --- | --- |
 | [SummerCart64](https://summercart64.dev/) | ✅ | Games can also be started straight from [N64FlashcartMenu](https://github.com/Polprzewodnikowy/N64FlashcartMenu), see [below](#how-to-use-on-real-hardware-with-a-summercart64-and-n64flashcartmenu). |
 | [EverDrive-64 X7](https://krikzz.com/our-products/cartridges/ed64x7.html) | ✅ | Games can also be started straight from the Everdrive menu, see [below](#how-to-use-on-real-hardware-with-an-everdrive-64-x7). Needs Everdrive OS v3.09 or higher. |
-| EverDrive-64 V3 | ⚠️ | Shows an invalid checksum warning on boot. The emulator itself runs fine. [#11](https://github.com/fhoedemakers/smsplus64/issues/11) |
 | [EverDrive-64 PRO](https://krikzz.com/our-products/cartridges/everdrive-64-pro.html) | ✅ | Games can also be started straight from the Everdrive menu, see [below](#how-to-use-on-real-hardware-with-an-everdrive-64-pro). |
+| [EverDrive-64 V3](https://krikzz.com/our-products/legacy/everdrive-64-v3.html) | ✅ | Shows an invalid checksum warning at boot; the emulator itself runs fine. The checksum test can be turned off in the Everdrive settings menu. |
 | 64drive | ❔ | Untested. |
 
 ### Emulators
