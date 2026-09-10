@@ -8,8 +8,8 @@ include  $(N64_INST)/include/n64.mk
 # Rom header settings, 
 # so it conforms with the homebrew header and would be better supported across all flashcarts and ares
 N64_ROM_SAVETYPE = none
-N64_ROM_RTC = 0
-N64_ROM_REGIONFREE = 1
+N64_ROM_RTC =            # empty means no rtc, any value means rtc is present
+N64_ROM_REGIONFREE = 1   # Leave Empty for NTSC
 N64_ROM_REGION = E
 
 ifeq ($(RELEASE),1)
