@@ -29,6 +29,7 @@ Built with [Libdragon](https://github.com/DragonMinded/libdragon)
 | [EverDrive-64 X7](https://krikzz.com/our-products/cartridges/ed64x7.html) | ✅ | Games can also be started straight from the Everdrive menu, see [below](#how-to-use-on-real-hardware-with-an-everdrive-64-x7). Needs Everdrive OS v3.09 or higher. |
 | [EverDrive-64 PRO](https://krikzz.com/our-products/cartridges/everdrive-64-pro.html) | ✅ | Games can also be started straight from the Everdrive menu, see [below](#how-to-use-on-real-hardware-with-an-everdrive-64-pro). |
 | [EverDrive-64 V3](https://krikzz.com/our-products/legacy/everdrive-64-v3.html) | ✅ | Shows an invalid checksum warning at boot; the emulator itself runs fine. The checksum test can be turned off in the Everdrive settings menu. |
+| ED64Plus | ✅ | Works as reported by [Valkristh](https://github.com/Valkristh)  - [#18](https://github.com/fhoedemakers/smsplus64/issues/18) |
 | 64drive | ❔ | Untested. |
 
 ### Emulators
