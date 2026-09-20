@@ -12,11 +12,16 @@
    answers together and check 1 cannot see it - while a list bug is now visible
    in the picture as well as in the collision flag. ref_scan() below is the
    scan the drawing path used to do, kept here rather than in render.c so it
-   cannot drift along with the code it is checking. */
+   cannot drift along with the code it is checking.
+
+   SG-1000 roms (.sg) get check 1 only, on the TMS9918A passes in tms.c, and
+   it compares the fifth sprite flag and number as well as the collision flag:
+   the skipped-frame pass has to latch all three. */
 #include "shared.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 extern int vp_vstart, vp_vend;
 #ifdef COLLISION_STATS
@@ -36,6 +41,7 @@ static uint8_t frame_buffer[256 * 192];
 uint8_t *sms_line_target = frame_buffer;
 void sms_palette_sync(int index) { (void)index; }
 void sms_palette_syncGG(int index) { (void)index; }
+void sms_palette_syncSG(int index) { (void)index; }
 char unalChar(const char *adr) { return *adr; }
 void system_load_sram(void) { }
 
@@ -123,6 +129,12 @@ static void check_list(int frame, int line)
 }
 #endif
 
+static int ends_with(const char *s, const char *suffix)
+{
+    size_t ls = strlen(s), lx = strlen(suffix);
+    return ls > lx && strcasecmp(s + ls - lx, suffix) == 0;
+}
+
 int main(int argc, char **argv)
 {
     const char *path = argv[1];
@@ -130,12 +142,26 @@ int main(int argc, char **argv)
     FILE *f = fopen(path, "rb");
     if (!f) { fprintf(stderr, "cannot open %s\n", path); return 1; }
     fseek(f, 0, SEEK_END); long size = ftell(f); fseek(f, 0, SEEK_SET);
-    uint8_t *rom = malloc(size);
+
+    int cart_type = ends_with(path, ".gg") ? TYPE_GG
+                  : ends_with(path, ".sg") ? TYPE_SG : TYPE_SMS;
+    int is_sg = (cart_type == TYPE_SG);
+
+    /* SG images are padded to a 16 KB boundary with $FF, as loadRomFile()
+       does on the console, so a build with -fsanitize=address sees exactly the
+       buffer the emulator gets there. */
+    long alloc = is_sg ? ((size + 0x3FFF) & ~0x3FFF) : size;
+    uint8_t *rom = malloc(alloc);
     if (fread(rom, 1, size, f) != (size_t)size) { fprintf(stderr, "short read\n"); return 1; }
     fclose(f);
+    memset(rom + size, 0xFF, alloc - size);
 
-    int is_gg = (strstr(path, ".gg") || strstr(path, ".GG")) != NULL;
-    if (!load_rom(rom, size, is_gg)) { fprintf(stderr, "load_rom failed\n"); return 1; }
+    if (!load_rom(rom, size, cart_type, false)) { fprintf(stderr, "load_rom failed\n"); return 1; }
+
+    /* Status bits both passes must agree on. On the TMS9918A that is the
+       fifth sprite flag and number too. */
+    uint8 status_mask = is_sg ? (0x20 | 0x40 | 0x1F) : 0x20;
+    long sg_fifth_lines = 0;
 
     snd.enabled = 0;
     system_init(0);
@@ -143,6 +169,19 @@ int main(int argc, char **argv)
 
     for (int frame = 0; frame < frames; frame++)
     {
+        /* SG-1000 games wait on their title screen for a button, so press
+           button 1 for a few frames now and then, as pico-smsplus's hosttest
+           run does. Master System roms run without input, as they always
+           have here. */
+        input.pad[0] = 0;
+        if (is_sg)
+        {
+            static const int presses[] = {300, 420, 540, 700};
+            for (int p = 0; p < 4; p++)
+                if (frame >= presses[p] && frame < presses[p] + 6)
+                    input.pad[0] = INPUT_BUTTON1;
+        }
+
         for (vdp.line = 0; vdp.line < 262; vdp.line++)
         {
             vdp_run();
@@ -153,14 +192,26 @@ int main(int argc, char **argv)
 
             vdp.status = saved & ~0x20;
             render_line(vdp.line);
-            int draw_hit = (vdp.status & 0x20) != 0;
+            uint8 draw_status = vdp.status;
+            int draw_hit = (draw_status & 0x20) != 0;
 
             vdp.status = saved & ~0x20;
             render_line_collision(vdp.line);
-            int coll_hit = (vdp.status & 0x20) != 0;
+            uint8 coll_status = vdp.status;
+            int coll_hit = (coll_status & 0x20) != 0;
 
             /* Carry on from the drawing path, which is the reference */
-            vdp.status = (saved & ~0x20) | (draw_hit ? 0x20 : 0);
+            if (is_sg)
+            {
+                /* Everything the pass latched, with the collision flag kept
+                   sticky as it is on the console */
+                vdp.status = draw_status | (saved & 0x20);
+                if ((draw_status & 0x40) && !(saved & 0x40)) sg_fifth_lines++;
+            }
+            else
+            {
+                vdp.status = (saved & ~0x20) | (draw_hit ? 0x20 : 0);
+            }
 
 #ifdef SPR_LIST_CHECK
             /* After the two passes, so the list being compared is the one they
@@ -169,21 +220,23 @@ int main(int argc, char **argv)
                the lines that matter. A pass that forgot to sync at all is check
                1's business - the two call it independently, so one using a stale
                list disagrees with the other. The lists only cover the 192
-               visible lines. */
-            if (vdp.line < 192)
+               visible lines, and only the Master System renderer has them. */
+            if (vdp.line < 192 && !is_sg)
                 check_list(frame, vdp.line);
 #endif
 
             if (vdp.line >= vp_vstart && vdp.line < vp_vend) lines_checked++;
             lines_draw_hit += draw_hit;
             lines_coll_hit += coll_hit;
-            if (draw_hit != coll_hit)
+            int kind = (draw_hit != coll_hit) ? (draw_hit ? 1 : 2)
+                     : ((draw_status ^ coll_status) & status_mask) ? 3 : 0;
+            if (kind)
             {
                 mismatches++;
                 if (nmm < 16)
                 {
                     mm_frame[nmm] = frame; mm_line[nmm] = vdp.line;
-                    mm_kind[nmm] = draw_hit ? 1 : 2; nmm++;
+                    mm_kind[nmm] = kind; nmm++;
                 }
             }
 
@@ -195,11 +248,14 @@ int main(int argc, char **argv)
     printf("  visible lines checked : %ld\n", lines_checked);
     printf("  collision lines       : draw=%ld  collision-pass=%ld\n",
            lines_draw_hit, lines_coll_hit);
+    if (is_sg)
+        printf("  fifth sprite latched  : %ld lines\n", sg_fifth_lines);
     printf("  MISMATCHES            : %ld\n", mismatches);
     for (int i = 0; i < nmm; i++)
         printf("    frame %5d line %3d : %s\n", mm_frame[i], mm_line[i],
                mm_kind[i] == 1 ? "draw saw a hit, collision pass did not"
-                               : "collision pass saw a hit, draw did not");
+               : mm_kind[i] == 2 ? "collision pass saw a hit, draw did not"
+                                 : "fifth sprite flag or number differs");
 #ifdef SPR_LIST_CHECK
     printf("  sprite lists checked  : %ld\n", list_lines_checked);
     printf("  LIST DIFFERENCES      : %ld\n", list_diffs);

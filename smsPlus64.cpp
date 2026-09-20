@@ -14,6 +14,7 @@
 
 #include "libcart/cart.h"
 #include "ed64pro.h"
+#include "injectedroms.h"
 #define ERRORMESSAGESIZE 40
 #define GAMESAVEDIR "/SAVES"
 
@@ -280,6 +281,16 @@ extern "C" void sms_palette_sync(int index)
     tlut_mirror(index);
 }
 
+// SG-1000: the fixed TMS9918A palette. Every slot follows the low four bits,
+// so background (0x10 | c) and sprite (0x50 | c) pixels resolve to the same
+// colour.
+extern "C" void sms_palette_syncSG(int index)
+{
+    const uint8 *rgb = tms_palette_rgb[index & 15];
+    palette444[index] = RGB888_TO_RGB5551(rgb[0], rgb[1], rgb[2]);
+    tlut_mirror(index);
+}
+
 void system_load_sram(void)
 {
     printf("system_load_sram: TODO\n");
@@ -354,7 +365,7 @@ int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu)
         else
         {
             // console / sound / emulated fps / displayed fps / frameskip mode.
-            char console = IS_GG ? 'G' : 'S';
+            char console = IS_GG ? 'G' : IS_SG ? '1' : 'S';
             sprintf(buffer, "%c%c %03d/%02d %s", console, sound,
                     framedisplay, drawndisplay, frameskip_label());
         }
@@ -1257,7 +1268,8 @@ bool IsRomInjected(RomInfo *info, bool withOffset)
     if (strncmp(header.signature, "TMR SEGA", 8) == 0)
     {
         debugstdout("  --->Sega header found\n");
-        info->isGameGear = false;
+        info->cartType = TYPE_SMS;
+        info->sizeGuessed = false;
         uint8_t romsize = header.sizeAndRegion & 0b00001111;
         uint8_t region = (header.sizeAndRegion >> 4) & 0b00001111;
         // https://www.smspower.org/Development/ROMHeader
@@ -1299,30 +1311,30 @@ bool IsRomInjected(RomInfo *info, bool withOffset)
             info->size = 0; // unknown size
             break;
         }
-        info->isGameGear = false;
+        info->cartType = TYPE_SMS;
         debugstdout("Romsize %x, reading %d bytes\n", romsize, info->size);
         debugstdout("Region: %x - ", region);
         switch (region)
         {
         case 3:
             debugstdout("SMS Japan\n");
-            info->isGameGear = false;
+            info->cartType = TYPE_SMS;
             break;
         case 4:
             debugstdout("SMS Export\n");
-            info->isGameGear = false;
+            info->cartType = TYPE_SMS;
             break;
         case 5:
             debugstdout("GG USA\n");
-            info->isGameGear = true;
+            info->cartType = TYPE_GG;
             break;
         case 6:
             debugstdout("GG Export\n");
-            info->isGameGear = true;
+            info->cartType = TYPE_GG;
             break;
         case 7:
             debugstdout("GG International\n");
-            info->isGameGear = true;
+            info->cartType = TYPE_GG;
             break;
         default:
             debugstdout("Unknown\n");
@@ -1335,6 +1347,97 @@ bool IsRomInjected(RomInfo *info, bool withOffset)
     }
     return rval;
 }
+
+// Checks for an injected rom that has no header to go by but is known by the
+// start of its contents: Master System and Game Gear roms without a usable
+// header, and SG-1000 roms too large for the SG-1000 guess below. Called
+// before that guess, which would otherwise take them. See injectedroms.c.
+static bool IsKnownRomInjected(RomInfo *info, int *offset)
+{
+    // Room for a copier header in front, as IsRomInjected() allows for
+    static uint8_t start[512 + INJECTEDROM_CRC_BYTES] __attribute__((aligned(16)));
+
+    debugstdout("Looking up the rom at %x by its contents\n", GetRomAddress());
+    data_cache_hit_writeback_invalidate(start, sizeof(start));
+    dma_read_async(start, GetRomAddress(), sizeof(start));
+    dma_wait();
+
+    for (int off = 0; off <= 512; off += 512)
+    {
+        const InjectedRom *rom = injected_rom_find(start + off);
+        if (rom != nullptr)
+        {
+            debugstdout("  --->Known rom, type %d, %lu bytes\n", rom->type, (unsigned long)rom->size);
+            info->cartType = rom->type;
+            info->size = rom->size;
+            info->sizeGuessed = false;
+            *offset = off;
+            return true;
+        }
+    }
+    return false;
+}
+
+// How much of cartridge space an SG-1000 rom without a known size is read as.
+// All but a handful of SG-1000 images fit, and those are known to
+// IsKnownRomInjected(); see sg_memory_map() for how the part past the image is
+// treated.
+#define SG_INJECTED_SIZE 0xC000
+
+// Checks for an SG-1000 rom injected by the Everdrive/N64FlashcartMenu. Called
+// only when there is no "TMR SEGA" header, so anything a flashcart menu hands
+// over that is not a Master System or Game Gear rom is taken for SG-1000.
+//
+// SG-1000 images carry no header, and the menus pass neither a size nor a file
+// name, so all there is to go on is the code at the start of the rom. The
+// check has to tell a rom from whatever cartridge space holds when the
+// emulator is started on its own: data left behind by a larger N64 game, by
+// another emulator, or random contents after power-on. Every SG-1000 image
+// starts its first four bytes with one of DI, JP, LD SP, IM or JR, while 16
+// equal bytes - erased or never written - are not code. Our own leftovers are
+// taken care of by killInjectedRomHeader(), which blanks the start of the rom
+// once it has been read.
+static bool IsSgRomInjected(RomInfo *info)
+{
+    static uint8_t start[16] __attribute__((aligned(16)));
+
+    debugstdout("Looking for an SG-1000 rom at %x\n", GetRomAddress());
+    data_cache_hit_writeback_invalidate(start, sizeof(start));
+    dma_read_async(start, GetRomAddress(), sizeof(start));
+    dma_wait();
+
+    bool uniform = true;
+    for (size_t i = 1; i < sizeof(start); i++)
+    {
+        if (start[i] != start[0])
+        {
+            uniform = false;
+            break;
+        }
+    }
+    if (uniform)
+    {
+        return false;
+    }
+    for (int i = 0; i < 4; i++)
+    {
+        switch (start[i])
+        {
+        case 0xF3: // DI
+        case 0xC3: // JP nn
+        case 0x31: // LD SP,nn
+        case 0xED: // IM 1 (ED 56)
+        case 0x18: // JR e
+            debugstdout("  --->Taking it for an SG-1000 rom\n");
+            info->cartType = TYPE_SG;
+            info->size = SG_INJECTED_SIZE;
+            info->sizeGuessed = true;
+            return true;
+        }
+    }
+    return false;
+}
+
 static const char *format_cart_type()
 {
     // libcart has no constant for the PRO, and would call it a Series X if it
@@ -1368,6 +1471,10 @@ static const char *format_cart_type()
 // by holding Z. Called as soon as the rom has been copied to RAM, so the next
 // boot comes up in the menu; picking a game from the flashcart menu writes a
 // fresh header and works as before.
+//
+// The first 16 bytes of the rom are blanked too. That is what IsSgRomInjected()
+// looks at, and a Master System rom starts with the same code as an SG-1000
+// one, so its leftovers would otherwise be started as an SG-1000 game.
 static void killInjectedRomHeader()
 {
     // Nothing was injected on a cart this emulator does not recognise, and on
@@ -1389,6 +1496,8 @@ static void killInjectedRomHeader()
     dma_write_raw_async(&header, GetRomAddress() + 0x7FF0, sizeof(header));
     dma_wait();
     dma_write_raw_async(&header, GetRomAddress() + 0x7FF0 + 512, sizeof(header));
+    dma_wait();
+    dma_write_raw_async(&header, GetRomAddress(), sizeof(header));
     dma_wait();
 }
 
@@ -1486,9 +1595,9 @@ static void mountFilesystemsAndLoadSettings(bool *dfsStarted, char *mountPoint)
 // Start the game the EverDrive-64 PRO menu launched this rom with, if there
 // is one.
 //
-// Copy this rom into /ED64/edapp/sms/ and /ED64/edapp/gg/ on the card and the
-// Everdrive menu will run it when a .sms or .gg file is picked. Unlike the
-// Series X and the SummerCart64, which copy the chosen game into cartridge
+// Copy this rom into /ED64/edapp/sms/, /ED64/edapp/gg/ and /ED64/edapp/sg/ on
+// the card and the Everdrive menu will run it when a .sms, .gg or .sg file is
+// picked. Unlike the Series X and the SummerCart64, which copy the chosen game into cartridge
 // memory for IsRomInjected() to find, the PRO just remembers the file's name
 // and lets the app ask for it - so the name is the whole handover, and it is
 // read through the same filesystem the game browser uses.
@@ -1525,9 +1634,10 @@ static bool startEd64ProRom(bool zPressed, RomInfo *info)
     }
     debugstdout("Everdrive menu picked %s\n", appfile);
 
-    if (!Frens::cstr_endswith(appfile, ".sms") && !Frens::cstr_endswith(appfile, ".gg"))
+    if (!Frens::cstr_endswith(appfile, ".sms") && !Frens::cstr_endswith(appfile, ".gg") &&
+        !Frens::cstr_endswith(appfile, ".sg"))
     {
-        debugstdout("Not a Master System or Game Gear rom, ignoring\n");
+        debugstdout("Not a Master System, Game Gear or SG-1000 rom, ignoring\n");
         return false;
     }
 
@@ -1542,7 +1652,7 @@ static bool startEd64ProRom(bool zPressed, RomInfo *info)
         return false;
     }
 
-    // The title and the Game Gear decision come from the file name, exactly as
+    // The title and the cartridge type come from the file name, exactly as
     // they do when a game is picked in the browser.
     const char *name = strrchr(appfile, '/');
     name = name ? name + 1 : appfile;
@@ -1716,7 +1826,8 @@ int main()
             {
                 offset = 512;
             }
-            else
+            else if ((loadedFromFlashcartMenu = IsKnownRomInjected(&info, &offset)) == false &&
+                     (loadedFromFlashcartMenu = IsSgRomInjected(&info)) == false)
             {
                 debugstdout("No Sega header found\n");
             }
@@ -1724,15 +1835,19 @@ int main()
 
         if (loadedFromFlashcartMenu && !ed64pro_present())
         {
+            // Whole 16 KB pages. The SG-1000 memory map relies on it (see
+            // load_rom()), and for the other consoles it keeps a partial last
+            // page reachable. Every size but a known rom's already is one.
+            int readSize = (info.size + 0x3FFF) & ~0x3FFF;
             debugstdout("Allocating memory for rom\n");
-            info.rom = (uint8_t *)malloc(info.size);
+            info.rom = (uint8_t *)malloc(readSize);
             if (info.rom == nullptr)
             {
                 // dma_read_async() writes straight into RDRAM and does not look
                 // at where it is pointing, so a null destination is not a failed
                 // load but half a megabyte written over the bottom of memory.
                 // Fall through to the menu with the error instead.
-                debugstdout("Cannot allocate %d bytes for rom\n", info.size);
+                debugstdout("Cannot allocate %d bytes for rom\n", readSize);
                 snprintf(ErrorMessage, ERRORMESSAGESIZE, "Cannot allocate memory for rom");
                 loadedFromFlashcartMenu = false;
             }
@@ -1743,10 +1858,19 @@ int main()
                 // address. Any dirty cache line still covering this buffer - the
                 // allocator's own bookkeeping at either end of it, or whatever held
                 // this memory before - would be written back over the rom later on.
-                data_cache_hit_writeback_invalidate(info.rom, info.size);
-                dma_read_async(info.rom, GetRomAddress() + offset, info.size);
+                data_cache_hit_writeback_invalidate(info.rom, readSize);
+                dma_read_async(info.rom, GetRomAddress() + offset, readSize);
                 debugstdout("Waiting for dma\n");
                 dma_wait();
+                if (info.cartType == TYPE_SG)
+                {
+                    // Past the image an SG-1000 cartridge reads as open bus
+                    __builtin_memset(info.rom + info.size, 0xFF, readSize - info.size);
+                }
+                else
+                {
+                    info.size = readSize;
+                }
                 strcpy(info.title, "Everdrive/Flashcart");
                 // The rom is safely in RAM now, so drop the header that got us here
                 // and the next boot will come up in the menu instead of replaying
@@ -1810,7 +1934,8 @@ int main()
 
             info.rom = builtinrom;
             info.size = builtinrom_len;
-            info.isGameGear = builtinrom_isgg;
+            info.cartType = builtinrom_isgg ? TYPE_GG : TYPE_SMS;
+            info.sizeGuessed = false;
             strcpy(info.title, GetBuiltinROMName());
 #endif
         }
@@ -1822,7 +1947,7 @@ int main()
         debugf("- ROM: %s\n", info.title);
         debugf("- Size: %d\n", info.size);
         debugf("- Address: %p\n", info.rom);
-        debugf("- isGameGear: %d\n", info.isGameGear);
+        debugf("- cartType: %d%s\n", info.cartType, info.sizeGuessed ? " (size guessed)" : "");
         reset = false;
         // Set the audio hardware up for this game, and tear it down again when
         // the game exits. Leaving it open across games left the AI stopped, so
@@ -1831,7 +1956,7 @@ int main()
         debugf("Init audio\n");
         audio_init(44100, 4);
         audioSamplesPushed = 0;
-        load_rom(info.rom, info.size, info.isGameGear);
+        load_rom(info.rom, info.size, info.cartType, info.sizeGuessed);
         // Initialize all systems and power on
         system_init(SMS_AUD_RATE);
         // load state if any

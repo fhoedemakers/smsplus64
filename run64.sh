@@ -13,6 +13,7 @@ if [ "$1" == "-c" ]; then
     echo "Copying $z64file to Nintendo 64"
     ./usb64.exe -cp $z64file sd:/ED64/emu/sms.v64
     ./usb64.exe -cp $z64file sd:/ED64/emu/gg.v64
+    ./usb64.exe -cp $z64file sd:/ED64/emu/sg.v64
     ./usb64.exe -cp $z64file sd:/$z64file
 else
   

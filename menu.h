@@ -8,7 +8,8 @@ typedef struct RomInfo
 {
     uint8_t *rom;
     int size;
-    int isGameGear;
+    int cartType; // TYPE_SMS, TYPE_GG or TYPE_SG
+    bool sizeGuessed; // SG-1000 rom from a flashcart menu, real size unknown
     char title[256];
 } RomInfo;
 RomInfo menu(char *mountPoint, uintptr_t NES_FILE_ADDR, char *errorMessage, bool isFatalError, bool reset);
@@ -25,7 +26,7 @@ typedef enum
 } RomLoadResult;
 
 /* Read a rom into a freshly allocated buffer. displayName is the bare file
- * name and decides Game Gear versus Master System. */
+ * name and decides the cartridge type. */
 RomLoadResult loadRomFile(const char *fullPath, const char *displayName, RomInfo *info, char *errorMessage, size_t errCap);
 char getcharslicefrom8x8font(char c, int rowInChar);
 int ProcessAfterFrameIsRendered(surface_t *display, bool fromMenu);

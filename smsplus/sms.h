@@ -28,7 +28,7 @@ typedef struct {
     uint8 paused;
     uint8 save;
     uint8 country;
-    uint8 port_3F;
+    uint8 port_3F;      /* SG-1000 (no port $3F): bit n set = RAM adaptor on page n */
     uint8 port_F2;
     uint8 use_fm;
     uint8 irq;
@@ -48,6 +48,8 @@ void sms_reset(void);
 int sms_irq_callback(int param);
 
 void sms_mapper_w(int address, int data);
+
+void sg_memory_map(void);
 
 void cpu_reset(void);
 

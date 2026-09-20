@@ -1,6 +1,13 @@
 # CHANGELOG
 
-Now works on the Everdrive 64 PRO, rom header fix.
+Sega SG-1000 support.
+
+## v0.11
+
+- Sega SG-1000 games (`.sg`) can now be played, from the game browser, the Everdrive menus and
+  N64FlashcartMenu. On the X7 copy `sg.v64` to `ED64/emu`, on the PRO copy the emulator to `/ED64/edapp/sg/`.
+- Master System and Game Gear games without a rom header, such as many Korean releases, can now
+  also be started from the EverDrive-64 X7 menu and N64FlashcartMenu.
 
 ## v0.10
 

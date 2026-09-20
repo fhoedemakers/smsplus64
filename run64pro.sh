@@ -15,6 +15,7 @@ if [ "$1" == "-c" ]; then
     echo "Copying $z64file to Nintendo 64"
     ./edlink.exe cp --src $z64file --dst sd:/ED64/edapp/sms/$targetfile
     ./edlink.exe cp --src $z64file --dst sd:/ED64/edapp/gg/$targetfile
+    ./edlink.exe cp --src $z64file --dst sd:/ED64/edapp/sg/$targetfile
     ./edlink.exe cp --src $z64file --dst sd:/$z64file
 else
   

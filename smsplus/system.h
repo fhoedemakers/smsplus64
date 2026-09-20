@@ -10,9 +10,11 @@
 /* Console / cartridge types */
 #define TYPE_SMS            (0)
 #define TYPE_GG             (1)
+#define TYPE_SG             (2)    /* SG-1000: TMS9918A VDP, no CRAM */
 
 #define IS_GG               (cart.type == TYPE_GG)
 #define IS_SMS              (cart.type == TYPE_SMS)
+#define IS_SG               (cart.type == TYPE_SG)
 
 /* Macro to get offset to actual display within bitmap */
 #define BMP_X_OFFSET        ((cart.type == TYPE_GG) ? 48 : 0)
@@ -61,6 +63,8 @@ typedef struct {
     uint8 *rom;
     uint8 pages;
     uint8 type;
+    int size;           /* ROM image size in bytes, copier header excluded */
+    uint8 size_guessed; /* SG-1000 rom injected by a flashcart menu: real size unknown */
 } t_cart;
 
 /* Bitmap structure */

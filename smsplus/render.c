@@ -527,6 +527,15 @@ void (render_line)(int line)
        priority, so stale bytes there must stay as they are. */
     claim_dcache_range(linebuf + (vp_hstart << 3), BMP_WIDTH);
 
+    /* SG-1000. Kept to a test and a call so the Master System path below does
+       not grow: this function runs 192 times a frame next to the Z80. The
+       TMS9918A rewrites the whole 256-byte row, as the claim above requires. */
+    if (IS_SG)
+    {
+        tms_render_line(line);
+        return;
+    }
+
     /* Blank line */
     if ((!(vdp.reg[1] & 0x40)) || (((vdp.reg[2] & 1) == 0) && (IS_SMS)))
     {
@@ -943,6 +952,15 @@ static void (render_obj_collision)(int line)
    buffer still holds the last displayed image while frames are being skipped. */
 void (render_line_collision)(int line)
 {
+    /* The TMS9918A also latches the fifth sprite flag and number on every
+       line, so it cannot take the early exit below. The viewport and display
+       enable checks live in tms_line_collision(), out of this path. */
+    if (IS_SG)
+    {
+        tms_line_collision(line);
+        return;
+    }
+
     /* The flag is sticky until the game reads the status port, and the Z80 only
        runs between scanlines, so once it is up nothing later in this frame can
        change the outcome. */
@@ -975,6 +993,7 @@ void (render_line_collision)(int line)
 
 extern void sms_palette_sync(int index);
 extern void sms_palette_syncGG(int index);
+extern void sms_palette_syncSG(int index);
 
 /* Update a palette entry */
 void (palette_sync)(int index)
@@ -1008,6 +1027,11 @@ void (palette_sync)(int index)
     if (IS_GG)
     {
         sms_palette_syncGG(index);
+    }
+    else if (IS_SG)
+    {
+        /* Fixed TMS9918A palette */
+        sms_palette_syncSG(index);
     }
     else
     {
