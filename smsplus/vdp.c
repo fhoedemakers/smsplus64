@@ -101,10 +101,26 @@ void vdp_ctrl_w(int data) {
             vdp.addr += 1;
         }
 
+        if (IS_SG) {
+            /* TMS9918A: bit 7 selects a register write, 8 registers */
+            if (data & 0x80) {
+                vdp.reg[data & 7] = vdp.latch;
+
+                /* INT output follows F && IE, so enabling or disabling
+                   interrupts with a frame interrupt pending takes effect now */
+                if (((data & 7) == 1) && (vdp.status & 0x80)) {
+                    sms.irq = (vdp.latch & 0x20) ? 1 : 0;
+                    z80_set_irq_line(0, sms.irq ? ASSERT_LINE : CLEAR_LINE);
+                }
+            }
+            return;
+        }
+
         /* VDP register write */
         if (vdp.code == 2) {
             int r = (data & 0x0F);
             int d = vdp.latch;
+            int was_tms = !(vdp.reg[0] & 0x04);
 
             /* Store register data */
             vdp.reg[r] = d;
@@ -112,6 +128,15 @@ void vdp_ctrl_w(int data) {
             /* Update table addresses */
             vdp.ntab = (vdp.reg[2] << 10) & 0x3800;
             vdp.satb = (vdp.reg[5] << 7) & 0x3F00;
+
+            /* Switching between Mode 4 and the older modes changes where the
+               colours come from: CRAM in Mode 4, the fixed TMS9918A palette in
+               the others. */
+            if (r == 0 && was_tms != !(vdp.reg[0] & 0x04)) {
+                int i;
+                for (i = 0; i < PALETTE_SIZE; i++)
+                    palette_sync(i);
+            }
         }
     }
 }
@@ -145,6 +170,13 @@ void vdp_data_w(int data) {
 
     /* Clear the pending flag */
     vdp.pending = 0;
+
+    if (IS_SG) {
+        /* TMS9918A has no CRAM, and the SG renderer uses no tile cache */
+        vdp.vram[vdp.addr & 0x3FFF] = data;
+        vdp.addr = (vdp.addr + 1) & 0x3FFF;
+        return;
+    }
 
     switch (vdp.code) {
         case 0: /* VRAM write */
@@ -200,6 +232,19 @@ int vdp_data_r(void) {
 
 /* Process frame events */
 void (vdp_run)(void) {
+    if (IS_SG) {
+        /* TMS9918A: frame interrupt only. Status bit 6 is the fifth sprite
+           flag there, so the Mode 4 line counter must not touch it. */
+        if (vdp.line == 0xC0) {
+            vdp.status |= 0x80;
+        }
+        if ((vdp.status & 0x80) && (vdp.reg[1] & 0x20)) {
+            sms.irq = 1;
+            z80_set_irq_line(0, ASSERT_LINE);
+        }
+        return;
+    }
+
     if (vdp.line <= 0xC0) {
         if (vdp.line == 0xC0) {
             vdp.status |= 0x80;

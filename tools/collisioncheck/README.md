@@ -14,6 +14,28 @@ scanline of every frame:
 The core is endian-parameterised, so `-DLSB_FIRST` is all the host build needs.
 `filesystem/` roms are not in the repository; drop your own in.
 
+    SGROMS=~/roms/SMS/SG FRAMES=3000 tools/collisioncheck/run.sh   # every .sg below a folder
+    ASAN=1 tools/collisioncheck/run.sh                              # with AddressSanitizer
+
+## SG-1000
+
+`.sg` roms go through check 1 only, on the TMS9918A passes in `smsplus/tms.c`
+(`tms_render_line()` against `tms_line_collision()`). The comparison covers the
+fifth sprite flag and number as well as the collision flag, because the skipped
+frame pass has to latch all three. Button 1 is pressed for a few frames at
+frames 300, 420, 540 and 700, which gets most games past their title screen.
+The rom buffer is padded to a 16 KB boundary the way `loadRomFile()` pads it,
+so `ASAN=1` sees the buffer the console sees.
+
+Negative controls:
+
+- Remove `vdp.status |= 0x20` from `tms_line_collision()`: every collision line
+  mismatches (24120 on Zaxxon in 3000 frames).
+- Keep `scan_sprites()` in `tms_line_collision()` from changing the 5S bits:
+  thousands of "fifth sprite flag or number differs" lines.
+- Allocate the rom unpadded with `ASAN=1`: a heap-buffer-overflow on images that
+  are not a whole number of pages, for example the Black Onyx palette hack.
+
 ## Why there are two checks
 
 For check 1 the drawing path is the oracle: both passes are run on the same line

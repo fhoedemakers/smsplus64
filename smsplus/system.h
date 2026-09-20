@@ -10,9 +10,16 @@
 /* Console / cartridge types */
 #define TYPE_SMS            (0)
 #define TYPE_GG             (1)
+#define TYPE_SG             (2)    /* SG-1000: TMS9918A VDP, no CRAM */
 
 #define IS_GG               (cart.type == TYPE_GG)
 #define IS_SMS              (cart.type == TYPE_SMS)
+#define IS_SG               (cart.type == TYPE_SG)
+
+/* Drawn by the TMS9918A renderer: every SG-1000 line, and a Master System or
+   Game Gear line while its video chip is in one of the older modes, which is
+   what R0 bit 2 selects. Conversions of MSX games use those modes throughout. */
+#define IS_TMS_MODE         (IS_SG || !(vdp.reg[0] & 0x04))
 
 /* Macro to get offset to actual display within bitmap */
 #define BMP_X_OFFSET        ((cart.type == TYPE_GG) ? 48 : 0)
@@ -61,6 +68,8 @@ typedef struct {
     uint8 *rom;
     uint8 pages;
     uint8 type;
+    int size;           /* ROM image size in bytes, copier header excluded */
+    uint8 size_guessed; /* SG-1000 rom injected by a flashcart menu: real size unknown */
 } t_cart;
 
 /* Bitmap structure */

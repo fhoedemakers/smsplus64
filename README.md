@@ -1,9 +1,6 @@
 # smsPlus64
 
-A Sega Master System and Game Gear Emulator running on the Nintendo 64. Use it on real hardware with a flashcart. See [Compatibility](#compatibility) for the hardware it has been tested on.
-
-> [!NOTE]
-> This project is more of a fun thing for me to try if it works. Help for improvement is always welcome.
+A Sega Master System, Game Gear and SG-1000 Emulator running on the Nintendo 64. Use it on real hardware with a flashcart. See [Compatibility](#compatibility) for the hardware it has been tested on.
 
 
 Built with [Libdragon](https://github.com/DragonMinded/libdragon)
@@ -50,13 +47,14 @@ Download smsPlus64.z64 from the [releases](https://github.com/fhoedemakers/smspl
 ## How to use on real hardware with an Everdrive 64 X7
 
 You can launch ROMs directly from the Everdrive menu. Download
-[sms.v64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/sms.v64) and
-[gg.v64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/gg.v64) from the
+[sms.v64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/sms.v64),
+[gg.v64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/gg.v64) and [sg.v64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/sg.v64) from the
 [releases](https://github.com/fhoedemakers/smsplus64/releases/latest) page and copy them to
-the `ED64/emu` folder on your SD card. No renaming needed: both are the emulator itself,
+the `ED64/emu` folder on your SD card. No renaming needed: all three are the emulator itself,
 just under the names the Everdrive menu looks for.
 
-Selecting a `.sms` or `.gg` rom in the Everdrive menu then starts it in the emulator.
+Selecting a `.sms`, `.gg` or `.sg` rom in the Everdrive menu then starts it in the emulator.
+See [SG-1000 games](#sg-1000-games) for what to expect from `.sg` roms started this way.
 
 > [!NOTE]  
 > Everdrive OS **v3.09 or higher** is required.  
@@ -71,18 +69,20 @@ game browser reads the card directly, so roms in a `smsPlus64` folder at the roo
 card are found straight away. If there is no such folder, the browser starts at the root
 of the card instead.
 
-You can also launch roms directly from the Everdrive menu. Copy **smsPlus64.z64** into both
+You can also launch roms directly from the Everdrive menu. Copy **smsPlus64.z64** into each
 of these folders on the SD card:
 
 ```
 /ED64/edapp/sms/
 /ED64/edapp/gg/
+/ED64/edapp/sg/
 ```
 
-Selecting a `.sms` or `.gg` rom in the Everdrive menu then starts it in the emulator. The
+Selecting a `.sms`, `.gg` or `.sg` rom in the Everdrive menu then starts it in the emulator. The
 file name does not matter, unlike on the X-series.
 
-The `cp64pro.sh` script in this repository does all three copies over USB.
+The `cp64pro.sh` script in this repository copies the emulator to the root of the card and to
+all three folders over USB.
 
 How the PRO is driven, and why it does not go through libcart like the other flashcarts, is
 described in [ED64PRO.md](ED64PRO.md).
@@ -108,12 +108,32 @@ and its [Emulators](https://github.com/Polprzewodnikowy/N64FlashcartMenu/blob/ma
 To run the emulator as a standalone ROM:
 
 1. On the root of your SD card, create a folder named `smsPlus64`.
-2. Place your `.sms` and `.gg` ROMs in this folder.  
+2. Place your `.sms`, `.gg` and `.sg` ROMs in this folder.  
    Subfolders are supported; the menu will scan them automatically.
 3. Download [smsPlus64.z64](https://github.com/fhoedemakers/smsplus64/releases/latest/download/smsPlus64.z64) from the [releases page](https://github.com/fhoedemakers/smsplus64/releases/latest).
 4. Copy it to your flashcart.
 5. Launch **smsPlus64.z64** from the Everdrive or SummerCart menu.  
    The emulator will display its built-in game browser.
+
+## SG-1000 games
+
+Sega SG-1000 cartridge images with the `.sg` file extension can be played alongside Master
+System and Game Gear roms.
+
+- SG-1000 games can be started from the built-in game browser, the EverDrive-64 X7 and PRO
+  menus and N64FlashcartMenu.
+- The EverDrive-64 X7 menu and N64FlashcartMenu pass a game on without its size or file
+  name, and SG-1000 images have no header to recognise them by. The emulator therefore
+  identifies such a rom from a list of known roms, which also covers Master System and
+  Game Gear games whose rom header is missing or names the wrong console, and SG-1000
+  games larger than 48 KB. Any other rom
+  without a header is taken to be an SG-1000 game of 48 KB, which suits nearly all of
+  them. A game that is not recognised this way can always be started from the game
+  browser.
+- The RAM expansion used by several Taiwanese releases (for example Knightmare and TwinBee)
+  and the extra cartridge RAM of titles such as The Castle are detected automatically.
+- SG-1000 cartridges have no battery-backed saves.
+- SC-3000 (`.sc`) and SF-7000 (`.sf`) software is not supported.
 
 
 ## Controls
@@ -129,7 +149,8 @@ To run the emulator as a standalone ROM:
 ### In game
 
 - D-Pad: movement
-- Start: Pause / Start
+- Z: Pause (Master System and SG-1000)
+- Start: Start (Game Gear)
 - B: Button 1
 - A: Button 2
 - Z + Start: return to the game browser. Does nothing for a game started straight
@@ -167,7 +188,7 @@ settings still work, they just cannot be saved.
 
 The frame rate display reads something like `SS 060/30 A1`:
 
-- first letter: `S` for Master System, `G` for Game Gear
+- first character: `S` for Master System, `G` for Game Gear, `1` for SG-1000
 - second letter: `S` when sound is on, `M` when muted
 - `060`: how fast the game is running, out of 60
 - `30`: how many frames per second are actually drawn
@@ -203,6 +224,22 @@ With Upscale on both displays are drawn over the picture, hiding the first few r
 - Settings are only saved when a `smsPlus64` folder exists on the SD card. The
   settings screen says so if it cannot save them.
 
+### Games that do not work
+
+Some games show a black screen, for one of the reasons below. This is the same however
+the game is started: from the game browser, from an Everdrive menu or from
+N64FlashcartMenu.
+
+- **Games published by Codemasters**, which use bank switching of their own: Micro
+  Machines, Micro Machines 2, Cosmic Spacehead, Fantastic Dizzy, The Excellent Dizzy
+  Collection, Dropzone, Ernie Els Golf, CJ Elephant Fugitive and Pete Sampras Tennis.
+- **Korean unlicensed cartridges** that do the same, such as Jang Pung 3 and Samgukji 3.
+- **Beta and prototype dumps** that are incomplete, such as the Game Gear betas of The
+  Adventures of Batman & Robin and The Lion King.
+- BIOS images, which are not games.
+
+Reports of other games that do not run are welcome.
+
 ## Building from source
 
 1. Install the Libdragon SDK. For more info and instructions, see https://github.com/DragonMinded/libdragon
@@ -221,18 +258,22 @@ Then copy `smsPlus64.z64` to your flash drive.
 `build.sh` leaves the `filesystem` folder out of the rom, so `smsPlus64.z64`
 lists only what is on the SD card. Use `./build_dfs.sh` instead to bake that
 folder into the rom, so the games in it can be played without a card. No roms
-come with this repository: put your own `.sms` or `.gg` files in `filesystem`
+come with this repository: put your own `.sms`, `.gg` or `.sg` files in `filesystem`
 first, or you will just get a bigger rom with nothing in it.
+
+The list of known roms used for games started from the EverDrive-64 X7 menu or
+N64FlashcartMenu is `injectedroms_table.h`. It is generated from a rom collection with
+`tools/injectedroms/gen_injectedroms.py`; run it with `-h` for its usage.
 
 ## Using an Emulator
 
-You can also use an Emulator. Libdragon suggests [Ares](https://ares-emu.net/download). This however requires building from source. Since an Everdrive is not used, copy your .gg or .sms files to the `filesystem` folder of this repository, then run `build_dfs.sh`. The roms will be baked into `smsPlus64.z64` 
+You can also use an Emulator. Libdragon suggests [Ares](https://ares-emu.net/download). This however requires building from source. Since an Everdrive is not used, copy your .gg, .sms or .sg files to the `filesystem` folder of this repository, then run `build_dfs.sh`. The roms will be baked into `smsPlus64.z64` 
 
 The files `run64.sh`, `cp64.sh` are used to  run or copy `smsPlus64.z64` to the Everdrive, using an USB cable. (using `usb64.exe`). Since usb64.exe runs on Windows, you need to build the project using WSL (Windows Subsystem for Linux) in order to use these scripts. If you are using Linux, you have to copy the file manually to the Everdrive.
 
 For the EverDrive-64 PRO the equivalents are `run64pro.sh` and `cp64pro.sh`, which use
 [edlink.exe](https://github.com/krikzz/ed64-pro-pub/blob/main/edlink.exe) instead. `cp64pro.sh`
-copies the emulator to the root of the card and to both `edapp` folders in one go.
+copies the emulator to the root of the card and to all three `edapp` folders in one go.
 
 ## Credits
 
@@ -242,7 +283,9 @@ This emulator is other people's work brought together on a Nintendo 64.
 
 - [SMS Plus](https://segaretro.org/SMS_Plus) by **Charles MacDonald** — the Sega Master System and Game Gear emulator core in `smsplus/` that this project is built on.
 - The Z80 CPU core is **Juergen Buchmueller**'s portable Z80 emulator.
-- The core reached this project by way of [pico-smsplus](https://github.com/fhoedemakers/pico-smsplus), the Raspberry Pi Pico version of the same emulator.
+- The SG-1000 (TMS9918A) video modes are ported from **SMS Plus GX** by **Charles MacDonald** and **Eke-Eke**, as included in [retro-go](https://github.com/ducalex/retro-go).
+- Detection of the Taiwanese SG-1000 RAM expansion is based on [PicoDrive](https://github.com/notaz/picodrive).
+- The core reached this project by way of [pico-smsplus](https://github.com/PicoPlus-devel/pico-smsplus), the Raspberry Pi Pico version of the same emulator.
 
 **Nintendo 64 side**
 
@@ -257,7 +300,7 @@ This emulator is other people's work brought together on a Nintendo 64.
 **This project**
 
 - **smsPlus64** — the port to the Nintendo 64, the game browser, the settings screen and the renderer — is by **Frank Hoedemakers** ([@fhoedemakers](https://github.com/fhoedemakers)).
-- The game browser and the `Frens::` helpers are the same ideas as in [pico-infonesPlus](https://github.com/fhoedemakers/pico-infonesPlus) and the other emulators in that family, rewritten here for Libdragon.
+- The game browser and the `Frens::` helpers are the same ideas as in [pico-infonesPlus](https://github.com/PicoPlus-devel/pico-infonesPlus) and the other emulators in that family, rewritten here for Libdragon.
 
 ## Use of AI
 
@@ -271,4 +314,5 @@ Part of the code and the documentation was written with the assistance of
 - the settings screen and saving settings to the SD card
 - filling the screen with the picture (Upscale), taking the console type from the ROM instead of the file name, and loading the whole ROM whatever its header claims
 - the frame rate and profiler overlay, and the `tools/collisioncheck` host harness
+- SG-1000 support: porting the TMS9918A renderer, memory map and interrupt fix from pico-smsplus, sprite status on skipped frames, starting SG-1000 games from the flashcart menus, and the SG-1000 checks in `tools/collisioncheck`
 - this readme and the changelog

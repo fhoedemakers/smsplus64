@@ -98,8 +98,8 @@ int filesize(FILE *pFile)
  * the EverDrive-64 PRO menu handed us by name. Keeping it in one function is
  * what stops the two from disagreeing about copier headers.
  *
- * displayName is the bare file name: it decides Game Gear versus Master
- * System and becomes the title.
+ * displayName is the bare file name: it decides the cartridge type (Master
+ * System, Game Gear or SG-1000) and becomes the title.
  */
 RomLoadResult loadRomFile(const char *fullPath, const char *displayName, RomInfo *info, char *errorMessage, size_t errCap)
 {
@@ -112,6 +112,15 @@ RomLoadResult loadRomFile(const char *fullPath, const char *displayName, RomInfo
         return ROMLOAD_CANNOT_OPEN;
     }
     int size = filesize(pFile);
+    int cartType = TYPE_SMS;
+    if (Frens::cstr_endswith(displayName, ".gg"))
+    {
+        cartType = TYPE_GG;
+    }
+    else if (Frens::cstr_endswith(displayName, ".sg"))
+    {
+        cartType = TYPE_SG;
+    }
     // A copier header makes the file an odd number of 512 byte
     // blocks; a rom on its own never is. It is not part of the
     // rom, so it comes off the size here, before anything is
@@ -120,7 +129,11 @@ RomLoadResult loadRomFile(const char *fullPath, const char *displayName, RomInfo
     // info->size still counted them as rom, so whatever the
     // allocator handed over was passed to the emulator as
     // cartridge data.
-    int romheader = ((size / 512) & 1) ? 512 : 0;
+    //
+    // SG-1000 images are the exception: they come without copier
+    // headers, and common sizes such as 49136 bytes would be
+    // mistaken for one.
+    int romheader = (cartType != TYPE_SG && ((size / 512) & 1)) ? 512 : 0;
     if (romheader)
     {
         debugf("Skipping 512 byte header\n");
@@ -133,9 +146,17 @@ RomLoadResult loadRomFile(const char *fullPath, const char *displayName, RomInfo
         return ROMLOAD_EMPTY;
     }
     debugf("Size of rom in %s is %d\n", fullPath, size);
+    // The SG-1000 memory map pages whole 8 and 16 KB blocks in, and an SG
+    // image is often not a whole number of them. Allocate up to the next
+    // 16 KB boundary so every page it maps is inside the buffer, and fill the
+    // tail with $FF, which is what an empty cartridge bus reads as.
+    // load_rom() relies on this. info->size stays the real size, which is
+    // what the memory map uses to tell rom from open bus.
+    int allocSize = (cartType == TYPE_SG) ? ((size + 0x3FFF) & ~0x3FFF) : size;
     info->size = size;
-    info->rom = (uint8_t *)malloc(size);
-    info->isGameGear = Frens::cstr_endswith(displayName, ".gg");
+    info->rom = (uint8_t *)malloc(allocSize);
+    info->cartType = cartType;
+    info->sizeGuessed = false;
     snprintf(info->title, sizeof(info->title), "%s", displayName);
     if (info->rom == nullptr)
     {
@@ -162,6 +183,10 @@ RomLoadResult loadRomFile(const char *fullPath, const char *displayName, RomInfo
         return ROMLOAD_FAILED;
     }
     fclose(pFile);
+    if (allocSize > size)
+    {
+        memset(info->rom + size, 0xFF, allocSize - size);
+    }
     return ROMLOAD_OK;
 }
 
@@ -249,7 +274,7 @@ void displayRoms(Frens::RomLister romlister, int startIndex)
     putText(SCREEN_COLS - strlen(SWVERSION), SCREEN_ROWS - 1, SWVERSION, fgcolor, bgcolor);
     if (romlister.Count() == 0)
     {
-        putText(1, STARTROW, "No .sms or .gg files here.", fgcolor, bgcolor);
+        putText(1, STARTROW, "No .sms, .gg or .sg files here.", fgcolor, bgcolor);
         putText(1, STARTROW + 2, sdStatus, fgcolor, bgcolor);
         putText(1, STARTROW + 4, "Roms go in a smsPlus64 folder on", fgcolor, bgcolor);
 #if NO_DFS == 0

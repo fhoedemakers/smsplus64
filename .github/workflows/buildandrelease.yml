@@ -58,12 +58,13 @@ jobs:
 
           - name: Create Everdrive emulator copies
             run: |
-                 # The Everdrive menu launches ED64/emu/sms.v64 or ED64/emu/gg.v64
-                 # when a .sms or .gg rom is picked. Ship ready-named copies so they
+                 # The Everdrive menu launches ED64/emu/sms.v64 or ED64/emu/gg.v64 or ED64/emu/sg.v64
+                 # when a .sms, .gg or .sg rom is picked. Ship ready-named copies so they
                  # can be dropped straight onto the SD card without renaming.
                  cp ${{ env.APP_NAME }}.z64 sms.v64
                  cp ${{ env.APP_NAME }}.z64 gg.v64
-                 ls -l sms.v64 gg.v64
+                 cp ${{ env.APP_NAME }}.z64 sg.v64
+                 ls -l sms.v64 gg.v64 sg.v64
 
           - name: Create release
             uses: softprops/action-gh-release@v2
@@ -73,6 +74,7 @@ jobs:
                        ${{ env.APP_NAME}}.z64
                        sms.v64
                        gg.v64
+                       sg.v64
                 body_path: CHANGELOG.md
           
          

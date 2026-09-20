@@ -107,7 +107,8 @@ void system_reset(void) {
     vdp_reset();
     sms_reset();
     render_reset();
-    system_load_sram();
+    /* SG-1000 cartridges have no battery RAM */
+    if (!IS_SG) system_load_sram();
     if (snd.enabled) {
 //        OPLL_reset(opll) ;
 //        OPLL_reset_patch(opll,0) ;            /* if use default voice data. */ 
@@ -161,28 +162,33 @@ void system_load_state(void *fd) {
     /* Restore callbacks */
     z80_set_irq_callback(sms_irq_callback);
 
-    cpu_readmap[0] = cart.rom + 0x0000; /* 0000-3FFF */
-    cpu_readmap[1] = cart.rom + 0x2000;
-    cpu_readmap[2] = cart.rom + 0x4000; /* 4000-7FFF */
-    cpu_readmap[3] = cart.rom + 0x6000;
-    cpu_readmap[4] = cart.rom + 0x0000; /* 0000-3FFF */
-    cpu_readmap[5] = cart.rom + 0x2000;
-    cpu_readmap[6] = sms.ram;
-    cpu_readmap[7] = sms.ram;
+    if (IS_SG) {
+        /* Rebuilds ROM/RAM pages, detected RAM adaptor and mapper paging */
+        sg_memory_map();
+    } else {
+        cpu_readmap[0] = cart.rom + 0x0000; /* 0000-3FFF */
+        cpu_readmap[1] = cart.rom + 0x2000;
+        cpu_readmap[2] = cart.rom + 0x4000; /* 4000-7FFF */
+        cpu_readmap[3] = cart.rom + 0x6000;
+        cpu_readmap[4] = cart.rom + 0x0000; /* 0000-3FFF */
+        cpu_readmap[5] = cart.rom + 0x2000;
+        cpu_readmap[6] = sms.ram;
+        cpu_readmap[7] = sms.ram;
 
-    cpu_writemap[0] = sms.dummy;
-    cpu_writemap[1] = sms.dummy;
-    cpu_writemap[2] = sms.dummy;
-    cpu_writemap[3] = sms.dummy;
-    cpu_writemap[4] = sms.dummy;
-    cpu_writemap[5] = sms.dummy;
-    cpu_writemap[6] = sms.ram;
-    cpu_writemap[7] = sms.ram;
+        cpu_writemap[0] = sms.dummy;
+        cpu_writemap[1] = sms.dummy;
+        cpu_writemap[2] = sms.dummy;
+        cpu_writemap[3] = sms.dummy;
+        cpu_writemap[4] = sms.dummy;
+        cpu_writemap[5] = sms.dummy;
+        cpu_writemap[6] = sms.ram;
+        cpu_writemap[7] = sms.ram;
 
-    sms_mapper_w(3, sms.fcr[3]);
-    sms_mapper_w(2, sms.fcr[2]);
-    sms_mapper_w(1, sms.fcr[1]);
-    sms_mapper_w(0, sms.fcr[0]);
+        sms_mapper_w(3, sms.fcr[3]);
+        sms_mapper_w(2, sms.fcr[2]);
+        sms_mapper_w(1, sms.fcr[1]);
+        sms_mapper_w(0, sms.fcr[0]);
+    }
 
     /* Force full pattern cache update */
 //    is_vram_dirty = 1;

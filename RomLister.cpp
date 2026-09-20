@@ -57,7 +57,7 @@ namespace Frens
 				struct RomEntry romInfo;
 				strcpy(romInfo.Path, dir.d_name);
 				romInfo.IsDirectory = (dir.d_type == DT_DIR);
-				if (!romInfo.IsDirectory && (Frens::cstr_endswith(romInfo.Path, ".sms") || Frens::cstr_endswith(romInfo.Path, ".gg")))
+				if (!romInfo.IsDirectory && (Frens::cstr_endswith(romInfo.Path, ".sms") || Frens::cstr_endswith(romInfo.Path, ".gg") || Frens::cstr_endswith(romInfo.Path, ".sg")))
 				{
 					entries[numberOfEntries++] = romInfo;
 				}
