@@ -225,16 +225,14 @@ With Upscale on both displays are drawn over the picture, hiding the first few r
 
 ### Games that do not work
 
-Some games show a black screen. The emulator core supports the bank switching used by
-Sega cartridges, and games whose cartridge does it differently do not run. This is the
-same however the game is started: from the game browser, from an Everdrive menu or from
+Some games show a black screen, for one of the reasons below. This is the same however
+the game is started: from the game browser, from an Everdrive menu or from
 N64FlashcartMenu.
 
 - **Games published by Codemasters**, which use bank switching of their own: Micro
   Machines, Micro Machines 2, Cosmic Spacehead, Fantastic Dizzy, The Excellent Dizzy
   Collection, Dropzone, Ernie Els Golf, CJ Elephant Fugitive and Pete Sampras Tennis.
-- **Korean unlicensed cartridges** that do the same, such as Jang Pung 3 and Samgukji 3,
-  and most Korean MSX conversions.
+- **Korean unlicensed cartridges** that do the same, such as Jang Pung 3 and Samgukji 3.
 - **Beta and prototype dumps** that are incomplete, such as the Game Gear betas of The
   Adventures of Batman & Robin and The Lion King.
 - BIOS images, which are not games.

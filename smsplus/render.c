@@ -527,10 +527,13 @@ void (render_line)(int line)
        priority, so stale bytes there must stay as they are. */
     claim_dcache_range(linebuf + (vp_hstart << 3), BMP_WIDTH);
 
-    /* SG-1000. Kept to a test and a call so the Master System path below does
-       not grow: this function runs 192 times a frame next to the Z80. The
-       TMS9918A rewrites the whole 256-byte row, as the claim above requires. */
-    if (IS_SG)
+    /* The TMS9918A modes: every SG-1000 line, and a Master System or Game Gear
+       line drawn with R0 bit 2 clear - the video chip starts in these modes and
+       the conversions of MSX games stay in them. Kept to a test and a call so
+       the Mode 4 path below does not grow: this function runs 192 times a frame
+       next to the Z80. The TMS9918A rewrites the whole 256-byte row, as the
+       claim above requires. */
+    if (IS_TMS_MODE)
     {
         tms_render_line(line);
         return;
@@ -955,7 +958,7 @@ void (render_line_collision)(int line)
     /* The TMS9918A also latches the fifth sprite flag and number on every
        line, so it cannot take the early exit below. The viewport and display
        enable checks live in tms_line_collision(), out of this path. */
-    if (IS_SG)
+    if (IS_TMS_MODE)
     {
         tms_line_collision(line);
         return;
@@ -1024,14 +1027,16 @@ void (palette_sync)(int index)
     // FH: Changed end
 
     bitmap.pal.dirty[index] = bitmap.pal.update = 1;
-    if (IS_GG)
+    if (IS_TMS_MODE)
+    {
+        /* Fixed TMS9918A palette. The Master System has no CRAM colours in
+           these modes either; vdp_ctrl_w() syncs the whole palette again when
+           a game switches between them and Mode 4. */
+        sms_palette_syncSG(index);
+    }
+    else if (IS_GG)
     {
         sms_palette_syncGG(index);
-    }
-    else if (IS_SG)
-    {
-        /* Fixed TMS9918A palette */
-        sms_palette_syncSG(index);
     }
     else
     {

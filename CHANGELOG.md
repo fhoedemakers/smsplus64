@@ -8,6 +8,9 @@ Sega SG-1000 support.
   N64FlashcartMenu. On the X7 copy `sg.v64` to `ED64/emu`, on the PRO copy the emulator to `/ED64/edapp/sg/`.
 - Master System and Game Gear games without a rom header, such as many Korean releases, can now
   also be started from the EverDrive-64 X7 menu and N64FlashcartMenu.
+- Master System games that use the older video modes of the console's video chip now show a
+  picture instead of a black screen. Conversions of MSX games are mostly of this kind, Super Boy
+  I and II among them.
 
 ## v0.10
 

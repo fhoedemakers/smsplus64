@@ -120,6 +120,7 @@ void vdp_ctrl_w(int data) {
         if (vdp.code == 2) {
             int r = (data & 0x0F);
             int d = vdp.latch;
+            int was_tms = !(vdp.reg[0] & 0x04);
 
             /* Store register data */
             vdp.reg[r] = d;
@@ -127,6 +128,15 @@ void vdp_ctrl_w(int data) {
             /* Update table addresses */
             vdp.ntab = (vdp.reg[2] << 10) & 0x3800;
             vdp.satb = (vdp.reg[5] << 7) & 0x3F00;
+
+            /* Switching between Mode 4 and the older modes changes where the
+               colours come from: CRAM in Mode 4, the fixed TMS9918A palette in
+               the others. */
+            if (r == 0 && was_tms != !(vdp.reg[0] & 0x04)) {
+                int i;
+                for (i = 0; i < PALETTE_SIZE; i++)
+                    palette_sync(i);
+            }
         }
     }
 }

@@ -16,6 +16,11 @@
 #define IS_SMS              (cart.type == TYPE_SMS)
 #define IS_SG               (cart.type == TYPE_SG)
 
+/* Drawn by the TMS9918A renderer: every SG-1000 line, and a Master System or
+   Game Gear line while its video chip is in one of the older modes, which is
+   what R0 bit 2 selects. Conversions of MSX games use those modes throughout. */
+#define IS_TMS_MODE         (IS_SG || !(vdp.reg[0] & 0x04))
+
 /* Macro to get offset to actual display within bitmap */
 #define BMP_X_OFFSET        ((cart.type == TYPE_GG) ? 48 : 0)
 #define BMP_Y_OFFSET        ((cart.type == TYPE_GG) ? 24 : 0)
