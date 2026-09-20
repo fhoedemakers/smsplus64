@@ -1348,10 +1348,11 @@ bool IsRomInjected(RomInfo *info, bool withOffset)
     return rval;
 }
 
-// Checks for an injected rom that has no header to go by but is known by the
-// start of its contents: Master System and Game Gear roms without a usable
-// header, and SG-1000 roms too large for the SG-1000 guess below. Called
-// before that guess, which would otherwise take them. See injectedroms.c.
+// Checks for an injected rom that is known by the start of its contents:
+// Master System and Game Gear roms without a usable header or with one naming
+// the wrong console, and SG-1000 roms too large for the SG-1000 guess below.
+// Called before the header is looked at, since for these roms the header is
+// what gets it wrong. See injectedroms.c.
 static bool IsKnownRomInjected(RomInfo *info, int *offset)
 {
     // Room for a copier header in front, as IsRomInjected() allows for
@@ -1820,16 +1821,21 @@ int main()
             mountFilesystemsAndLoadSettings(&dfsStarted, mountPoint);
             loadedFromFlashcartMenu = startEd64ProRom(zPressed, &info);
         }
-        else if (!zPressed && cart_type != CART_NULL && (loadedFromFlashcartMenu = IsRomInjected(&info, false)) == false)
+        else if (!zPressed && cart_type != CART_NULL)
         {
-            if ((loadedFromFlashcartMenu = IsRomInjected(&info, true)) == true)
+            // The table comes first: it also holds the roms whose header names
+            // the wrong console, which is what IsRomInjected() would go by.
+            if ((loadedFromFlashcartMenu = IsKnownRomInjected(&info, &offset)) == false &&
+                (loadedFromFlashcartMenu = IsRomInjected(&info, false)) == false)
             {
-                offset = 512;
-            }
-            else if ((loadedFromFlashcartMenu = IsKnownRomInjected(&info, &offset)) == false &&
-                     (loadedFromFlashcartMenu = IsSgRomInjected(&info)) == false)
-            {
-                debugstdout("No Sega header found\n");
+                if ((loadedFromFlashcartMenu = IsRomInjected(&info, true)) == true)
+                {
+                    offset = 512;
+                }
+                else if ((loadedFromFlashcartMenu = IsSgRomInjected(&info)) == false)
+                {
+                    debugstdout("No Sega header found\n");
+                }
             }
         }
 

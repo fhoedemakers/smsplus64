@@ -10,6 +10,9 @@ for a 48 KB SG-1000 rom. That goes wrong for two kinds of rom:
   - Master System / Game Gear roms that IsRomInjected() does not accept: no
     header at 0x7FF0, or one whose size code it does not understand. They
     would be started as SG-1000 games.
+  - Roms whose header names the other console. Region codes are unreliable:
+    Game Gear roms carrying a Master System code and the other way round both
+    occur, and each is then emulated with the wrong screen and palette.
   - SG-1000 roms over 48 KB, which need their real size to bank-switch.
 
 This script lists them by the CRC-32 of their first 8 KB (the whole rom when
@@ -45,15 +48,18 @@ KNOWN_SIZE_CODES = {0x0, 0x1, 0x2, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF}
 TYPES = {".sms": "TYPE_SMS", ".gg": "TYPE_GG", ".sg": "TYPE_SG"}
 
 
-def header_accepted(rom):
-    """True when IsRomInjected() recognises this rom by its header."""
+def header_type(rom):
+    """The type IsRomInjected() would give this rom, or None when it does not
+    recognise it by its header."""
     if len(rom) < 0x8000 or rom[0x7FF0:0x7FF8] != b"TMR SEGA":
-        return False
-    return (rom[0x7FFF] & 0x0F) in KNOWN_SIZE_CODES
+        return None
+    if (rom[0x7FFF] & 0x0F) not in KNOWN_SIZE_CODES:
+        return None
+    return "TYPE_GG" if 5 <= (rom[0x7FFF] >> 4) <= 7 else "TYPE_SMS"
 
 
 def scan(dirs):
-    """Yield (path, type, size, header accepted, first CRC_BYTES) per rom."""
+    """Yield (path, type, size, identified by its header, first CRC_BYTES)."""
     for top in dirs:
         for root, _, files in os.walk(top):
             for name in sorted(files):
@@ -68,8 +74,9 @@ def scan(dirs):
                 if ext != ".sg" and (len(rom) // 512) & 1:
                     rom = rom[512:]
                 typ = TYPES[ext]
-                accepted = typ != "TYPE_SG" and header_accepted(rom)
-                yield path, typ, len(rom), accepted, rom[:CRC_BYTES]
+                # Identified correctly by its header, so never looked up
+                known = typ != "TYPE_SG" and header_type(rom) == typ
+                yield path, typ, len(rom), known, rom[:CRC_BYTES]
 
 
 def crc(data):
@@ -78,7 +85,7 @@ def crc(data):
 
 def build_table(roms):
     """Return (entries, dropped). entries: (length, crc, type, size, path)."""
-    # Roms with a usable header are identified by it and never looked up
+    # Roms their header identifies correctly are never looked up
     reach = [r for r in roms if not r[3] and r[4]]
     wanted_roms = [r for r in reach if r[1] != "TYPE_SG" or r[2] > SG_GUESSED_SIZE]
 

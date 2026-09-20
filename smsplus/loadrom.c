@@ -101,32 +101,21 @@ typedef struct
    and scribbled over the scanline being rendered. */
 static uint8_t dummy_page[0x2000];
 
-/* Believe the cartridge over the file name.
+/* The cartridge type is the caller's to decide.
 
-   The caller derives the cartridge type from the file extension, which is only a hint:
-   a Game Gear ROM saved as .sms is loaded as a Master System cartridge, and its
-   CRAM is then decoded one byte per colour instead of two. That reads as a
-   completely broken palette rather than as a misdetected cartridge, so it is
-   worth correcting when the ROM says so itself.
+   This used to second-guess it from the region code in the "TMR SEGA" header,
+   on the grounds that a Game Gear rom saved as .sms would otherwise have its
+   colours decoded one byte per entry instead of two. Region codes are not
+   reliable enough for that: in a correctly named collection, 37 Game Gear roms
+   carry a Master System code (Tesserae, James Pond II, Star Wars, Wolfchild
+   and a row of betas) and 18 Master System roms carry a Game Gear one (Out Run
+   Europa, Predator 2, Castle of Illusion). Each of those was emulated as the
+   wrong console, with exactly the broken palette the override was meant to
+   prevent. The file name is right far more often, and roms that arrive without
+   one - injected by a flashcart menu - are looked up in injectedroms_table.h
+   before their header is consulted.
 
-   ROMs from about 1990 on carry a "TMR SEGA" header at 0x7FF0 whose top nibble
-   of the last byte is a region code: 3 and 4 are Master System, 5 to 7 are Game
-   Gear. Anything else - including the many early ROMs with no header at all -
-   leaves the caller's guess alone. SG-1000 images have no such header and are
-   never second-guessed. */
-static bool header_console_type(const uint8_t *rom, int size, bool *is_game_gear)
-{
-    int region;
-
-    if (size < 0x8000) return false;
-    if (__builtin_memcmp(rom + 0x7FF0, "TMR SEGA", 8) != 0) return false;
-
-    region = (rom[0x7FFF] >> 4) & 0x0F;
-    if (region >= 5 && region <= 7) { *is_game_gear = true;  return true; }
-    if (region == 3 || region == 4) { *is_game_gear = false; return true; }
-    return false;
-}
-
+*/
 /* sizeGuessed: an SG-1000 rom handed over by a flashcart menu, which says
    nothing about its size. The caller passes the 48 KB it read from cartridge
    memory - the image followed by whatever was there before - and
@@ -134,16 +123,6 @@ static bool header_console_type(const uint8_t *rom, int size, bool *is_game_gear
 int load_rom(uint8_t *rom, int size, int cartType, bool sizeGuessed)
 {
     uint8_t *start = (uint8_t *)rom;
-    bool isGameGear = (cartType == TYPE_GG);
-    bool from_header = isGameGear;
-
-    if (cartType != TYPE_SG && header_console_type(rom, size, &from_header) &&
-        from_header != isGameGear)
-    {
-        printf("ROM header says %s, overriding file extension\n",
-               from_header ? "Game Gear" : "Master System");
-        cartType = from_header ? TYPE_GG : TYPE_SMS;
-    }
 
     sms.use_fm = 0;
     sms.country = TYPE_OVERSEAS;

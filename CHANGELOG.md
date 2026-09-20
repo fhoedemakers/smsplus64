@@ -11,6 +11,10 @@ Sega SG-1000 support.
 - Master System games that use the older video modes of the console's video chip now show a
   picture instead of a black screen. Conversions of MSX games are mostly of this kind, Super Boy
   I and II among them.
+- Games whose rom header names the wrong console no longer show wrong colours, a green picture
+  most often. Tesserae, Out Run Europa, Predator 2 and the Chuck Rock and Chicago Syndicate betas
+  are among them. The file extension now decides, and games started from a flashcart menu are
+  recognised by their contents.
 
 ## v0.10
 
