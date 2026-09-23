@@ -7,6 +7,8 @@
 
 #define SMS_WIDTH 256
 #define SMS_HEIGHT 192
+/* Rows of the CI8 frame: the Master System II's 224-line mode draws 32 more */
+#define SMS_MAX_HEIGHT 224
 #define SMS_AUD_RATE 44100
 #define SMS_FPS 60
 // FH - 2019-06-30: Added support for RGB444 in stead of RGB565

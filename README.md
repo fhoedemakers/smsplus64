@@ -230,10 +230,8 @@ Some games show a black screen, for one of the reasons below. This is the same h
 the game is started: from the game browser, from an Everdrive menu or from
 N64FlashcartMenu.
 
-- **Games published by Codemasters**, which use bank switching of their own: Micro
-  Machines, Micro Machines 2, Cosmic Spacehead, Fantastic Dizzy, The Excellent Dizzy
-  Collection, Dropzone, Ernie Els Golf, CJ Elephant Fugitive and Pete Sampras Tennis.
-- **Korean unlicensed cartridges** that do the same, such as Jang Pung 3 and Samgukji 3.
+- **Korean unlicensed cartridges** that use bank switching of their own, such as Jang Pung 3
+  and Samgukji 3.
 - **Beta and prototype dumps** that are incomplete, such as the Game Gear betas of The
   Adventures of Batman & Robin and The Lion King.
 - BIOS images, which are not games.

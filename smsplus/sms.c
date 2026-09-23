@@ -36,6 +36,9 @@ void (sms_frame)(int skip_render) {
     int render_audio = (snd.enabled && snd.buffer);
     int samples_rendered = 0;
 
+    /* Fix the frame's viewport and height before its first line */
+    render_frame_start();
+
     for (vdp.line = 0; vdp.line < 262; vdp.line += 1) {
         /* Handle VDP line events */
         vdp_run();
@@ -136,6 +139,12 @@ void sms_reset(void) {
 /* Reset Z80 emulator */
 void cpu_reset(void) {
     z80_reset(0);
+    /* The console's BIOS leaves the stack in work RAM before it starts the
+       cartridge; without a BIOS, SP would be 0 and the first push would land on
+       the mapper registers at $FFFE-$FFFF. Ecco the Dolphin (GG) uses PUSH/POP as
+       VDP delays before it sets SP, and jumped into the wrong bank. SMS Plus GX
+       and Mesen2 use the same value. */
+    z80_set_reg(Z80_SP, 0xDFF0);
     z80_set_irq_callback(sms_irq_callback);
 }
 
@@ -305,8 +314,15 @@ void cpu_writemem16(int address, int data) {
         sg_writemem(address, data);
         return;
     }
-    cpu_writemap[(address >> 13)][(address & 0x1FFF)] = data;
-    if (address >= 0xFFFC) sms_mapper_w(address & 3, data);
+    uint8 *page = cpu_writemap[address >> 13];
+    page[address & 0x1FFF] = data;
+    /* The Codemasters bank registers at $0000, $4000 and $8000 are in ROM space,
+       which is mapped to sms.dummy, so a RAM write pays one compare for them.
+       They select the same slots as the Sega registers at $FFFD-$FFFF, which
+       Codemasters cartridges do not have. */
+    if (page == sms.dummy && cart.mapper == MAPPER_CODIES && !(address & 0x3FFF))
+        sms_mapper_w(1 + (address >> 14), data);
+    if (address >= 0xFFFC && cart.mapper == MAPPER_SEGA) sms_mapper_w(address & 3, data);
 }
 
 
@@ -461,12 +477,26 @@ void sms_mapper_w(int address, int data) {
         case 2:
             cpu_readmap[2] = &cart.rom[(page << 14) + 0x0000];
             cpu_readmap[3] = &cart.rom[(page << 14) + 0x2000];
+            /* Codemasters: bit 7 maps 8 KB of cartridge RAM over $A000-$BFFF
+               (Ernie Els Golf) */
+            if (cart.mapper == MAPPER_CODIES) {
+                if (data & 0x80) {
+                    sms.save = 1;
+                    cpu_readmap[5] = sms.sram;
+                    cpu_writemap[5] = sms.sram;
+                } else {
+                    cpu_readmap[5] = &cart.rom[((sms.fcr[3] % cart.pages) << 14) + 0x2000];
+                    cpu_writemap[5] = sms.dummy;
+                }
+            }
             break;
 
         case 3:
             if (!(sms.fcr[0] & 0x08)) {
                 cpu_readmap[4] = &cart.rom[(page << 14) + 0x0000];
-                cpu_readmap[5] = &cart.rom[(page << 14) + 0x2000];
+                /* Codemasters: $A000-$BFFF stays cartridge RAM while it is mapped */
+                if (!(cart.mapper == MAPPER_CODIES && (sms.fcr[2] & 0x80)))
+                    cpu_readmap[5] = &cart.rom[(page << 14) + 0x2000];
             }
             break;
     }

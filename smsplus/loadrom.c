@@ -141,6 +141,20 @@ int load_rom(uint8_t *rom, int size, int cartType, bool sizeGuessed)
     cart.type = cartType;
     cart.size_guessed = (cartType == TYPE_SG) && sizeGuessed;
 
+    /* Codemasters cartridges carry their own header at $7FE0, with a checksum
+       at $7FE6 and its complement at $7FE8 that add up to $10000; Mesen2 detects
+       them the same way. That finds every Codemasters rom in SMS Plus GX's CRC
+       list and also their betas, hacks and translations, without a table. It
+       reads the rom itself, so it works for roms a flashcart menu injected too. */
+    cart.mapper = MAPPER_SEGA;
+    if (cartType != TYPE_SG && size > 0x8000)
+    {
+        int checksum = start[0x7FE6] | (start[0x7FE7] << 8);
+        int complement = start[0x7FE8] | (start[0x7FE9] << 8);
+        if (checksum + complement == 0x10000)
+            cart.mapper = MAPPER_CODIES;
+    }
+
     /* SG-1000 images can be 8 KB or not a whole number of pages (49136 and
        65535 bytes both occur), and the last partial page still counts. The
        page count is rounded up for them, which is only safe because the loader

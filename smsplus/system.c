@@ -184,10 +184,13 @@ void system_load_state(void *fd) {
         cpu_writemap[6] = sms.ram;
         cpu_writemap[7] = sms.ram;
 
+        /* The RAM control register goes first: after it, the bank registers
+           only map ROM where it left ROM, and the Codemasters slot 1 register
+           can put its cartridge RAM over $A000-$BFFF without being undone. */
+        sms_mapper_w(0, sms.fcr[0]);
         sms_mapper_w(3, sms.fcr[3]);
         sms_mapper_w(2, sms.fcr[2]);
         sms_mapper_w(1, sms.fcr[1]);
-        sms_mapper_w(0, sms.fcr[0]);
     }
 
     /* Force full pattern cache update */

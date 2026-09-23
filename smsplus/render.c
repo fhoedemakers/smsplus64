@@ -153,16 +153,19 @@ static __inline__ uint32 (spr_row_opacity)(int tile, int row)
    compares. Run it after touching anything here. */
 
 #define SPR_PER_LINE 8
-#define SPR_MAX_LINES 192
+#define SPR_MAX_LINES SMS_MAX_HEIGHT
 static uint8 spr_line_list[SPR_MAX_LINES][SPR_PER_LINE];
 static uint8 spr_line_count[SPR_MAX_LINES];
 
 /* Rebuild triggers: a write into the attribute table, a move of the table, or a
-   change of sprite size. The x and pattern bytes do not affect which lines a
-   sprite covers, but they share the table and are not worth telling apart. */
+   change of sprite size or of the 224-line mode, which has no end-of-list marker.
+   The x and pattern bytes do not affect which lines a sprite covers, but they
+   share the table and are not worth telling apart. The key takes the size and
+   M1 bits of R1 and the M2 and M4 bits of R0. */
+#define SPR_LIST_KEY ((vdp.reg[1] & 0x13) | ((vdp.reg[0] & 0x06) << 4))
 static int spr_list_dirty = 1;
 static int spr_list_satb = -1;
-static int spr_list_size = -1;
+static int spr_list_key = -1;
 
 #ifdef COLLISION_STATS
 /* Semantic counters for tools/collisioncheck: how much work the per-line lists
@@ -182,6 +185,9 @@ static __attribute__((noinline)) void (spr_list_build)(void)
 {
     uint8 *st = (uint8 *)&vdp.vram[vdp.satb];
     int height = (vdp.reg[1] & 0x02) ? 16 : 8;
+    /* Y = 208 ends the list, but not in the 224-line mode, where it is a line
+       on screen */
+    int end_marker = IS_224_MODE ? -1 : 208;
     int i;
 
     if (vdp.reg[1] & 0x01)
@@ -196,7 +202,7 @@ static __attribute__((noinline)) void (spr_list_build)(void)
         int y0, y1, y;
 
         /* End of sprite list marker? */
-        if (yp == 208)
+        if (yp == end_marker)
             break;
 
         /* Actual Y position is +1, and wraps for sprites > 240 */
@@ -229,7 +235,7 @@ static __attribute__((noinline)) void (spr_list_build)(void)
 
     spr_list_dirty = 0;
     spr_list_satb = vdp.satb;
-    spr_list_size = (vdp.reg[1] & 0x03);
+    spr_list_key = SPR_LIST_KEY;
 }
 
 /* Rebuild the lists if anything they are derived from has moved.
@@ -237,12 +243,12 @@ static __attribute__((noinline)) void (spr_list_build)(void)
    Called once per scanline by both passes rather than once per frame: a game
    that rewrites the attribute table part way down the screen has to be picked
    up on the next line, which is what the drawing pass used to get for free by
-   re-reading the table itself. Three loads and three compares against the
+   re-reading the table itself. Four loads and three compares against the
    11750 y-tests this replaces. */
 static __inline__ void (spr_list_sync)(void)
 {
     if (spr_list_dirty || spr_list_satb != vdp.satb ||
-        spr_list_size != (vdp.reg[1] & 0x03))
+        spr_list_key != SPR_LIST_KEY)
     {
         spr_list_build();
     }
@@ -427,6 +433,31 @@ void render_init(void)
     render_reset();
 }
 
+/* The viewport and the number of lines of the frame being drawn, fixed when the
+   frame starts: the blit in smsPlus64.cpp has to know how many rows the frame it
+   shows has, and a game that changed mode part way down would otherwise hand it
+   a frame of two heights. The 224-line mode draws 32 more lines. The Game Gear
+   screen shows the same window of the TV picture as in the 192-line mode, which
+   starts at active line 40 instead of 24. */
+int render_frame_lines = 192;
+static int frame_vstart, frame_vend;
+
+void (render_frame_start)(void)
+{
+    if (IS_224_MODE)
+    {
+        render_frame_lines = 224;
+        frame_vstart = IS_GG ? vp_vstart + 16 : 0;
+        frame_vend = IS_GG ? vp_vend + 16 : 224;
+    }
+    else
+    {
+        render_frame_lines = 192;
+        frame_vstart = vp_vstart;
+        frame_vend = vp_vend;
+    }
+}
+
 /* Reset the rendering data */
 void (render_reset)(void)
 {
@@ -434,7 +465,7 @@ void (render_reset)(void)
 
     /* Clear the CI8 frame the renderer draws into, so a reset does not leave
        the previous game's image on screen. */
-    __builtin_memset(sms_line_target, 0, SMS_WIDTH * SMS_HEIGHT);
+    __builtin_memset(sms_line_target, 0, SMS_WIDTH * SMS_MAX_HEIGHT);
 
     /* Clear palette */
     for (i = 0; i < PALETTE_SIZE; i += 1)
@@ -476,6 +507,8 @@ void (render_reset)(void)
 
     /* Pick render routine */
     render_bg = IS_GG ? render_bg_gg : render_bg_sms;
+
+    render_frame_start();
 }
 
 /* Claim a range of the CI8 frame in the data cache without fetching it from
@@ -512,7 +545,7 @@ void (render_line)(int line)
     /* Ensure we're within the viewport range. Lines outside it fall outside
        the rectangle the RDP blits to the framebuffer, so there is nothing to
        draw for them. */
-    if ((line < vp_vstart) || (line >= vp_vend))
+    if ((line < frame_vstart) || (line >= frame_vend))
         return;
 
     /* Point straight at this line inside the CI8 frame the RDP will read.
@@ -540,7 +573,7 @@ void (render_line)(int line)
     }
 
     /* Blank line */
-    if ((!(vdp.reg[1] & 0x40)) || (((vdp.reg[2] & 1) == 0) && (IS_SMS)))
+    if ((!(vdp.reg[1] & 0x40)) || (((vdp.reg[2] & 1) == 0) && (IS_SMS) && !IS_224_MODE))
     {
         __builtin_memset(linebuf + (vp_hstart << 3), BACKDROP_COLOR, BMP_WIDTH);
     }
@@ -564,7 +597,12 @@ void (render_line)(int line)
 void (render_bg_sms)(int line)
 {
     int locked = 0;
-    int v_line = (line + vdp.reg[9]) % 224;
+    /* The name table is 28 rows tall, or 32 in the 224-line mode */
+    int v_line = line + vdp.reg[9];
+    if (IS_224_MODE)
+        v_line &= 0xFF;
+    else if (v_line >= 224)
+        v_line -= 224;
     int v_row = (v_line & 7) << 3;
     int hscroll = ((vdp.reg[0] & 0x40) && (line < 0x10)) ? 0 : (0x100 - vdp.reg[8]);
     int column = vp_hstart;
@@ -656,7 +694,12 @@ void (render_bg_sms)(int line)
 /* Draw the Game Gear background */
 void render_bg_gg(int line)
 {
-    int v_line = (line + vdp.reg[9]) % 224;
+    /* The name table is 28 rows tall, or 32 in the 224-line mode */
+    int v_line = line + vdp.reg[9];
+    if (IS_224_MODE)
+        v_line &= 0xFF;
+    else if (v_line >= 224)
+        v_line -= 224;
     int v_row = (v_line & 7) << 3;
     int hscroll = (0x100 - vdp.reg[8]);
     int column;
@@ -970,11 +1013,11 @@ void (render_line_collision)(int line)
     if (vdp.status & 0x20)
         return;
 
-    if ((line < vp_vstart) || (line >= vp_vend))
+    if ((line < frame_vstart) || (line >= frame_vend))
         return;
 
     /* Blank line - render_line() does not reach the sprites either */
-    if ((!(vdp.reg[1] & 0x40)) || (((vdp.reg[2] & 1) == 0) && (IS_SMS)))
+    if ((!(vdp.reg[1] & 0x40)) || (((vdp.reg[2] & 1) == 0) && (IS_SMS) && !IS_224_MODE))
         return;
 
     spr_list_sync();
