@@ -1,6 +1,21 @@
 # CHANGELOG
 
-Sega SG-1000 support.
+Codemasters games, the taller picture of the Master System II, and most MSX conversions.
+
+## v0.12
+
+- Games published by Codemasters now work, on Master System and Game Gear: Micro Machines,
+  Micro Machines 2, Fantastic Dizzy, The Excellent Dizzy Collection, Cosmic Spacehead,
+  Dinobasher, Ernie Els Golf, Pete Sampras Tennis, Dropzone, Man Overboard! and CJ Elephant
+  Fugitive.
+- Games that use the taller picture of the Master System II now show all of it. The
+  Codemasters games are among them, and so is Star Trek: The Next Generation on Game Gear.
+- Ecco the Dolphin (Game Gear), Ace of Aces, Shadow Dancer, Aerial Assault and a few others
+  no longer stop at a black screen.
+- Most conversions of MSX games and several Korean releases now start instead of showing a
+  black screen, among them Bosconian, Dig Dug, Galaga, Pac-Man, Zaxxon, FA Tetris and Pooyan.
+- Some homebrew games, such as Bomberman Boom and Pong Master, and the Game Gear betas of
+  Batman & Robin and The Lion King now start instead of showing a black screen.
 
 ## v0.11
 

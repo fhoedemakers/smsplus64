@@ -37,7 +37,7 @@ extern const uint8 *spr_list_for_line(int line, int *count);
 /* --- things the N64 frontend normally provides ------------------------- */
 uint32_t prof_acc[8];
 int soundEnabled = 0;
-static uint8_t frame_buffer[256 * 192];
+static uint8_t frame_buffer[SMS_WIDTH * SMS_MAX_HEIGHT];
 uint8_t *sms_line_target = frame_buffer;
 void sms_palette_sync(int index) { (void)index; }
 void sms_palette_syncGG(int index) { (void)index; }
@@ -75,7 +75,8 @@ static int ref_scan(int line, uint8 *out)
 #ifdef COLLISION_STATS
         cstat_scanned++;
 #endif
-        if (yp == 208)
+        /* The 224-line mode has no end-of-list marker */
+        if (yp == 208 && !IS_224_MODE)
             break;
 
         yp += 1;
@@ -147,10 +148,16 @@ int main(int argc, char **argv)
                   : ends_with(path, ".sg") ? TYPE_SG : TYPE_SMS;
     int is_sg = (cart_type == TYPE_SG);
 
-    /* SG images are padded to a 16 KB boundary with $FF, as loadRomFile()
-       does on the console, so a build with -fsanitize=address sees exactly the
+    /* A copier header comes off as loadRomFile() takes it off: only from a
+       file that is a whole number of 1 KB plus 512 bytes */
+    long header = (!is_sg && (size % 1024) == 512) ? 512 : 0;
+    size -= header;
+    fseek(f, header, SEEK_SET);
+
+    /* Images are padded to a 16 KB boundary with $FF, as loadRomFile() does
+       on the console, so a build with -fsanitize=address sees exactly the
        buffer the emulator gets there. */
-    long alloc = is_sg ? ((size + 0x3FFF) & ~0x3FFF) : size;
+    long alloc = (size + 0x3FFF) & ~0x3FFF;
     uint8_t *rom = malloc(alloc);
     if (fread(rom, 1, size, f) != (size_t)size) { fprintf(stderr, "short read\n"); return 1; }
     fclose(f);
@@ -181,6 +188,10 @@ int main(int argc, char **argv)
                 if (frame >= presses[p] && frame < presses[p] + 6)
                     input.pad[0] = INPUT_BUTTON1;
         }
+
+        /* As sms_frame() does: fix the frame's viewport, which the 224-line
+           mode makes 32 lines taller */
+        render_frame_start();
 
         for (vdp.line = 0; vdp.line < 262; vdp.line++)
         {
@@ -219,9 +230,9 @@ int main(int argc, char **argv)
                which leaves spr_list_for_line()'s own sync a no-op on exactly
                the lines that matter. A pass that forgot to sync at all is check
                1's business - the two call it independently, so one using a stale
-               list disagrees with the other. The lists only cover the 192
-               visible lines, and only the Master System renderer has them. */
-            if (vdp.line < 192 && !is_sg)
+               list disagrees with the other. The lists only cover the visible
+               lines, and only the Master System renderer has them. */
+            if (vdp.line < VDP_LINES && !is_sg)
                 check_list(frame, vdp.line);
 #endif
 

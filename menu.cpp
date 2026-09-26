@@ -122,18 +122,28 @@ RomLoadResult loadRomFile(const char *fullPath, const char *displayName, RomInfo
         cartType = TYPE_SG;
     }
     // A copier header makes the file an odd number of 512 byte
-    // blocks; a rom on its own never is. It is not part of the
-    // rom, so it comes off the size here, before anything is
-    // allocated. Taking it off afterwards - as this used to -
-    // left the last 512 bytes of the buffer never read while
-    // info->size still counted them as rom, so whatever the
-    // allocator handed over was passed to the emulator as
+    // blocks, and exactly that: a whole number of 1 KB plus 512
+    // bytes. A rom of any other size has none. Testing only for an
+    // odd number of blocks, as this used to, also took 512 bytes of
+    // code off roms that are not a whole number of blocks at all -
+    // homebrew such as Bomberman Boom and Pong Master, and Game
+    // Gear betas of Batman & Robin and The Lion King a few bytes
+    // short of 512 KB - which then did not start. In a collection of
+    // 5083 Master System and Game Gear roms the old test matched
+    // 42 files and this one the 24 that really have a header.
+    // tools/injectedroms/gen_injectedroms.py uses the same test.
+    //
+    // It is not part of the rom, so it comes off the size here,
+    // before anything is allocated. Taking it off afterwards - as
+    // this used to - left the last 512 bytes of the buffer never
+    // read while info->size still counted them as rom, so whatever
+    // the allocator handed over was passed to the emulator as
     // cartridge data.
     //
     // SG-1000 images are the exception: they come without copier
-    // headers, and common sizes such as 49136 bytes would be
-    // mistaken for one.
-    int romheader = (cartType != TYPE_SG && ((size / 512) & 1)) ? 512 : 0;
+    // headers, so none is looked for. The old test would have
+    // taken odd sizes such as 49136 and 65535 bytes for one.
+    int romheader = (cartType != TYPE_SG && (size % 1024) == 512) ? 512 : 0;
     if (romheader)
     {
         debugf("Skipping 512 byte header\n");
@@ -146,13 +156,14 @@ RomLoadResult loadRomFile(const char *fullPath, const char *displayName, RomInfo
         return ROMLOAD_EMPTY;
     }
     debugf("Size of rom in %s is %d\n", fullPath, size);
-    // The SG-1000 memory map pages whole 8 and 16 KB blocks in, and an SG
+    // The SG-1000 memory map and the fixed map of a Master System or Game
+    // Gear rom without a mapper page whole 8 and 16 KB blocks in, and such an
     // image is often not a whole number of them. Allocate up to the next
-    // 16 KB boundary so every page it maps is inside the buffer, and fill the
+    // 16 KB boundary so every page they map is inside the buffer, and fill the
     // tail with $FF, which is what an empty cartridge bus reads as.
     // load_rom() relies on this. info->size stays the real size, which is
     // what the memory map uses to tell rom from open bus.
-    int allocSize = (cartType == TYPE_SG) ? ((size + 0x3FFF) & ~0x3FFF) : size;
+    int allocSize = (size + 0x3FFF) & ~0x3FFF;
     info->size = size;
     info->rom = (uint8_t *)malloc(allocSize);
     info->cartType = cartType;
@@ -166,7 +177,7 @@ RomLoadResult loadRomFile(const char *fullPath, const char *displayName, RomInfo
         fclose(pFile);
         return ROMLOAD_FAILED;
     }
-    debugf("Allocated %d bytes for rom, reading file\n", size);
+    debugf("Allocated %d bytes for rom, reading file\n", allocSize);
     fseek(pFile, romheader, SEEK_SET);
     // A short read would leave the tail of the buffer
     // uninitialised, which is the thing this block is

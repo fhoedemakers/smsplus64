@@ -5,305 +5,506 @@
      /home/frank/roms/SMS/SG
 
    Roms a flashcart menu can inject that smsPlus64 cannot identify on
-   its own. See injectedroms.c. */
+   its own, or whose size it has to know. See injectedroms.c. */
 
 static const InjectedRom injectedRoms[] =
 {
-    {0x0072ED54,    8192, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Bios/[BIOS] Sega Master System (USA, Europe) (v1.3).sms */
-    {0x02B43C95,   49152, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Pooyan (Korea) (Unl).sms */
-    {0x03836BEA,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-30).gg */
-    {0x045A155F,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/MSX Ports/Gun.Smoke (Korea) (Unl).sms */
-    {0x04D5BBE1,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Betas, Prototypes, Revisions/Prototypes/Game de Check! Koutsuu Anzen (Japan) (Proto).sms */
-    {0x05763CA9,  522716, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Adventures of Batman & Robin, The (USA, Europe) (Beta) (1995-05-04).gg */
-    {0x05A70AFB,  524288, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Brazilian Portuguese/R-Type (UE) [T+Bra_Emuboarding].sms */
-    {0x05EFB1E8,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Demos/Sonic & Tails (Japan) (En) (Sample).gg */
-    {0x093400A0,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Brazilian Portuguese/Blade Eagle 3D (UE) [T+Bra_TMT].sms */
-    {0x09928C99, 1048576, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Jang Pung 3 (Korea) (Unl).sms */
-    {0x0B208020, 1048576, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Samgukji 3 (Korea) (Unl).sms */
-    {0x0BA1A1FB,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Great Soccer (Taiwan) (Unl).sms */
-    {0x0CBF8984,   65535, 8192, TYPE_SG}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Black Onyx, The (Japan) Eng Palette Hack bsittler.sg */
-    {0x0D4B52B6,   16384, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Elite Gaiden 0.1.28.sms */
-    {0x0E4CEE60,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Taz in Escape from Mars (USA, Europe) (Beta) (1994-08-30).gg */
-    {0x15D91CEC,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Fantasy Zone (Taiwan) (Unl).sms */
-    {0x16489DE4,  522716, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Adventures of Batman & Robin, The (USA, Europe) (Beta) (1995-05-02).gg */
-    {0x169C91AE,   44408, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Bomberman Boom v1.1.sms */
-    {0x1726A73C,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic The Hedgehog (Japan, USA) (Beta).gg */
-    {0x174B4CF1,  147456, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/English/Legendary Warrior Rygar - Argos no Juujiken (J) T+Eng1.0 Psyklax.sms */
-    {0x17529C4C,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Hokuto no Ken (Taiwan) (Unl).sms */
-    {0x193CCEB4,   49152, 8192, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Super Columns (KR) Palette Hack bsittler.sms */
-    {0x1A15DFCC,    8192, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Bios/[BIOS] Sega Master System (USA) (M404) (Proto).sms */
-    {0x1B440068,   16384, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Wah Munchers (PD) R2 JoppyFur.sms */
-    {0x1B7FC73A,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/New Boggle Boggle 2 (Korea) (Unl).sms */
-    {0x1DA8BA21,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-08-08).gg */
-    {0x1E0537B4,   49152, 8192, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Sega BASIC Level 3 V1 (SC-3000) Palette Hack bsittler.sms */
-    {0x1E80518B,   32768, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/GG Demo by Charles MacDonald (PD).gg */
-    {0x1FA46BFA,  524288, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Phantasy Star (Korea) (Unl).sms */
-    {0x20B5FAD6,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/F-1 Spirit - The Way to Formula-1 (Korea) (Unl).sms */
-    {0x23D887BB,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Legend of Illusion Starring Mickey Mouse (USA, Europe) (Beta) (1994-10-17).gg */
-    {0x2469361C,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-26).gg */
-    {0x2565FAD3,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-09-11) (Alt 1).gg */
-    {0x26334FDB,  131072, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Translations/Non-English/Brazilian Portuguese/OutRun (JK) [T+Bra_TMT].gg */
-    {0x28281062,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Miscellaneous/Canceled & Unreleased/Street Hero (USA) (Proto 1).gg */
-    {0x299119FF,   49152, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/MSX Ports/C_So! (Korea) (Unl).sms */
-    {0x29E7FB87,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Hacks/Sonic the Hedgehog 2 (8-bit) (AutoDemo) (S2GGB Control 02).gg */
-    {0x2A87C5DD,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Fantasy Zone (Japan).sms */
-    {0x2B8A4B25,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-12).gg */
-    {0x2C83B60D,   65536, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/VG-Fighter v1.0.sms */
-    {0x2D12EB8B,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-09-12).gg */
-    {0x2E0CEFDD,   65536, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Fire Track by Ben Ryves (PD).gg */
-    {0x2F2124E1,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chuck Rock (World) (Beta).gg */
-    {0x2F4B70E6,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Zombi Terror v1.01.sms */
-    {0x3068768B,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/3 in 1 - The Best Game Collection (C) (Korea) (Unl).sms */
-    {0x31BB1EEB,   49152, 8192, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Sky Jaguar [Clover] (KR) Palette Hack bsittler.sms */
-    {0x321B0C27,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Micro Xevious, The (Korea) (Unl).sms */
-    {0x32C182ED,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Final Bubble Bobble (Japan).sms */
-    {0x33CDA572,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 Game Gear Conversions/Bust-A-Move v1 Vingazole.sms */
-    {0x34E2FACE,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Cory Arcangel's Super Mario Clouds 2014-8-6.sms */
-    {0x358CE708,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 Game Gear Conversions/Tarzan - Lord of the Jungle WIP v0.1 Revo.sms */
-    {0x37F70B9E,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/F-16 Fighting Falcon (Taiwan) (Unl).sms */
-    {0x38724CA2,   49152, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Xyzolog (Korea) (Unl).sms */
-    {0x3929C150,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-08-31).gg */
-    {0x3947CBDD,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Brazilian Portuguese/California Games (UE) [T+Bra_TMT].sms */
-    {0x3A8C37A6,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Action Fighter (Taiwan) (Unl).sms */
-    {0x3B3AAB4A,    8628, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/River Strike (PD) v0.04a Haroldo O. Pinheiro.sms */
-    {0x3D1894F4,   65536, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Super Bioman I (Korea) (Unl).sms */
-    {0x3F38FC84,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Spy vs Spy (Taiwan) (Unl).sms */
-    {0x3F9F0398,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Three Dragon Story, The (Korea) (Unl).sms */
-    {0x4391E2F5,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Brazilian Portuguese/R.C. Grand Prix (UE) [T+Bra_TMT].sms */
-    {0x43F2BC9D,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Spinball (USA, Europe) (Beta) (1994-03-29).gg */
-    {0x4420DA52,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Super Boy 4 Individuality Improvement (Korea) (Unl) v1 Tharthan.sms */
-    {0x45E2D774,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Soko Master v1.0.sms */
-    {0x46470CDA,   16384, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Controllers Test - SMS & Genesis (PD) v1 sverx 2018-01-30.sms */
-    {0x473F8A7C,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Ghost House (Japan).sms */
-    {0x479C5899, 1048576, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Hacks/Tails Adventure X-L - By lordxernom (Tails Adventures Hack) [SHC2017].gg */
-    {0x48D44A13,    8192, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Bios/[BIOS] Sega Master System (Japan) (v2.1).sms */
-    {0x4921AC6B,  131072, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Revisions/Nazo Puyo (Japan).gg */
-    {0x49E859A8,   48637, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Snail2 NTSC v1.02.sms */
-    {0x4A9711CD,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/XBill (PD) nitrofurano 201806021536.sms */
-    {0x4AA685A3,  514106, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Lion King, The (USA) (Beta) (1994-08-17).gg */
-    {0x4AF9EACA,   49152, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Super Boy II (Korea) (Unl).sms */
-    {0x4E4F6E95,   49152, 8192, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Bobble Bobble [Clover] (KR) Palette Hack bsittler.sms */
-    {0x4EB9D757,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-28).gg */
-    {0x4EFC29F9,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Hacks/Power Strike 2 (JUE)_vingazole_hack.gg */
-    {0x4F21D8A3,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/GG Turrican Demo V1.0 by Martin Konrad (PD).gg */
-    {0x50F533D7,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Platformers/Fantastic Dizzy (USA, Europe) (En,Fr,De,Es,It).sms */
-    {0x52B6FDC4,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-09-14) (Alt 1).gg */
-    {0x549677F7,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-05-05).gg */
-    {0x54B5A585,   32768, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Bananas Are Good (PD) Chris Read.gg */
-    {0x5798E097,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Legend of Illusion Starring Mickey Mouse (USA, Europe) (Beta) (1994-10-14).gg */
-    {0x5AD6EDAC,    8192, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Snail Maze (USA).sms */
-    {0x5AE45C80,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Genre/Fighters (1v1)/Street Master (Korea) (Unl).sms */
-    {0x5C05F667,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Betas, Prototypes, Revisions/Betas/Mahjong Sengoku Jidai (Japan) (Beta).sms */
-    {0x5CED1861,  106496, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Controllers & Peripherals/FM Sound Support/All FM Sound Supported Games/YM2612 Live Player (PD) 12-2016 K-Storm.sms */
-    {0x5F3837E6,   32768, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Oranges (PD) Chris Read.gg */
-    {0x5F3E8B36,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Taz in Escape from Mars (USA, Europe) (Beta) (1994-08-10).gg */
-    {0x5FF4B072,   16384, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Bios/[BIOS] Sega Master System (USA) (Store Display Unit).sms */
-    {0x60949165,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-29).gg */
-    {0x6197AA3A,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Asterix and the Great Rescue (USA) (En,Fr,De,Es,It) (Beta) (1994-01-25).gg */
-    {0x61FBA71A,  522716, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Adventures of Batman & Robin, The (USA, Europe) (Beta) (1995-04-30).gg */
-    {0x63FF2665,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Shoot 'em Ups/Predator 2 (USA, Europe).sms */
-    {0x647E68C5,   49152, 8192, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Galaxian (KR) Palette Hack bsittler.sms */
-    {0x64D4B888,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Asterix and the Great Rescue (USA) (En,Fr,De,Es,It) (Beta) (1994-02-16).gg */
-    {0x64E8BEA4,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Taz in Escape from Mars (USA, Europe) (Beta) (1994-08-14).gg */
-    {0x653D0FD0,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Sega Tween (3D) by Ben Ryves (PD).sms */
-    {0x6544CB3E,   65536, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Super Tetris (Korea) (Unl) [T-Spa1.0v_Wave].sms */
-    {0x657B990F,   65536, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Gangcheol RoboCop (Korea) (Unl).sms */
-    {0x65B2FCA5,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Sports/Sort By - Soccer/Super Kick Off (Europe) (En,Fr,De,Es,It,Nl,Pt,Sv).sms */
-    {0x65E597CD,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Final Bubble Bobble (J) [T+Spa100_pkt].sms */
-    {0x6824E61E,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/MSX Ports/Nemesis (Korea) (Unl).sms */
-    {0x682E865F,  522716, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Adventures of Batman & Robin, The (USA, Europe) (Beta) (1995-04-29).gg */
-    {0x68EDEEA8,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-09-11).gg */
-    {0x693801B3,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Sega Mark III Port Test v0.1 (PD).sms */
-    {0x69D1C399,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Great Soccer (Japan).sms */
-    {0x6A211DF4,  523770, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Adventures of Batman & Robin, The (USA, Europe) (Beta) (1995-05-06).gg */
-    {0x6A5CC806,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Sports/Sort By - Wrestling/WWF Wrestlemania - Steel Cage Challenge (USA, Europe).sms */
-    {0x6AD0A738,   65536, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Zoop'em Up by Martin Konrad (PD).gg */
-    {0x6C9BADFD,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Spy vs Spy (Japan).sms */
-    {0x6CDF2D2E,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Sagak-ui Bimil (Korea) (Unl).sms */
-    {0x6ECB0D59,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Empire Syndicate (Unknown) (Beta).gg */
-    {0x6FEB5983,   65535, 8192, TYPE_SG}, /* /home/frank/roms/SMS/SG/4 Translations/Black Onyx, The (J) T+En v1.0 [Enhanced Version] Bruce Tomlin+S.Seehorn.sg */
-    {0x7104590B,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Taz in Escape from Mars (USA, Europe) (Beta) (1994-05-11).gg */
-    {0x716399A2,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Spinball (USA, Europe) (Beta) (1994-04-05).gg */
-    {0x716A28FC,   49152, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Christmas Tale v1.0.sms */
-    {0x72408748,  523766, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Adventures of Batman & Robin, The (USA, Europe) (Beta) (1995-04-27).gg */
-    {0x72BEC693,    8192, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Bios/[BIOS] Sega Master System (USA) (v1.0) (Proto).sms */
-    {0x7360E423,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Japan Exclusives/Solomon no Kagi - Oujo Rihita no Namida (Japan).sms */
-    {0x74073EB3,   32768, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Windows for GG by Victor Kemp (PD).gg */
-    {0x76F655D6,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Racing/Sort By - Arcade Racing/OutRun Europa (USA).sms */
-    {0x771BB433,   65536, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Simple Text Demo by Charles Doty (PD).gg */
-    {0x7735DE70,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/2 Europe - A-Z/Olympic Gold (Europe) (En,Fr,De,Es,It,Nl,Pt,Sv) (Rev 1).sms */
-    {0x77FDB3B4,   49152, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/ToToTEK GG-PRO Multi Menu v1.5 (PD).gg */
-    {0x7813D3AB,   32768, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/GG Nibbles by Martin Konrad V4 (PD).gg */
-    {0x785DEA7F,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/SMS Power Demo Build 31 by Zoop (PD).sms */
-    {0x795B699D,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-01).gg */
-    {0x7AC86EF2,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/AntiISDA Warrior (PD) v1.02 Ventzislav Tzvetkov.sms */
-    {0x7B3C94A3,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Agigongnyong Dooly (Korea) (Unl).sms */
-    {0x7BD6B982,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-07).gg */
-    {0x7C2438D6,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-08).gg */
-    {0x7D99713E,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Translations/Non-English/Spanish/Star Wars (J) (v1.1) [T-Spa1.0v_Wave].gg */
-    {0x80205E2B,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Hacks/A Dream GG (J) Invincible Hack by QQture.gg */
-    {0x81474F9E,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Great Golf (Korea) (Unl).sms */
-    {0x838EE27F,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Taz in Escape from Mars (USA, Europe) (Beta) (1994-08-19).gg */
-    {0x83B16668,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Eagles 5 (Korea) (Unl).sms */
-    {0x842593B4,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Japan Exclusives/Argos no Juujiken (Japan).sms */
-    {0x855AF1D7,   49152, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Mr Ultra 2 (PD) rc4 Gamegearguy.gg */
-    {0x855FF8DC,   65536, 8192, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Super Boy I (KR) Palette Hack bsittler.sms */
-    {0x857A1A0E,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Bios/[BIOS] Hang-On (USA, Europe) (v3.4).sms */
-    {0x860D8B86,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Prince of Persia (USA, Europe) (Beta).sms */
-    {0x865F8E9D,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Betas, Prototypes, Revisions/Betas/Solomon no Kagi - Oujo Rihita no Namida (Japan) (Beta).sms */
-    {0x86F11CCB,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/X-Men - GameMaster's Legacy (USA, Europe) (Beta) (1994-08-10).gg */
-    {0x87365A7B,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 Game Gear Conversions/Shinobi II - The Silent Fury v1 BcnAbel76.sms */
-    {0x8887CBEB,  523350, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Lion King, The (USA) (Beta) (1994-08-20).gg */
-    {0x894F8E8C,   65536, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/MOD2PSG V1.8 - Shadow of the Beast (PD).gg */
-    {0x8A369FAC,    8192, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/h7n9 (PD) 201610241935 nitrofurano.sms */
-    {0x8CF6B288,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Platformers/Castle of Illusion Starring Mickey Mouse (USA, Europe, Brazil).sms */
-    {0x8E47CB3C,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Hacks/Terry Bear (U) invincible version by QQture.gg */
-    {0x8E98DE79,   16384, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Knights and Demons v1.0.sms */
-    {0x8E9968B4,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Masters of Combat (EB) [T-Spa1.0v_Wave].sms */
-    {0x8F4622D8,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Penguin Adventure (Korea) (Unl).sms */
-    {0x8F9D5D08,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Wonsiin (Korea) (Unl).sms */
-    {0x90CDD970,   65536, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Chaos by Charles Doty (PD).gg */
-    {0x91AE166A,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Japan Exclusives/Comical Machine Gun Joe (Japan).sms */
-    {0x92F08E60,  524288, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 Game Gear Conversions/Quiz Gear Fight!! v1.1 BcnAbel76.sms */
-    {0x9320167B,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Flashpoint (Korea) (Unl).sms */
-    {0x932BE5AF,   32768, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/GG Hi-Res Graphics Demo by Charles McDonald (PD).gg */
-    {0x939735A2,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Spinball (USA, Europe) (Beta) (1994-03-30).gg */
-    {0x95344F73,   49152, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/The Banketh (PD) Alpha 0.05 Diskover.sms */
-    {0x9709299A,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Legend of Illusion Starring Mickey Mouse (USA, Europe) (Beta) (1994-09-30) (Alt 1).gg */
-    {0x98F78678,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/King & Balloon (Korea) (Unl).sms */
-    {0x99CC7106,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Sports/Sort By - Olympics/Olympic Gold (Japan, USA, Brazil) (En,Fr,De,Es,It,Nl,Pt,Sv).sms */
-    {0x9A9F017E,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Legend of Illusion Starring Mickey Mouse (USA, Europe) (Beta) (1994-10-11).gg */
-    {0x9B2BA7CD,   16384, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/RehaShMS NTSC v6 DEMO.sms */
-    {0x9B6CFAF9,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/3 in 1 - The Best Game Collection (A) (Korea) (Unl).sms */
-    {0x9D17D042,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-08-26).gg */
-    {0x9E0549CB,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Hang-On (Japan).sms */
-    {0x9F18668C,  524288, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Janggun-ui Adeul (Korea) (Unl).sms */
-    {0x9FB544B2,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 Game Gear Conversions/Space Hawks (Bug-Fixed) KanedaFR v1.sms */
-    {0xA1A97107,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/3 in 1 - The Best Game Collection (B) (Korea) (Unl).sms */
-    {0xA1B44029, 1142155, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Road Blaster FMV (PD) v0.01.sms */
-    {0xA1BF8F24,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Bobble Bobble (Korea) (Unl).sms */
-    {0xA21E1E4C,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Ecco the Dolphin (USA, Europe, Brazil) (Beta 1) (1993-06-14).gg */
-    {0xA25DD81D,  524288, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Betas, Prototypes, Revisions/Betas/R-Type (World) (Beta).sms */
-    {0xA2E6E728,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Solomon no Kagi - Oujo Rihita no Namida (J) [T-Spa1.0v_Wave].sms */
-    {0xA480CC75,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Hacks/Trainers/Ax Battler - A Legend of Golden Axe (U) (v2.0B) trainer by QQture.gg */
-    {0xA49D21AF,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-09-14).gg */
-    {0xA789FBD2,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Super Bubble Bobble (Korea) (Unl).sms */
-    {0xA980B253,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/3 in 1 - The Best Game Collection (D) (Korea) (Unl).sms */
-    {0xAA5BF283,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Ayrton Senna's Super Monaco GP II (USA, Europe, Brazil) (Beta).gg */
-    {0xAAB8599C,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/MSX Ports/Mopiranger (Korea) (Unl).sms */
-    {0xACF6B701,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Translations/Non-English/Spanish/TaleSpin (EU) [T-Spa1.0v_Wave].gg */
-    {0xAD8A2A3C,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Super Boy III (Korea) (Unl).sms */
-    {0xAEB2C0D4,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Sky Fighter (Korea) (Unl).sms */
-    {0xAF78E9A6,  131072, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/2 Japan - A-Z/Pro Yakyuu '91, The (Japan).gg */
-    {0xB3D854F8,    8192, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Bios/[BIOS] Sega Master System (Europe) (v2.0).sms */
-    {0xB4293435,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Empty Slot to test SMS BIOS splash screen (PD).sms */
-    {0xB586B99F,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-09-08).gg */
-    {0xB59A13FB,  524288, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Jang Pung II (Korea) (Unl).sms */
-    {0xB692417B,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Fushigi no Oshiro Pit Pot (J) [T-Spa1.0v_Wave].sms */
-    {0xB8A8F919,   32768, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Credits Scroller by Martin (PD).gg */
-    {0xB8D71C56,   49152, 8192, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Power Boggle Boggle (KR) Palette Hack bsittler.sms */
-    {0xBAA05CA0,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Brazilian Portuguese/Enduro Racer (UE) [T+Bra].sms */
-    {0xBAFDAF43,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-22).gg */
-    {0xBB212F6E,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Bubble Bobble (USA) (Beta).gg */
-    {0xBB92B194,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Puzzle (Korea) (Unl).sms */
-    {0xBC64B4A2,   49152, 8192, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Sky Fighter (KR) Palette Hack bsittler.sms */
-    {0xBCB81406,   81920, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Space Oddity V.23 by Proppy & Tet (PD).sms */
-    {0xBDB2C153,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Asterix and the Great Rescue (USA) (Beta) (1994-02-22).gg */
-    {0xBDB6A6E8,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Renegade (EB) [T-Spa1.0v_Wave].sms */
-    {0xBE209B6A,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-08-25) (Alt 1).gg */
-    {0xBE5D71A6,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Legend of Illusion Starring Mickey Mouse (USA, Europe) (Beta) (1994-09-30).gg */
-    {0xBF552D71,   65535, 8192, TYPE_SG}, /* /home/frank/roms/SMS/SG/4 Translations/Black Onyx, The (J) T+En v1.0 [Standard Version] Bruce Tomlin+S.Seehorn.sg */
-    {0xC019CA50,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/94 Super World Cup Soccer (Korea) (Unl).sms */
-    {0xC08B802C,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-07-03).gg */
-    {0xC0E7718B,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/SMS Palette Tool v1.0.sms */
-    {0xC1217EF1,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Spinball (USA, Europe) (Beta) (1994-03-21).gg */
-    {0xC13A4FCA,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Ttoriui Moheom (Korea) (Unl).sms */
-    {0xC196A534,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Dr. HELLO (Korea) (Unl).sms */
-    {0xC2D1A562,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/8 in 1 - The Best Game Collection (C) (Korea) (Unl).sms */
-    {0xC2E74187,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Tetris Tetracycline (PD) v4 Nicolas Warren.sms */
-    {0xC3BF0D55,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Legend of Illusion Starring Mickey Mouse (USA, Europe) (Beta) (1994-09-22).gg */
-    {0xC4507250,   49152, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Betas, Prototypes, Revisions/Prototypes/Teddy Boy Blues (Japan) (Proto) (Ep-MyCard).sms */
-    {0xC48B1803,   32768, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Mr Ultra (PD) Gamegearguy.gg */
-    {0xC584B4AF,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Lemmings (World) (Beta).gg */
-    {0xC6131C2F,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Comical Machine Gun Joe (Taiwan) (Unl).sms */
-    {0xC71792E6,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/King Kong v1.0 Donkey Kong Clone.sms */
-    {0xC72BD3D8,   32768, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/XPMCK v15 - Scotland by mic_ (PD).gg */
-    {0xC83D77D8,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/2 Unlicensed/Jang Pung II (Korea) (Unl).sms */
-    {0xC861A0B5,   65536, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Super Tetris (Korea) (Unl).sms */
-    {0xCAB1A76C,  523770, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Adventures of Batman & Robin, The (USA, Europe) (Beta) (1995-05-06) (Alt 1).gg */
-    {0xCAC594AD,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Demos/Sonic The Hedgehog 2 (World) (Auto Demo).gg */
-    {0xCBF9E36B,  524288, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Gaegujangi Ggachi (Korea) (Unl).sms */
-    {0xCC997F92,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Suho Jeonsa (Korea) (Unl).sms */
-    {0xCDA0BF69,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-19).gg */
-    {0xCDFD6182, 4136416, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Bad Apple Demo 3D Full Length (PD) v7 gligli.sms */
-    {0xCEA106FE,   32768, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Mr Banana 2 (PD) Chris Read.gg */
-    {0xCFB13975,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Genre/Puzzle/Sort By - Action/Fushigi no Oshiro Pit Pot (Japan).sms */
-    {0xD15A5AD6,  131072, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Swabby (PD) v1.11 Anders Jensen SMS-Power 19th.gg */
-    {0xD15A685A,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/FA Tetris (Korea) (Unl).sms */
-    {0xD1794A7A,    8192, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Bacachase (PD) 201610252045 nitrofurano.sms */
-    {0xD207209A,   65536, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/GoSub (PD) Chris Read.gg */
-    {0xD2EF76EC,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Bios/[BIOS] Missile Defense 3-D (USA, Europe) (v4.4).sms */
-    {0xD3383950,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Taz in Escape from Mars (USA, Europe) (Beta) (1994-08-29).gg */
-    {0xD3453A27,  523770, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Adventures of Batman & Robin, The (USA, Europe) (Beta) (1995-05-07).gg */
-    {0xD4A7F173,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/2 Japan - A-Z/Taito Chase H.Q. (Japan).sms */
-    {0xD4A8683D,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Translations/Non-English/Spanish/Wolfchild (E) [T-Spa1.0v_Wave].gg */
-    {0xD681642D,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Cyborg Z (Korea) (Unl).sms */
-    {0xD8AA0B9A,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Demos/David Robinson's Supreme Court (USA) (Auto Demo).gg */
-    {0xD8F49994, 1702360, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/High Fidelity Audio - Knight Rider Theme (PD) Maxim 6-2018.sms */
-    {0xDADF87D9,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Comical Machine Gun Joe (J) [T-Spa1.0v_Wave].sms */
-    {0xDB5E13F2,   49152, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/E.I. - Exa Innova (Korea) (Unl).sms */
-    {0xDB6BDE16,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Miscellaneous/Canceled & Unreleased/Street Hero (USA) (Proto 2).gg */
-    {0xDB8E26F4,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/3 in 1 - The Best Game Collection (F) (Korea) (Unl).sms */
-    {0xDB938A7E,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Taz in Escape from Mars (USA, Europe) (Beta) (1994-08-23).gg */
-    {0xDC01FD76,   65535, 8192, TYPE_SG}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Black Onyx, The (Japan) Enhanced Eng Palette Hack bsittler.sg */
-    {0xDE2BD88C,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Beat 'em Ups/Rastan Saga (Japan).sms */
-    {0xDEA09634,  131072, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Puzzle/Sort By - Logic Puzzle/Tesserae (USA).gg */
-    {0xE044F6AA,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-09-02).gg */
-    {0xE0FE1C6C,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Racing/Sort By - Arcade Racing/R.C. Grand Prix (USA).sms */
-    {0xE14BEA54,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Knightmare II - The Maze of Galious (Korea) (Unl).sms */
-    {0xE1B5BC35, 1048576, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Australia Exclusives/4 PAK All Action (Australia) (Unl).sms */
-    {0xE2191FEF,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/2 Japan - A-Z/Doraemon - Noranosuke no Yabou (Japan).gg */
-    {0xE2A7B7D8,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Brazilian Portuguese/Bomber Raid (UE) [T+Bra_TMT].sms */
-    {0xE35D70AB,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Astro Flash (Japan).sms */
-    {0xE3C987D6,  524288, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 Game Gear Conversions/Kyoto Saint Tale v0.2 Revo.sms */
-    {0xE455791C,   49152, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Twisty by Charles MacDonald (PD).gg */
-    {0xE5FDBE14,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-08-25).gg */
-    {0xE647F44B,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/2 Europe - A-Z/James Pond II - Codename RoboCod (Europe).gg */
-    {0xE65A2998,   65536, 8192, TYPE_SG}, /* /home/frank/roms/SMS/SG/4 Homebrew/FudeBrowser v1.2/FudeBrowser - Winnie Cooper (SG-1000) (PD).sg */
-    {0xE77E0C21,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Spinball (USA, Europe) (Beta) (1994-03-11).gg */
-    {0xE789067B,  335319, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Junior Senior Move Your Feet FMV (PD).sms */
-    {0xE98E0260,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-29) (Alt 1).gg */
-    {0xEA614EB8,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-20).gg */
-    {0xEAE2325F,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-14).gg */
-    {0xEB44A740,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Other/Hook (Prototype) [T+Bra_ALVS].sms */
-    {0xEECB5F5B,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Sega Mark III BG Test v0.01 (PD).sms */
-    {0xEF74744E,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Japan Exclusives/Great Baseball (Japan).sms */
-    {0xF03225DA,   65536, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Frog by Charles Doty (PD).gg */
-    {0xF10082A0,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/3 in 1 - The Best Game Collection (E) (Korea) (Unl).sms */
-    {0xF133AE37,   32768, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/GG Register Display (PD).gg */
-    {0xF2D38F03,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-09-10).gg */
-    {0xF397C5D3,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Brazilian Portuguese/Kenseiden (UE) [T+Bra_ALVS].sms */
-    {0xF3B161C3,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Spinball (USA, Europe) (Beta) (1994-03-10).gg */
-    {0xF3BF4322,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/MSX Ports/Nemesis 2 (Korea) (Unl).sms */
-    {0xF3EFD45D,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Robbyie v0.999 (PD).sms */
-    {0xF5E3DD2C,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Japan Exclusives/Loretta no Shouzou - Sherlock Holmes (Japan).sms */
-    {0xF702BB6E,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Spinball (USA, Europe) (Beta) (1994-03-28).gg */
-    {0xF7E06BDB,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Yuyryeong-ui Jip (Korea) (Unl).sms */
-    {0xF8B96CE7,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Spinball (USA, Europe) (Beta) (1994-03-07).gg */
-    {0xF9D9163B,  262144, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sega Game Pack 4 in 1 (Europe) (Beta).gg */
-    {0xFA167282,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Sega Tween (Normal) by Ben Ryves (PD).sms */
-    {0xFBC6577A,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/2 Japan - A-Z/Mickey Mouse no Castle Illusion (Japan).sms */
-    {0xFBE7BD7C,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Chaos (USA, Europe, Brazil) (Beta) (1993-05-17).gg */
-    {0xFCC9E763,  131072, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Miscellaneous/Canceled & Unreleased/Crazy Faces (Europe) (Proto).gg */
-    {0xFCDD89B9,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-05).gg */
-    {0xFE851485,  524288, 8192, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Taz in Escape from Mars (USA, Europe) (Beta) (1994-08-12).gg */
-    {0xFEBA086D,  262144, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Platformers/Prince of Persia (USA, Europe).sms */
-    {0xFECC1211,  131072, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 Game Gear Conversions/Nazo Puyo v1 Revo.sms */
-    {0xFF2C12CE,   32768, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Multiplayer/2 Player Co-Op/Satellite 7 (Japan).sms */
-    {0xFF478834,  442368, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Dallyeora Pigu-Wang (Korea) (Unl).sms */
-    {0xFFBEE53A,   30721, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Ultima III V2006-05-13prealpha (PD).sms */
-    {0xEEAD16C7,    7626, 7626, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Canyon Racer (PD) v0.01a Haroldo O. Pinheiro.sms */
-    {0x28E62F3B,    5324, 5324, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Pong Master (PD) v1 Haroldo O. Pinheiro.sms */
-    {0x3B546026,    3479, 3479, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Burgers of Hanoi v1.0.sms */
     {0x0EBEA9D4,    1024, 1024, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/5 BIOS/[BIOS] Sega Game Gear (USA) (Majesco).gg */
+    {0x3B546026,    3479, 3479, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Burgers of Hanoi v1.0.sms */
+    {0x3879AC1B,    5836, 5836, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Pong Master (PD) v1 Haroldo O. Pinheiro.sms */
+    {0xEEAD16C7,    7626, 7626, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Canyon Racer (PD) v0.01a Haroldo O. Pinheiro.sms */
+    {0x0072ED54,    8192, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Bios/[BIOS] Sega Master System (USA, Europe) (v1.3).sms */
+    {0x1A15DFCC,    8192, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Bios/[BIOS] Sega Master System (USA) (M404) (Proto).sms */
+    {0x48D44A13,    8192, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Bios/[BIOS] Sega Master System (Japan) (v2.1).sms */
+    {0x5AD6EDAC,    8192, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Snail Maze (USA).sms */
+    {0x72BEC693,    8192, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Bios/[BIOS] Sega Master System (USA) (v1.0) (Proto).sms */
+    {0x8A369FAC,    8192, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/h7n9 (PD) 201610241935 nitrofurano.sms */
+    {0xB3D854F8,    8192, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Bios/[BIOS] Sega Master System (Europe) (v2.0).sms */
+    {0xD1794A7A,    8192, 8192, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Bacachase (PD) 201610252045 nitrofurano.sms */
+    {0x1FE7F34E,    8628, 8628, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/River Strike (PD) v0.04a Haroldo O. Pinheiro.sms */
+    {0x04657906,   16384, 16384, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/RehaShMS NTSC v6 DEMO.sms */
+    {0x2DBA6AF7,   16384, 16384, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Wah Munchers (PD) R2 JoppyFur.sms */
+    {0x71CC6BE0,   16384, 16384, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Controllers Test - SMS & Genesis (PD) v1 sverx 2018-01-30.sms */
+    {0x87AB46F8,   16384, 16384, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Elite Gaiden 0.1.28.sms */
+    {0xBFC28AD1,   16384, 16384, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Knights and Demons v1.0.sms */
+    {0xEE2C29BA,   16384, 16384, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Bios/[BIOS] Sega Master System (USA) (Store Display Unit).sms */
+    {0x4E9CC98F,   31233, 31233, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Ultima III V2006-05-13prealpha (PD).sms */
+    {0x0195D28D,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Fantasy Zone (Taiwan) (Unl).sms */
+    {0x03E814FD,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-12).gg */
+    {0x0459A09A,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/2 Europe - A-Z/Olympic Gold (Europe) (En,Fr,De,Es,It,Nl,Pt,Sv) (Rev 1).sms */
+    {0x04A2A91E,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Hang-On (EB) [T-Spa1.0v_Wave].sms */
+    {0x04B3650D,  131072, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Translations/Non-English/Brazilian Portuguese/OutRun (JK) [T+Bra_TMT].gg */
+    {0x04B9C9F5,   49152, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Twisty by Charles MacDonald (PD).gg */
+    {0x04F8572D,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Spinball (USA, Europe) (Beta) (1994-03-21).gg */
+    {0x0532E330,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Taz in Escape from Mars (USA, Europe) (Beta) (1994-08-12).gg */
+    {0x05F471DE,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/ZEXALL Z-80 Instruction Excerciser (PD) v0.12SDSC Maxim, Eric Quinn.sms */
+    {0x06134112,  524288, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Phantasy Star (Korea) (Unl).sms */
+    {0x06BA1873,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Bread and Butter World v1.0.sms */
+    {0x06FF6885,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Demos/Sonic The Hedgehog 2 (World) (Auto Demo).gg */
+    {0x070403D4,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-28).gg */
+    {0x071B045E,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/Arcade Ports/Hang-On (Europe).sms */
+    {0x0760E582,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 Game Gear Conversions/Space Hawks (Bug-Fixed) KanedaFR v1.sms */
+    {0x07C39BA4,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Happy Looser by Zoop (PD).sms */
+    {0x08BF3DE3,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Alibaba and 40 Thieves (Korea) (Unl).sms */
+    {0x0918FBA0,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/MSX Ports/C_So! (Korea) (Unl).sms */
+    {0x0948DDEE,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Miscellaneous/Canceled & Unreleased/Street Hero (USA) (Proto 2).gg */
+    {0x0958AB49,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/3 in 1 - The Best Game Collection (A) (Korea) (Unl).sms */
+    {0x0A2D45B1,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Tales of Popolon.sms */
+    {0x0AE470E5,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/King & Balloon (Korea) (Unl).sms */
+    {0x0B2F98D3,   65536, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Super Tetris (Korea) (Unl) [T-Spa1.0v_Wave].sms */
+    {0x0C1A920D,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-09-12).gg */
+    {0x0DA23CC1,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Miscellaneous/Europe Exclusives/Pengo (Europe).gg */
+    {0x0DAFA1B3,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-22).gg */
+    {0x0DCAE57E,  524288, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Brazilian Portuguese/R-Type (UE) [T+Bra_Emuboarding].sms */
+    {0x0DF85F46,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Digger Chan (PD) Aypok.sms */
+    {0x0ED170C9,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Genre/Sports/Soccer/Great Soccer (Europe).sms */
+    {0x0F97F4EC,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Spinball (USA, Europe) (Beta) (1994-03-30).gg */
+    {0x0FA5C4BB,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Galaga MSX2SMS Hack.sms */
+    {0x0FCF1D99,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Teddy Boy (UEB) [T-Spa1.0v_Wave].sms */
+    {0x0FDE08F1,   65536, 32768, TYPE_SG}, /* /home/frank/roms/SMS/SG/4 Homebrew/FudeBrowser v1.2/FudeBrowser - Winnie Cooper (SG-1000) (PD).sg */
+    {0x1074E6D4,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/King Kong v1.0 Donkey Kong Clone.sms */
+    {0x11919DF2,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Duckslayer Adventures (PD) v0.6.0 haroldoop.sms */
+    {0x1203AFC9,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Yuyryeong-ui Jip (Korea) (Unl).sms */
+    {0x1267780D,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Empire Syndicate (Unknown) (Beta).gg */
+    {0x12A20F4F,   65535, 32768, TYPE_SG}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Black Onyx, The (Japan) Eng Palette Hack bsittler.sg */
+    {0x1421B328,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Roger Rubbish MSX2SMS Hack.sms */
+    {0x14894717,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Fushigi no Oshiro Pit Pot (J) [T-Spa1.0v_Wave].sms */
+    {0x15A87C1C,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Action Fighter (Taiwan) (Unl).sms */
+    {0x160E18C6,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Spinball (USA, Europe) (Beta) (1994-04-05).gg */
+    {0x16249E19,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Multiplayer/2 Player Co-Op/Satellite 7 (Japan).sms */
+    {0x16537865,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Dr. HELLO (Korea) (Unl).sms */
+    {0x16600C7E,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Translations/Non-English/Spanish/Wolfchild (E) [T-Spa1.0v_Wave].gg */
+    {0x169066FA,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-08).gg */
+    {0x170CC723,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Agigongnyong Dooly (Korea) (Unl).sms */
+    {0x1712E9F1,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Battleships v1.10.sms */
+    {0x172474F3,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Space Oddity Demo by Tetsujin (PD).sms */
+    {0x178801D2,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Ttoriui Moheom (Korea) (Unl).sms */
+    {0x17AB6883,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/FA Tetris (Korea) (Unl).sms */
+    {0x17DEE8A5,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Miscellaneous/Canceled & Unreleased/Street Hero (USA) (Proto 1).gg */
+    {0x184C23B7,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Genre/Simulation/Sort By - Flight/F-16 Fighting Falcon (USA).sms */
+    {0x1917BE0B,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/10 Yard Fight MSX2SMS Hack.sms */
+    {0x19F90435,  524288, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Gaegujangi Ggachi (Korea) (Unl).sms */
+    {0x1A07B7A4,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/SMS Power Demo Build 31 by Zoop (PD).sms */
+    {0x1B0795E2,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Space Hawks Bug-Fixed (Hack) KanedaFR v11.sms */
+    {0x1B1EFC66,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/SMS Sound Test (PD) v1.1 Nicolas Warren.sms */
+    {0x1B43EABD,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Empty Slot to test SMS BIOS splash screen (PD).sms */
+    {0x1B694C95,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Possibly Working/Pointless Shooting.sms */
+    {0x1B882E69,   65536, 32768, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Super Boy I (KR) Palette Hack bsittler.sms */
+    {0x1BD3E8DF,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Ayrton Senna's Super Monaco GP II (USA, Europe, Brazil) (Beta).gg */
+    {0x1CF625E3,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Spinball (USA, Europe) (Beta) (1994-03-11).gg */
+    {0x1D759672,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Hyper Sports 1 MSX2SMS Hack.sms */
+    {0x1DE6D729,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Racer (Easter) (PD) Chris Read.sms */
+    {0x1E37E983,   65536, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Super Bioman I (Korea) (Unl).sms */
+    {0x1F30CB32,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/SMS Paging PFR Detect (PD) v2 Eric R. Quinn.sms */
+    {0x2252FDD5,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Super Boy 4 Individuality Improvement (Korea) (Unl) v1 Tharthan.sms */
+    {0x22B87752,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/94 Super World Cup Soccer (Korea) (Unl).sms */
+    {0x22C09CFD,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Super Bubble Bobble (Korea) (Unl).sms */
+    {0x23C2C957,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/MSX Ports/Nemesis (Korea) (Unl).sms */
+    {0x248E9085,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-30).gg */
+    {0x257F52A0,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Hacks/Trainers/Ax Battler - A Legend of Golden Axe (U) (v2.0B) trainer by QQture.gg */
+    {0x25EB9F80,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Bobble Bobble (Korea) (Unl).sms */
+    {0x26D6F26A,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-29).gg */
+    {0x2728FAA3,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/Arcade Ports/Teddy Boy (USA, Europe, Brazil).sms */
+    {0x2734A9B4,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Blockhead v1.01.sms */
+    {0x276AA542,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Sega Graphic Board (USA) (v2.0) (Proto).sms */
+    {0x279BE415,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-08-08).gg */
+    {0x27C72598,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Taz in Escape from Mars (USA, Europe) (Beta) (1994-08-30).gg */
+    {0x2816812D,   65535, 32768, TYPE_SG}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Black Onyx, The (Japan) Enhanced Eng Palette Hack bsittler.sg */
+    {0x29120DD3,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Demos/Sonic & Tails (Japan) (En) (Sample).gg */
+    {0x292C47FD,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/King's Valley 1 MSX2SMS Hack.sms */
+    {0x29CE0370,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 Game Gear Conversions/Nazo Puyo v1 Revo.sms */
+    {0x29EF084E,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-19).gg */
+    {0x29FADD7A,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Hacks/A Dream GG (J) Invincible Hack by QQture.gg */
+    {0x2A02CD23,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Possibly Working/Cow Abductors.sms */
+    {0x2AB8CF3E,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Zombi Terror v1.01.sms */
+    {0x2ABD4E44,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Sega Tween (Normal) by Ben Ryves (PD).gg */
+    {0x2BC70E39,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Sports/Sort By - Soccer/Super Kick Off (Europe) (En,Fr,De,Es,It,Nl,Pt,Sv).sms */
+    {0x2C56E33F,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Chaos (USA, Europe, Brazil) (Beta) (1993-05-17).gg */
+    {0x2D7FD7EF,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Great Soccer (Japan).sms */
+    {0x2D9ECF93,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Tototek Menu Boot - SG-1000 Mode by Chris Covell (PD).sms */
+    {0x2E7F3254,   49152, 32768, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Sky Fighter (KR) Palette Hack bsittler.sms */
+    {0x2EABAEE8,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Fire Rescue MSX2SMS Hack.sms */
+    {0x2F2912B2,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Genre/Fighters (1v1)/Street Master (Korea) (Unl).sms */
+    {0x2F50E3AF, 1048576, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Australia Exclusives/4 PAK All Action (Australia) (Unl).sms */
+    {0x303EA475,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Brazilian Portuguese/Hang-On (E) [T+Bra].sms */
+    {0x30AF0233,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Betas, Prototypes, Revisions/Samples/Promocao Especial M. System III Compact (Brazil) (Sample).sms */
+    {0x315917D4,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Japan Exclusives/Woody Pop - Shinjinrui no Block Kuzushi (Japan).sms */
+    {0x316727DD,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Teddy Boy Blues (Japan).sms */
+    {0x31EC2578,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Konami's Tennis MSX2SMS Hack.sms */
+    {0x323A1888,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Other/Hook (Prototype) [T+Bra_ALVS].sms */
+    {0x323D11D4,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/Arcade Ports/Pac-Man (USA) Chris Covell v0.91.sms */
+    {0x343299D8,   49152, 32768, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Power Boggle Boggle (KR) Palette Hack bsittler.sms */
+    {0x347A7D26,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Suho Jeonsa (Korea) (Unl).sms */
+    {0x3612AF79,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/3 in 1 - The Best Game Collection (D) (Korea) (Unl).sms */
+    {0x3672DEA3,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/3 in 1 - The Best Game Collection (E) (Korea) (Unl).sms */
+    {0x36B59545,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Lander 1 v1.4.sms */
+    {0x383E7EBD,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/New Duel WIP2.sms */
+    {0x38563E66,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Cannon Ball MSX2SMS Hack.sms */
+    {0x386DBE8C,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/FinalJustice MSX2SMS Hack.sms */
+    {0x38E4B272,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/ZEXALL Z-80 Instruction Excerciser (PD) v0.12SVPD Maxim, Eric Quinn.sms */
+    {0x3987B9F8,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Great Golf (Korea) (Unl).sms */
+    {0x39F63EF7,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Positorb (PD) OrangeRevolt.sms */
+    {0x3AF7CCAD,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/MSX Ports/Gun.Smoke (Korea) (Unl).sms */
+    {0x3BF48E08,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Goonies, The MSX2SMS Hack.sms */
+    {0x3C57F0BF,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-26).gg */
+    {0x3C58BD87,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Bosconian MSX2SMS Hack.sms */
+    {0x3D962962,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Christmas Tale v1.0.sms */
+    {0x3E2430A8,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Taz in Escape from Mars (USA, Europe) (Beta) (1994-08-29).gg */
+    {0x3E401647,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Brazilian Portuguese/Kenseiden (UE) [T+Bra_ALVS].sms */
+    {0x3ECD9588,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Asterix and the Great Rescue (USA) (En,Fr,De,Es,It) (Beta) (1994-02-16).gg */
+    {0x3F78E5C8,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Brazilian Hacks/Pokemon Versao Vermelha (Teddy Boy Hack).sms */
+    {0x40E75B72,  131072, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Miscellaneous/Canceled & Unreleased/Crazy Faces (Europe) (Proto).gg */
+    {0x41CC2ADE,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Micro Xevious, The (Korea) (Unl).sms */
+    {0x429E899A,   81920, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Space Oddity V.23 by Proppy & Tet (PD).sms */
+    {0x43480B63,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/GG Turrican Demo V1.0 by Martin Konrad (PD).gg */
+    {0x4438FB3E,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Legend of Illusion Starring Mickey Mouse (USA, Europe) (Beta) (1994-09-22).gg */
+    {0x4538DB2C,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/F-1 Spirit - The Way to Formula-1 (Korea) (Unl).sms */
+    {0x459357DF,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Flip Flap v2.10.sms */
+    {0x462DC143,   65536, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Zoop'em Up by Martin Konrad (PD).gg */
+    {0x46E18414,  442368, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Dallyeora Pigu-Wang (Korea) (Unl).sms */
+    {0x48063914,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Asterix and the Great Rescue (USA) (En,Fr,De,Es,It) (Beta) (1994-01-25).gg */
+    {0x4903D76F,   49152, 32768, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Bobble Bobble [Clover] (KR) Palette Hack bsittler.sms */
+    {0x49790A5A,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Sega Mark III Port Test v0.1 (PD).sms */
+    {0x49B8C8BC,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Lemmings (World) (Beta).gg */
+    {0x4A1EA156,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Doki Doki Penguin Land MSX2SMS Hack.sms */
+    {0x4A616D3A,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Platformers/Castle of Illusion Starring Mickey Mouse (USA, Europe, Brazil).sms */
+    {0x4ACDB915,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-09-02).gg */
+    {0x4AF40671,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Hyper Sports 3 MSX2SMS Hack.sms */
+    {0x4BC42857,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/Arcade Ports/TransBot (USA, Europe, Brazil).sms */
+    {0x4CAD12DA,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Final Bubble Bobble (J) [T+Spa100_pkt].sms */
+    {0x4DCF54B5,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Zaxxon MSX2SMS Hack.sms */
+    {0x4E17F630,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Racer v1.12 Easter Edition.sms */
+    {0x4F6EBFDC,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Racer 2.0 (Rebooted) (PD) Chris Read.sms */
+    {0x4F8E512C,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Baluba Balok (PD) 20170129 eruiz00.sms */
+    {0x4FCC473B,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/SMS Genesis 6 Button Controller Test by Charles MacDonald (PD).sms */
+    {0x4FDCC4DC,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Possibly Working/Neo Pong 512 (hardware ok, no sound).sms */
+    {0x50F75BC6,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Final Bubble Bobble (Japan).sms */
+    {0x52006201,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Konami's Billiards MSX2SMS Hack.sms */
+    {0x5317F47F,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Mr Banana 2 (PD) Chris Read.gg */
+    {0x532DF4A0,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Ecco the Dolphin (USA, Europe, Brazil) (Beta 1) (1993-06-14).gg */
+    {0x539040A8,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Possibly Working/Griel's Quest for the Sangraal EX.sms */
+    {0x53B8E802,  131072, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Revisions/Nazo Puyo (Japan).gg */
+    {0x541B8469,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-05).gg */
+    {0x558422FF,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Oranges (PD) Chris Read.gg */
+    {0x55A368BA,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Hong Kil Dong (Korea) (Unl).sms */
+    {0x55BFF2AE,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 Game Gear Conversions/Tarzan - Lord of the Jungle WIP v0.1 Revo.sms */
+    {0x565D78D1,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/MSX Ports/Nemesis 2 (Korea) (Unl).sms */
+    {0x56DCB2D4,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Betas, Prototypes, Revisions/Samples/3D Gunner (USA) (Demo).sms */
+    {0x56F00362,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Panther MSX2SMS Hack.sms */
+    {0x57554B8B,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-09-14).gg */
+    {0x577EC227,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Galaxian (Korea) (Unl).sms */
+    {0x58B99750,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Betas, Prototypes, Revisions/Betas/TransBot (USA, Europe, Brazil) (Beta).sms */
+    {0x58D964F8,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Masters of Combat (EB) [T-Spa1.0v_Wave].sms */
+    {0x5971F0BA,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Legend of Illusion Starring Mickey Mouse (USA, Europe) (Beta) (1994-09-30) (Alt 1).gg */
+    {0x5B8E65E4,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/MSX Ports/Sky Jaguar (Korea) (Unl).sms */
+    {0x5BB56085,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Pole Position SG-1000 (PD) v18b nitrofurano.sms */
+    {0x5C01ADF9,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Hang-On (Japan).sms */
+    {0x5CAD6FCC,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Possibly Working/Pointless Platform.sms */
+    {0x5D53FE6B,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Hacks/Sonic the Hedgehog 2 (8-bit) (AutoDemo) (S2GGB Control 02).gg */
+    {0x5F1120C8,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Sega Mark III BG Test v0.01 (PD).sms */
+    {0x60A4496A,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Konami's Ping Pong MSX2SMS Hack.sms */
+    {0x60EE4B3D,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Bubble Bobble (USA) (Beta).gg */
+    {0x61AC4509,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Sports/Sort By - Olympics/Olympic Gold (Japan, USA, Brazil) (En,Fr,De,Es,It,Nl,Pt,Sv).sms */
+    {0x61E8806F,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Flashpoint (Korea) (Unl).sms */
+    {0x623B546F,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Prisonnier II (PD) Offgame.sms */
+    {0x62D1D9DB,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Zanac MSX2SMS Hack.sms */
+    {0x62F0C23D,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/Arcade Ports/My Hero (USA, Europe, Brazil).sms */
+    {0x631D4525,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-07-03).gg */
+    {0x63B6A57C,  131072, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/2 Japan - A-Z/Pro Yakyuu '91, The (Japan).gg */
+    {0x643B6B76,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Sagak-ui Bimil (Korea) (Unl).sms */
+    {0x643F6BFC,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Comical Machine Gun Joe (Korea) (Unl).sms */
+    {0x647D8EDC,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Brazilian Hacks/Pokemon Versao Secreta (Teddy Boy Hack).sms */
+    {0x64963B58,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Betas, Prototypes, Revisions/Prototypes/Game de Check! Koutsuu Anzen (Japan) (Proto).sms */
+    {0x649B9163,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Candy Kid (PD) SteveProXNA 3-27-2017.sms */
+    {0x649F29E8,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Betas, Prototypes, Revisions/Betas/Hang-On (Europe) (Beta).sms */
+    {0x6509C952,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-08-26).gg */
+    {0x655FB1F4,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/Arcade Ports/Bank Panic (Europe, Brazil).sms */
+    {0x659D816E,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Taz in Escape from Mars (USA, Europe) (Beta) (1994-08-10).gg */
+    {0x661DA28E,   49152, 32768, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Sega BASIC Level 3 V1 (SC-3000) export header checksum removed 24K Palette Hack bsittler.sms */
+    {0x663664E1,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-08-31).gg */
+    {0x6665C477,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Super Boy I (Korea) (Unl).sms */
+    {0x66C125F1,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Artillery Master 8k (PD) v0.9 Haroldo O. Pinheiro.sms */
+    {0x6887900E,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Interrupt Test (PD).sms */
+    {0x68979CF6,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/GG Nibbles by Martin Konrad V4 (PD).gg */
+    {0x689F58A2,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Spy vs Spy (Taiwan) (Unl).sms */
+    {0x6979F292,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Cave Wanderer v1.0.sms */
+    {0x6AF50871,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic The Hedgehog (Japan, USA) (Beta).gg */
+    {0x6BEA417D,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Sports/Sort By - Wrestling/WWF Wrestlemania - Steel Cage Challenge (USA, Europe).sms */
+    {0x6C476AA9,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Brazilian Hacks/Pokemon Versao Amarela (Teddy Boy Hack).sms */
+    {0x6CB878C7,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Brazilian Portuguese/Bomber Raid (UE) [T+Bra_TMT].sms */
+    {0x6CE7F694,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Super Columns & Tetris (Korea) (Unl).sms */
+    {0x6D0F1673,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/SMS V Counter Test Program (PD) Charles MacDonald.sms */
+    {0x6D309AC5,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Power Boggle Boggle (Korea) (Unl).sms */
+    {0x6D6A2333,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Cyborg Z (Korea) (Unl).sms */
+    {0x6E920AB0,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Flicky MSX2SMS Hack.sms */
+    {0x6EF8C587,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Dig Dug MSX2SMS Hack.sms */
+    {0x704CA0A0,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Spinball (USA, Europe) (Beta) (1994-03-10).gg */
+    {0x70F184CB,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Taz in Escape from Mars (USA, Europe) (Beta) (1994-08-14).gg */
+    {0x717C9643,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Possibly Working/Neo Pong 512.sms */
+    {0x718F06EF,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Taz in Escape from Mars (USA, Europe) (Beta) (1994-05-11).gg */
+    {0x72506A85,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/SMS Power's 7th Anniversary Intro V1.03 by Nicolas Warren (PD).sms */
+    {0x7253C3EC,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Color & Switch Test (Japan) (En) (Proto).sms */
+    {0x72EC9008,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Bank Panic [T-Spa1.0v_Wave].sms */
+    {0x735BF1F7,   49152, 32768, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Sega BASIC Level 3 V1 (SC-3000) Palette Hack bsittler.sms */
+    {0x73A5119C,   49152, 32768, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Sky Jaguar [Clover] (KR) Palette Hack bsittler.sms */
+    {0x746BB2B2,  524288, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Janggun-ui Adeul (Korea) (Unl).sms */
+    {0x76BBD33E,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Master Mario Bros (Teddy Boy Hack).sms */
+    {0x76E8265F,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Puzzle (Korea) (Unl).sms */
+    {0x7778E256,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/MSX Ports/Ppang Gongjang (Korea) (Unl).sms */
+    {0x77BA2667,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Sky Fighter (Korea) (Unl).sms */
+    {0x77DA8773,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Hacks/Star Wars (U) Invincible by QQture.gg */
+    {0x78268AF3,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Comical Machine Gun Joe (J) [T-Spa1.0v_Wave].sms */
+    {0x787A4651,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Platformers/Prince of Persia (USA, Europe).sms */
+    {0x78D7FAAB,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Genre/Puzzle/Sort By - Action/Spy vs Spy (USA, Europe, Brazil).sms */
+    {0x791A96A6,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/2 Japan - A-Z/Mickey Mouse no Castle Illusion (Japan).sms */
+    {0x7B1BBA91,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Tototek Menu Boot - SMS Mode by Chris Covell (PD).sms */
+    {0x7CBD4432,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/SALY V1.00 by Marc Klemp (PD).sms */
+    {0x7CE06FCE,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/F-16 Fighting Falcon (Japan).sms */
+    {0x7DBDE57E,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/SMS VGM Player (PD) v0.45 Maxim.sms */
+    {0x7E15A103,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/KunKun & KokoKun 1 (PD) v1.0 Bock.sms */
+    {0x7F189547,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/TransBot (UEB) [T-Spa1.0v_Wave].sms */
+    {0x7F27F57C,  524288, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Jang Pung II (Korea) (Unl).sms */
+    {0x8034BD27,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/MSX Ports/Road Fighter (Korea) (Unl).sms */
+    {0x812942CD,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/3 in 1 - The Best Game Collection (C) (Korea) (Unl).sms */
+    {0x813F4112,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Japan Exclusives/Argos no Juujiken (Japan).sms */
+    {0x817A466D,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Possibly Working/Shoganai.sms */
+    {0x81A386F4,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/3 in 1 - The Best Game Collection (F) (Korea) (Unl).sms */
+    {0x829FD975,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Gravity Beam Master Gaiden v1.01 MathewCarr.sms */
+    {0x82C79D1A,   65536, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Gangcheol RoboCop (Korea) (Unl).sms */
+    {0x83C73CF1,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-08-25).gg */
+    {0x83F84CEB,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Hitsuji Yai - Preety Sheep MSX2SMS Hack.sms */
+    {0x83FA26D9,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Multiplayer (Gear-to-Gear Cable)/Columns (USA, Europe, Brazil) (Rev 2).gg */
+    {0x84665648,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Great Soccer (Taiwan) (Unl).sms */
+    {0x848FE91A,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Picross v1.01.sms */
+    {0x84AD5AE4,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Comical Machine Gun Joe (Taiwan) (Unl).sms */
+    {0x84C73292,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Crusader MSX2SMS.sms */
+    {0x84CF3A7F,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Track & Field 1 MSX2SMS Hack.sms */
+    {0x85060847,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Paws 32K Intro by An!mal (PD).sms */
+    {0x8640E7E8,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Three Dragon Story, The (Korea) (Unl).sms */
+    {0x869E4ED2, 1048576, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Jang Pung 3 (Korea) (Unl).sms */
+    {0x86BF7407,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-07).gg */
+    {0x87208D4B,   65536, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/MOD2PSG V1.8 - Shadow of the Beast (PD).gg */
+    {0x884DBC24,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Yum! (PD) Chris Read.sms */
+    {0x88829996,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/GG Hi-Res Graphics Demo by Charles McDonald (PD).gg */
+    {0x89B8842A,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Slime Center OK.sms */
+    {0x89E98A7C,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Japan Exclusives/Great Baseball (Japan).sms */
+    {0x8AAB849E,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Legend of Illusion Starring Mickey Mouse (USA, Europe) (Beta) (1994-10-14).gg */
+    {0x8AC6B4F4,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Possibly Working/Bubbo World 2.sms */
+    {0x8BAFC771,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/2048 v1.02.sms */
+    {0x8BF45109,   49152, 32768, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Sega BASIC Level 2 (SC-3000) export header checksum removed Palette Hack bsittler.sms */
+    {0x8D5348C7,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 Game Gear Conversions/Pengo (J) PopCorn Music v1 BcnAbel76.sms */
+    {0x8DBF9F1D,  524288, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 Game Gear Conversions/Quiz Gear Fight!! v1.1 BcnAbel76.sms */
+    {0x8DF265CD,   49152, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/ToToTEK GG-PRO Multi Menu v1.5 (PD).gg */
+    {0x8E615AEB,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 Game Gear Conversions/Pac-Man (Japan) Chris Covell v0.91.sms */
+    {0x8E8EFF11,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Bios/[BIOS] Hang-On (USA, Europe) (v3.4).sms */
+    {0x8EDDAABE,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/2 Unlicensed/Jang Pung II (Korea) (Unl).sms */
+    {0x8F19C7FD,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/8 in 1 - The Best Game Collection (C) (Korea) (Unl).sms */
+    {0x8FC6FEF9,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Brazilian Hacks/Teddy Boy e Geraldinho (B) (Geraldinho Hack).sms */
+    {0x8FD1CBED,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Ghost House (UEB) [T-Spa1.0v_Wave].sms */
+    {0x914514E3,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Multiplayer/2 Player Co-Op/Super Tennis (USA, Europe).sms */
+    {0x91EB4F40,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Bread and Butter v1.032.sms */
+    {0x93DD45CA,   65536, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Fire Track by Ben Ryves (PD).gg */
+    {0x956C416B,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Brazil Exclusives/Geraldinho (Brazil).sms */
+    {0x95CBF3DD,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Great Tennis (Japan).sms */
+    {0x95CDBFD2,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Xyzolog (Korea) (Unl).sms */
+    {0x97431A86,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Miscellaneous/Europe Exclusives/Wolfchild (Europe).gg */
+    {0x97445B98,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Yellow Submarine MSX2SMS Hack.sms */
+    {0x976B5E4F,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/8 in 1 - The Best Game Collection (A) (Korea) (Unl).sms */
+    {0x97F8DCC8,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Damiana (PD v2.0.sms */
+    {0x997091C7,   49152, 32768, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Super Columns (KR) Palette Hack bsittler.sms */
+    {0x997C6961,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/My Hero (UEB) [T-Spa1.0v_Wave].sms */
+    {0x9993F818,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Taz in Escape from Mars (USA, Europe) (Beta) (1994-08-23).gg */
+    {0x9A1ECFEC,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Brazilian Portuguese/Ghost House (UE) [T+Bra_Leo].sms */
+    {0x9AEFC934,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Super Boy III (Korea) (Unl).sms */
+    {0x9C0E5A04,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/2 Japan - A-Z/Woody Pop (Japan) (En).gg */
+    {0x9C70A3D3,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Megaro Polis SOS MSX2SMS Hack.sms */
+    {0x9CEBF611,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Woody Pop - Shinjinrui no Block Kuzushi (J) [T-Spa1.0v_Wave].sms */
+    {0x9CED0234,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-29) (Alt 1).gg */
+    {0x9D549E08,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Japan Exclusives/Comical Machine Gun Joe (Japan).sms */
+    {0x9D79ED79,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Brazilian Hacks/Rodrigo 2 em - Mate O Leonardo (Teddy Boy Hack).sms */
+    {0x9ED5C6E8,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Japan Exclusives/Solomon no Kagi - Oujo Rihita no Namida (Japan).sms */
+    {0x9F67F42D,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Gulkave MSX2SMS Hack.sms */
+    {0x9FBF5347,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Demos/David Robinson's Supreme Court (USA) (Auto Demo).gg */
+    {0x9FC63CFE,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Racing/Sort By - Arcade Racing/R.C. Grand Prix (USA).sms */
+    {0xA0154E51,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/SMS Chip-8 (PD) v1.11 Maxim.sms */
+    {0xA06D065C,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/NanoWars 8k (PD) v0.7 Haroldo O. Pinheiro.sms */
+    {0xA0BF829B,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Tetris Tetracycline (PD) v4 Nicolas Warren.sms */
+    {0xA2F43AC3,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-09-11) (Alt 1).gg */
+    {0xA331B736,  524288, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Betas, Prototypes, Revisions/Betas/R-Type (World) (Beta).sms */
+    {0xA581402E,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/64 Color Palette Test (PD).sms */
+    {0xA6540096,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/A.E. MSX2SMS Hack.sms */
+    {0xA6C1D6A9,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/2 Europe - A-Z/James Pond II - Codename RoboCod (Europe).gg */
+    {0xA788DCC5,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sega Game Pack 4 in 1 (Europe) (Beta).gg */
+    {0xA8629058, 1048576, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Samgukji 3 (Korea) (Unl).sms */
+    {0xA87548CD,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Mr Ultra (PD) Gamegearguy.gg */
+    {0xA95013D3,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Fri For Fransk! V1.02 by Marc Klemp (PD).sms */
+    {0xAADEDDF0,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/SpaceHawks - Amstrad Port (PD) v0.1 KanedaFR.sms */
+    {0xAB48C360,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Rally-X MSX2SMS Hack.sms */
+    {0xABEF90BC,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 Game Gear Conversions/Girl's Garden Conversion v1 Krara.sms */
+    {0xAC37E092,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/2 Japan - A-Z/Columns (Japan) (En) (Rev 1).gg */
+    {0xACC2EEA4,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Spy vs. Spy (UE) [T-Spa1.0v_Wave].sms */
+    {0xACF7E6A2,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/GG Demo by Charles MacDonald (PD).gg */
+    {0xAD31C5FF,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/SMS Boot Loader 0.9 (PD).sms */
+    {0xAEA4C0FA,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Star Blazer MSX2SMS Hack.sms */
+    {0xAEABD9A3,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Brazilian Portuguese/Enduro Racer (UE) [T+Bra].sms */
+    {0xAF4126E2,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Zoom 909 MSX2SMS Hack.sms */
+    {0xAFCC87B7,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Fairy Forest (PD) v1.02 STIR_FC.sms */
+    {0xB0131D77,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Sega Tween (3D) by Ben Ryves (PD).sms */
+    {0xB02751D0,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Credits Scroller by Martin (PD).gg */
+    {0xB1528222, 1048576, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Hacks/Tails Adventure X-L - By lordxernom (Tails Adventures Hack) [SHC2017].gg */
+    {0xB245EE93,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-09-10).gg */
+    {0xB36FF80F,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Jyankyo MSX2SMS Hack.sms */
+    {0xB39BE2F0,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-09-11).gg */
+    {0xB3E5986E,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/AntiISDA Warrior (PD) v1.02 Ventzislav Tzvetkov.sms */
+    {0xB43D4084,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Betas, Prototypes, Revisions/Prototypes/Teddy Boy Blues (Japan) (Proto) (Ep-MyCard).sms */
+    {0xB482D918,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Lode Runner 1 MSX2SMS Hack.sms */
+    {0xB49AA6FC,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Ports/MSX Ports/Mopiranger (Korea) (Unl).sms */
+    {0xB4F2A97E,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Soduko v0.2.sms */
+    {0xB60FB515,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Hang On MSX2SMS Hack.sms */
+    {0xB6B57B4E,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/GG Register Display (PD).gg */
+    {0xB716EEA3,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Star Force MSX2SMS Hack (Bad Direction).sms */
+    {0xB718D6B5,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Slime Center.sms */
+    {0xB74F3A4F,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Arcade/Woody Pop (USA, Europe, Brazil).gg */
+    {0xB76F1BD0,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Hokuto no Ken (Taiwan) (Unl).sms */
+    {0xB7C5B600,   49152, 32768, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/New Boggle Boggle 2 (KR) Palette Hack bsittler.sms */
+    {0xB8A3C8F7,   49149, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Snail2 NTSC v1.02.sms */
+    {0xB9F7C7F1,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Asterix and the Great Rescue (USA) (Beta) (1994-02-22).gg */
+    {0xBA835A3D,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Galaxian MSX2SMS Hack.sms */
+    {0xBA8A57EB,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Platformers/Fantastic Dizzy (USA, Europe) (En,Fr,De,Es,It).sms */
+    {0xBADA8D24,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/XPMCK v15 - Scotland by mic_ (PD).gg */
+    {0xBB301972,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Mini Golf MSX2SMS Hack.sms */
+    {0xBB913D38,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Champion Soccer MSX2SMS Hack.sms */
+    {0xBCE5B4B7,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Knightmare II - The Maze of Galious (Korea) (Unl).sms */
+    {0xBD1AEAD4,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/2 Japan - A-Z/Taito Chase H.Q. (Japan).sms */
+    {0xBD274327,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/SMS Sprite Test (PD).sms */
+    {0xBDA94153,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Brazilian Portuguese/Blade Eagle 3D (UE) [T+Bra_TMT].sms */
+    {0xBDFF921A,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Star Soldier MSX2SMS Hack.sms */
+    {0xBE147604,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Cory Arcangel's Super Mario Clouds 2014-8-6.sms */
+    {0xBE23A250,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Hacks/Terry Bear (U) invincible version by QQture.gg */
+    {0xBE5B9BFF,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Bananas Are Good (PD) Chris Read.gg */
+    {0xBF91C6B5,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-14).gg */
+    {0xBFEE193C,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Code 38 - Volume I (PD).sms */
+    {0xC01F2198,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Betas, Prototypes, Revisions/Betas/Mahjong Sengoku Jidai (Japan) (Beta).sms */
+    {0xC0D72401,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Possibly Working/Menace.sms */
+    {0xC0E5EF66,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Shoot 'em Ups/Predator 2 (USA, Europe).sms */
+    {0xC0F3CE7E,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Ghost House (Japan).sms */
+    {0xC264580F,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Line Interrupt Test #1 (PD) Charles MacDonald.sms */
+    {0xC27F641F,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Taz in Escape from Mars (USA, Europe) (Beta) (1994-08-19).gg */
+    {0xC33B8443,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Ax Battler - A Legend of Golden Axe (USA, Europe, Brazil) (Beta) (1991-08-10).gg */
+    {0xC3B77FBA,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Casevac (PD) v1 STIR FC.sms */
+    {0xC3E7C1ED,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Betas, Prototypes, Revisions/Betas/Ghost House (USA, Europe, Brazil) (Beta).sms */
+    {0xC466C41F,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 Game Gear Conversions/Pengo (UE) v1 nextvolume.sms */
+    {0xC47776E7,   49152, 32768, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Sega BASIC Level 3 V1 (SC-3000) export header checksum removed Palette Hack bsittler.sms */
+    {0xC4C53226,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/F-16 Fighting Falcon (Taiwan) (Unl).sms */
+    {0xC5CCE48E,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Swing MSX2SMS Hack.sms */
+    {0xC5F342E1, 4136928, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Bad Apple Demo 3D Full Length (PD) v7 gligli.sms */
+    {0xC6FC21E5,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Translations/Non-English/Spanish/Woody Pop (EU) [T-Spa1.0v_Wave].gg */
+    {0xC76D3938,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/3 in 1 - The Best Game Collection (B) (Korea) (Unl).sms */
+    {0xC795182D,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Astro Flash (Japan).sms */
+    {0xC7F3DA07,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Brazilian Hacks/Rodrigo 2 em - Mate O Papai Noel - Versao de Natal (Teddy Boy Hack).sms */
+    {0xC9B43986,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Bloki v1.03 Tetris Clone.sms */
+    {0xC9DD4E5F,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Super Arkanoid (Korea) (Unl).sms */
+    {0xCA082218,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Pooyan (Korea) (Unl).sms */
+    {0xCA64461C,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Betas, Prototypes, Revisions/Betas/Solomon no Kagi - Oujo Rihita no Namida (Japan) (Beta).sms */
+    {0xCA7D9D99,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Color Ball MSX2SMS Hack.sms */
+    {0xCACF7FDA,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Soko Master v1.0.sms */
+    {0xCC5A5E5F,   49152, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Mr Ultra 2 (PD) rc4 Gamegearguy.gg */
+    {0xCCB2CAB4,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Other Regions A-Z/Brazil - A-Z/Felipe em Acao (B).sms */
+    {0xCE863DBA,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/2 Japan - A-Z/Pengo (Japan).gg */
+    {0xCEAD416B,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Controller & Light Gun Patches/Genesis Controller Patched/Woody Pop - Shinjinrui no Block Kuzushi (J) Region & Genesis Patched v1 dplc81.sms */
+    {0xCF6FB7E7,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Spinball (USA, Europe) (Beta) (1994-03-29).gg */
+    {0xCF796F23,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Brazilian Portuguese/California Games (UE) [T+Bra_TMT].sms */
+    {0xD0955EB8,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Shooting Stars Light Gun (PD) v1.01.sms */
+    {0xD0E919BD,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Brazilian Hacks/Pokemon Versao Azul (Teddy Boy Hack).sms */
+    {0xD10AF45F,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chuck Rock (World) (Beta).gg */
+    {0xD13C05D3,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-01).gg */
+    {0xD24536DB,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Super Boy II (Korea) (Unl).sms */
+    {0xD33EBA28,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/XBill (PD) nitrofurano 201806021536.sms */
+    {0xD36E31FB,   32768, 32768, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/xbill Palette Hack bsittler.sms */
+    {0xD375F9E7,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-06-20).gg */
+    {0xD41B9A08,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Spy vs Spy (Japan).sms */
+    {0xD435AF9A,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Twin Maze (PD) v0.01 haroldoop.sms */
+    {0xD4831A85,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Warp Warp MSX2SMS Hack.sms */
+    {0xD4F2970E,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/SMS Test Suite (PD) v0.32 sverx.sms */
+    {0xD51CB0E5,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Hyper Rally MSX2SMS Hack.sms */
+    {0xD62963FA,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Wonsiin (Korea) (Unl).sms */
+    {0xD6D82A11,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Block Quest (Knights of the Round clone) v0.25.sms */
+    {0xD85758A9,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Penguin Adventure (Korea) (Unl).sms */
+    {0xD87316F6,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/#gscept Intro by blindio (PD).sms */
+    {0xD8ADD200,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-08-25) (Alt 1).gg */
+    {0xD939041F,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Mappy MSX2SMS Hack.sms */
+    {0xD99285C0,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/Bios/[BIOS] Missile Defense 3-D (USA, Europe) (v4.4).sms */
+    {0xD9F4AAD9,   65535, 32768, TYPE_SG}, /* /home/frank/roms/SMS/SG/4 Translations/Black Onyx, The (J) T+En v1.0 [Enhanced Version] Bruce Tomlin+S.Seehorn.sg */
+    {0xDAD7C8AF,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Racer v1.12.sms */
+    {0xDBBF4DD1,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/New Boggle Boggle 2 (Korea) (Unl).sms */
+    {0xDC5BE4FB,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Track & Field 2 MSX2SMS Hack.sms */
+    {0xDD74BCF1,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/E.I. - Exa Innova (Korea) (Unl).sms */
+    {0xDD9AFD2C,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/D-Day MSX2SMS Hack.sms */
+    {0xDDBBA8F8,  131072, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Swabby (PD) v1.11 Anders Jensen SMS-Power 19th.gg */
+    {0xDDDB3DD8,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Draw Poker (PD) v1 Mike Beaver.sms */
+    {0xDE459332,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Spinball (USA, Europe) (Beta) (1994-03-07).gg */
+    {0xDFEB93E3,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Japan Exclusives/Loretta no Shouzou - Sherlock Holmes (Japan).sms */
+    {0xE0955BA0, 1702872, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/High Fidelity Audio - Knight Rider Theme (PD) Maxim 6-2018.sms */
+    {0xE10596B0,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Majyo Densetsu MSX2SMS Hack.sms */
+    {0xE1720D8B,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Pong v0.4.sms */
+    {0xE29C4016,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Master Zelda (Teddy Boy Hack).sms */
+    {0xE2D98E8E,   65536, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/VG-Fighter v1.0.sms */
+    {0xE34024BB,   65535, 32768, TYPE_SG}, /* /home/frank/roms/SMS/SG/4 Translations/Black Onyx, The (J) T+En v1.0 [Standard Version] Bruce Tomlin+S.Seehorn.sg */
+    {0xE3E3DD01,  524288, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 Game Gear Conversions/Kyoto Saint Tale v0.2 Revo.sms */
+    {0xE3F260CA,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Sky Jaguar (Korea) (Clover) (Unl).sms */
+    {0xE49279AF,   44920, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Bomberman Boom v1.1.sms */
+    {0xE4A80BBC,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Possibly Working/Peek-A-Boo.sms */
+    {0xE58A354D,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Champion Kendou MSX2SMS Hack.sms */
+    {0xE6795C53,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Genre/Puzzle/Sort By - Action/Fushigi no Oshiro Pit Pot (Japan).sms */
+    {0xE7FA8077,   65536, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Chaos by Charles Doty (PD).gg */
+    {0xE87D6996,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Solomon no Kagi - Oujo Rihita no Namida (J) [T-Spa1.0v_Wave].sms */
+    {0xEA766665,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/5 Tools & Service Test Carts/SMS Palette Tool v1.0.sms */
+    {0xEAEBF323,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Multiplayer/2 Player Co-Op/F-16 Fighting Falcon ~ F-16 Fighter ~ F16 Falcon Fighter (USA, Europe, Brazil).sms */
+    {0xEB8D96AE,   49152, 32768, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Galaxian (KR) Palette Hack bsittler.sms */
+    {0xEBF995A5,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Legend of Illusion Starring Mickey Mouse (USA, Europe) (Beta) (1994-10-17).gg */
+    {0xEC6B7E02,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/X-Men - GameMaster's Legacy (USA, Europe) (Beta) (1994-08-10).gg */
+    {0xED5C1E1B,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/8 in 1 - The Best Game Collection (B) (Korea) (Unl).sms */
+    {0xED7E20BE,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Moai no Hibou MSX2SMS Hack.sms */
+    {0xEDB901C8,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Sonic Spinball (USA, Europe) (Beta) (1994-03-28).gg */
+    {0xEDD6AB54,   65536, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Unlicensed - A-Z/Super Tetris (Korea) (Unl).sms */
+    {0xEDFA070F,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Choplifter MSX2SMS Hack.sms */
+    {0xEE67FB52,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Translations/Non-English/Spanish/Star Wars (J) (v1.1) [T-Spa1.0v_Wave].gg */
+    {0xEE7FFBF7,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Translations/Non-English/Spanish/Columns (EU) [T-Spa1.0v_Wave].gg */
+    {0xEED43D47,  106496, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Controllers & Peripherals/FM Sound Support/All FM Sound Supported Games/YM2612 Live Player (PD) 12-2016 K-Storm.sms */
+    {0xF06F2CCB,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Regional Exclusives/Korean Exclusives/Eagles 5 (Korea) (Unl).sms */
+    {0xF0BA2BC6,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Seishun Scandal (Japan).sms */
+    {0xF0E092A5,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Brazilian Portuguese/R.C. Grand Prix (UE) [T+Bra_TMT].sms */
+    {0xF18D1AE8,  147456, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/English/Legendary Warrior Rygar - Argos no Juujiken (J) T+Eng1.0 Psyklax.sms */
+    {0xF1A8E586,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Controller & Light Gun Patches/Paddle-to-Controller Patched/Woody Pop (SMS Control Pad) Paddle-to-Controller Patched.sms */
+    {0xF1F8FF2D,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Game Series Collections/Miscellaneous/Master System Exclusives/Ghost House (USA, Europe, Brazil).sms */
+    {0xF31B8E50,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Translations/Non-English/Spanish/TaleSpin (EU) [T-Spa1.0v_Wave].gg */
+    {0xF357DAFC,  131072, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/2 Japan - A-Z/Fantasy Zone (Japan).sms */
+    {0xF366B29D,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Windows for GG by Victor Kemp (PD).gg */
+    {0xF36ED753,   49152, 32768, TYPE_SMS}, /* /home/frank/roms/SMS/SG/4 Palette Hacks/Super Bubble Bobble (KR) Palette Hack bsittler.sms */
+    {0xF36F8550,   65536, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/GoSub (PD) Chris Read.gg */
+    {0xF3CA6676,   32768, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Revisions/Columns (Japan) (En).gg */
+    {0xF4968BD6,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Legend of Illusion Starring Mickey Mouse (USA, Europe) (Beta) (1994-09-30).gg */
+    {0xF5280655,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Beat 'em Ups/Rastan Saga (Japan).sms */
+    {0xF54625E0,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Super Soccer MSX2SMS Hack.sms */
+    {0xF551076B,   65536, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Frog by Charles Doty (PD).gg */
+    {0xF5DA4A2B,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Anguna - the Prison Dungeon v0.07a.sms */
+    {0xF61874C9,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Robbyie v0.999 (PD).sms */
+    {0xF69A3496,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Legend of Illusion Starring Mickey Mouse (USA, Europe) (Beta) (1994-10-11).gg */
+    {0xF7DB94B0,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-09-08).gg */
+    {0xF87D50FD,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Pong Master 4k (PD) Haroldo O. Pinheiro.sms */
+    {0xF8C3D4F4,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Hacks/Sonic-Boy 3 - Eggman's Room (Teddy Boy Hack).sms */
+    {0xF8CA914C,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Lander 2 v0.C.sms */
+    {0xF97C47A0,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Sega Tween (Normal) by Ben Ryves (PD).sms */
+    {0xF99CD1A0,   65536, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Homebrew/Simple Text Demo by Charles Doty (PD).gg */
+    {0xF9C4F850,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Super Penguin MSX2SMS Hack.sms */
+    {0xFA56E120,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Mr. Do V.s Unicorns MSX2SMS Hack.sms */
+    {0xFA8BFD34,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/NFL '95 (USA) (Beta) (1994-09-14) (Alt 1).gg */
+    {0xFBBA8986,  262144, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Translations/Spanish/Renegade (EB) [T-Spa1.0v_Wave].sms */
+    {0xFDAA44C8,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/3 MSX Conversions/Pac-Man MSX2SMS Hack.sms */
+    {0xFDB87284,  131072, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Game Series Collections/Genre/Puzzle/Sort By - Logic Puzzle/Tesserae (USA).gg */
+    {0xFF00FE29,  524288, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/4 Betas, Demos, Prototypes, Revisions/Betas/Chicago Syndicate (USA, Brazil) (Beta) (1995-05-05).gg */
+    {0xFF67359B,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/DataStorm v0.02.sms */
+    {0xFF72F4C1,   49152, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/The Banketh (PD) Alpha 0.05 Diskover.sms */
+    {0xFFCF390E,   32768, 32768, TYPE_SMS}, /* /mnt/d/roms/Sega/Master System/4 Homebrew/Demos & Intros/Sprite Multiplex Demo (03012005) by Charles MacDonald (PD).sms */
+    {0xFFF9B84D,  262144, 32768, TYPE_GG}, /* /mnt/d/roms/Sega/Game Gear/2 Japan - A-Z/Doraemon - Noranosuke no Yabou (Japan).gg */
 };

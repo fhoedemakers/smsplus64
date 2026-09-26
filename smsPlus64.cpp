@@ -73,7 +73,7 @@ static const resolution_t RESOLUTION_GAME = {SMS_WIDTH, FB_HEIGHT, false};
 // VR4300. Double buffered so the CPU can emulate and render the next frame
 // while the RDP is still blitting this one. 16-byte aligned for RDP's DMA
 // requirements; cache writeback runs before each blit.
-#define CI8_FRAME_BYTES (SMS_WIDTH * SMS_HEIGHT)
+#define CI8_FRAME_BYTES (SMS_WIDTH * SMS_MAX_HEIGHT)
 static __attribute__((aligned(16))) uint8_t ci8_frame[2][CI8_FRAME_BYTES];
 static int ci8_back = 0;
 uint8_t *sms_line_target = ci8_frame[0];
@@ -123,6 +123,9 @@ static bool upscale_enabled = false;
 // and have every framebuffer cleared before pixels are stranded outside it.
 static bool layout_upscale = false;
 static int layout_band = 0;
+// Rows of the last frame the renderer produced: 192, or 224 in the Master
+// System II's taller mode, which moves the letterbox.
+static int layout_lines = SMS_HEIGHT;
 
 // Rows at the top of the framebuffer that the blit leaves alone so the stats
 // overlay has somewhere to live. Without upscaling the overlay sits in the
@@ -892,6 +895,7 @@ void process(void)
     // already clean. Start the change detection from there.
     layout_upscale = upscale_enabled;
     layout_band = overlay_band_height();
+    layout_lines = render_frame_lines;
 
     // Start by drawing every frame and let the tuner settle from there, so a
     // game that can keep up never skips.
@@ -922,12 +926,17 @@ void process(void)
         // pixels outside the new one: switching the upscale off leaves a ring
         // of full screen picture around the small one, and turning the profiler
         // on strands picture rows in the band reserved for it. Both are caught
-        // here rather than at each of the places that can change a setting.
+        // here rather than at each of the places that can change a setting. A
+        // game leaving the 224-line mode strands rows the same way; that is only
+        // known once a frame has been drawn in the new mode, so its first frame
+        // can still show them.
         int band = overlay_band_height();
-        if (upscale_enabled != layout_upscale || band != layout_band)
+        if (upscale_enabled != layout_upscale || band != layout_band ||
+            render_frame_lines != layout_lines)
         {
             layout_upscale = upscale_enabled;
             layout_band = band;
+            layout_lines = render_frame_lines;
             hideFrameRate = true;
         }
 
@@ -977,6 +986,9 @@ void process(void)
 
             uint8_t *frame = ci8_frame[ci8_back];
 
+            // 192 rows, or 224 in the Master System II's taller mode
+            int lines = render_frame_lines;
+
             // Draw the overlay before handing the framebuffer to the RDP, so
             // CPU and RDP never touch it at the same time.
             ProcessAfterFrameIsRendered(_dc, false);
@@ -984,7 +996,7 @@ void process(void)
             // RDP TLUTs the CI8 emulator output into the RGBA5551 framebuffer.
             // CPU writes to the frame went through the d-cache; flush before
             // the RDP reads via DMA.
-            data_cache_hit_writeback(frame, CI8_FRAME_BYTES);
+            data_cache_hit_writeback(frame, SMS_WIDTH * lines);
 
             // Snapshot the palette for the RDP. It has to be a copy, not the
             // live tlut, because the emulator keeps writing CRAM while the RDP
@@ -995,7 +1007,7 @@ void process(void)
             __builtin_memcpy(palette, tlut, sizeof(tlut));
             data_cache_hit_writeback(palette, sizeof(tlut));
 
-            surface_t ci8_surface = surface_make_linear(frame, FMT_CI8, SMS_WIDTH, SMS_HEIGHT);
+            surface_t ci8_surface = surface_make_linear(frame, FMT_CI8, SMS_WIDTH, lines);
             rdpq_attach(_dc, NULL);
 
             // Copy mode moves 4 pixels per cycle but can only scale vertically:
@@ -1028,10 +1040,11 @@ void process(void)
             if (IS_GG)
             {
                 // GG visible window out of the Master System sized frame the
-                // renderer produces: cols 48..207, rows 24..167.
+                // renderer produces: cols 48..207, rows 24..167 - or 40..183 in
+                // the 224-line mode, which is 16 rows taller above the window.
                 rdpq_blitparms_t parms = {};
                 parms.s0 = SMS_GG_X;
-                parms.t0 = SMS_GG_Y;
+                parms.t0 = SMS_GG_Y + (lines - SMS_HEIGHT) / 2;
                 parms.width = SMS_GG_WIDTH;
                 parms.height = SMS_GG_HEIGHT;
                 if (upscale_enabled)
@@ -1057,15 +1070,18 @@ void process(void)
                 // SMS: 256x192 over the full 256x240. Vertical only, so this
                 // stays in copy mode and costs nothing but the extra pixels
                 // written. 240/192 is exactly 1.25, and the blit is split into
-                // 8-row TMEM chunks, so every chunk lands on a whole row.
+                // 8-row TMEM chunks, so every chunk lands on a whole row. The
+                // 224-line mode scales by 240/224, which does not come out even:
+                // some rows are doubled and the rest are not.
                 rdpq_blitparms_t parms = {};
-                parms.scale_y = (float)FB_HEIGHT / SMS_HEIGHT;
+                parms.scale_y = (float)FB_HEIGHT / lines;
                 rdpq_tex_blit(&ci8_surface, 0, 0, &parms);
             }
             else
             {
-                // SMS: full 256x192 image, letterboxed top and bottom.
-                rdpq_tex_blit(&ci8_surface, 0, (FB_HEIGHT - SMS_HEIGHT) / 2, NULL);
+                // SMS: full 256x192 image, letterboxed top and bottom - or
+                // 256x224 with a border of 8 rows.
+                rdpq_tex_blit(&ci8_surface, 0, (FB_HEIGHT - lines) / 2, NULL);
             }
 
             // Schedules display_show() to happen once the RDP is done, instead
@@ -1350,7 +1366,8 @@ bool IsRomInjected(RomInfo *info, bool withOffset)
 
 // Checks for an injected rom that is known by the start of its contents:
 // Master System and Game Gear roms without a usable header or with one naming
-// the wrong console, and SG-1000 roms too large for the SG-1000 guess below.
+// the wrong console, Master System and Game Gear roms of 48 KB or less, and
+// SG-1000 roms too large for the SG-1000 guess below.
 // Called before the header is looked at, since for these roms the header is
 // what gets it wrong. See injectedroms.c.
 static bool IsKnownRomInjected(RomInfo *info, int *offset)
@@ -1824,7 +1841,9 @@ int main()
         else if (!zPressed && cart_type != CART_NULL)
         {
             // The table comes first: it also holds the roms whose header names
-            // the wrong console, which is what IsRomInjected() would go by.
+            // the wrong console, which is what IsRomInjected() would go by, and
+            // the roms of 48 KB or less, which run without a mapper and so need
+            // their real size rather than the 512 KB IsRomInjected() reads.
             if ((loadedFromFlashcartMenu = IsKnownRomInjected(&info, &offset)) == false &&
                 (loadedFromFlashcartMenu = IsRomInjected(&info, false)) == false)
             {
