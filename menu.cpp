@@ -156,13 +156,12 @@ RomLoadResult loadRomFile(const char *fullPath, const char *displayName, RomInfo
         return ROMLOAD_EMPTY;
     }
     debugf("Size of rom in %s is %d\n", fullPath, size);
-    // The SG-1000 memory map and the fixed map of a Master System or Game
-    // Gear rom without a mapper page whole 8 and 16 KB blocks in, and such an
-    // image is often not a whole number of them. Allocate up to the next
-    // 16 KB boundary so every page they map is inside the buffer, and fill the
-    // tail with $FF, which is what an empty cartridge bus reads as.
-    // load_rom() relies on this. info->size stays the real size, which is
-    // what the memory map uses to tell rom from open bus.
+    // Every memory map pages whole 8 and 16 KB blocks in, and load_rom()
+    // counts a partial last page as a page, so the mapper can select it.
+    // Allocate up to the next 16 KB boundary so every page they map is inside
+    // the buffer, and fill the tail with $FF, which is what an empty
+    // cartridge bus reads as. load_rom() relies on this. info->size stays the
+    // real size, which is what the memory map uses to tell rom from open bus.
     int allocSize = (size + 0x3FFF) & ~0x3FFF;
     info->size = size;
     info->rom = (uint8_t *)malloc(allocSize);

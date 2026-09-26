@@ -1,6 +1,11 @@
 # CHANGELOG
 
-Codemasters games, the taller picture of the Master System II, and most MSX conversions.
+Fixes for the Game Gear betas of The Lion King and Batman & Robin.
+
+## v0.13
+
+- The Game Gear betas of The Lion King and Batman & Robin no longer show corrupt graphics or a
+  black screen, and the Italian translation of Alex Kidd in Miracle World now starts.
 
 ## v0.12
 

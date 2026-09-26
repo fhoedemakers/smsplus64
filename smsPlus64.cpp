@@ -1860,9 +1860,9 @@ int main()
 
         if (loadedFromFlashcartMenu && !ed64pro_present())
         {
-            // Whole 16 KB pages. The SG-1000 memory map relies on it (see
-            // load_rom()), and for the other consoles it keeps a partial last
-            // page reachable. Every size but a known rom's already is one.
+            // Whole 16 KB pages: load_rom() counts a partial last page as a
+            // page and maps it whole. Every size but a known rom's already is
+            // one.
             int readSize = (info.size + 0x3FFF) & ~0x3FFF;
             debugstdout("Allocating memory for rom\n");
             info.rom = (uint8_t *)malloc(readSize);

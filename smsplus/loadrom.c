@@ -161,28 +161,27 @@ int load_rom(uint8_t *rom, int size, int cartType, bool sizeGuessed)
             cart.mapper = MAPPER_CODIES;
     }
 
-    /* SG-1000 images can be 8 KB or not a whole number of pages (49136 and
-       65535 bytes both occur), and the last partial page still counts. The
-       page count is rounded up for them, which is only safe because the loader
-       pads SG images to a 16 KB boundary - see loadRomFile(). Any other loader
-       has to do the same. */
-    if (cartType == TYPE_SG)
-    {
-        cart.pages = (size + 0x3FFF) >> 14;
-        return 1;
-    }
+    /* A partial last page counts as a page, for every console. sms_mapper_w()
+       reduces every bank number modulo this, and rounding down, as this did
+       for everything but SG-1000, sent that page to page 0: the Game Gear
+       betas of The Lion King and Batman & Robin are a few hundred bytes short
+       of 512 KB and keep graphics and code in page 31, and the Italian
+       translation of Alex Kidd in Miracle World showed nothing. SG-1000 images
+       were always rounded up: 8 KB, 49136 and 65535 bytes all occur.
 
-    /* Never zero. sms_mapper_w() reduces every bank number modulo this, and a
-       rom under 16K rounds down to no pages at all - which is not a wrong
-       picture but a dead console: gcc compiles the modulo to a divu preceded by
+       The partial page is mapped whole, which is only safe because every
+       loader allocates up to the next 16 KB boundary: loadRomFile() pads with
+       $FF, and the flashcart path reads whole pages. Any other loader has to
+       do the same.
+
+       Never zero. Only an empty image rounds to no pages, and loadRomFile()
+       turns those away, but zero here is not a wrong picture but a dead
+       console: gcc compiles the modulo to a divu preceded by
        "teq v1,zero,0x7", so the first bank switch a game does raises a trap
-       exception. A rom that small has one page as far as the mapper is
+       exception. A rom under 16K has one page as far as the mapper is
        concerned, and every bank number resolves to it, which is what the
-       hardware does when the cartridge has no bank lines to drive.
-
-       This is a floor, not a rounding: rounding a partial page up would let the
-       mapper select a page the buffer does not hold. */
-    cart.pages = (size / 0x4000);
+       hardware does when the cartridge has no bank lines to drive. */
+    cart.pages = (size + 0x3FFF) >> 14;
     if (cart.pages == 0)
         cart.pages = 1;
 
