@@ -125,8 +125,9 @@ System and Game Gear roms.
 - The EverDrive-64 X7 menu and N64FlashcartMenu pass a game on without its size or file
   name, and SG-1000 images have no header to recognise them by. The emulator therefore
   identifies such a rom from a list of known roms, which also covers Master System and
-  Game Gear games whose rom header is missing or names the wrong console, and SG-1000
-  games larger than 48 KB. Any other rom
+  Game Gear games whose rom header is missing or names the wrong console, Master System
+  and Game Gear games of 48 KB or less, which need their real size, and SG-1000 games
+  larger than 48 KB. Any other rom
   without a header is taken to be an SG-1000 game of 48 KB, which suits nearly all of
   them. A game that is not recognised this way can always be started from the game
   browser.
@@ -232,8 +233,6 @@ N64FlashcartMenu.
 
 - **Korean unlicensed cartridges** that use bank switching of their own, such as Jang Pung 3
   and Samgukji 3.
-- **Beta and prototype dumps** that are incomplete, such as the Game Gear betas of The
-  Adventures of Batman & Robin and The Lion King.
 - BIOS images, which are not games.
 
 Reports of other games that do not run are welcome.

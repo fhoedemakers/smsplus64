@@ -74,13 +74,14 @@ typedef struct {
 /* Cartridge mappers (cart.mapper) */
 #define MAPPER_SEGA         (0)    /* bank registers at $FFFD-$FFFF, RAM control at $FFFC */
 #define MAPPER_CODIES       (1)    /* Codemasters: bank registers at $0000, $4000 and $8000 */
+#define MAPPER_NONE         (2)    /* up to 48K: $0000-$BFFF is the rom, no registers */
 
 /* Game image structure */
 typedef struct {
     uint8 *rom;
     uint8 pages;
     uint8 type;
-    uint8 mapper;       /* MAPPER_SEGA or MAPPER_CODIES, from the rom header */
+    uint8 mapper;       /* MAPPER_SEGA, MAPPER_CODIES or MAPPER_NONE, from the rom */
     int size;           /* ROM image size in bytes, copier header excluded */
     uint8 size_guessed; /* SG-1000 rom injected by a flashcart menu: real size unknown */
 } t_cart;

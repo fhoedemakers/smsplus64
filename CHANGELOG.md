@@ -1,6 +1,6 @@
 # CHANGELOG
 
-Codemasters games, and the taller picture of the Master System II.
+Codemasters games, the taller picture of the Master System II, and most MSX conversions.
 
 ## v0.12
 
@@ -12,6 +12,10 @@ Codemasters games, and the taller picture of the Master System II.
   Codemasters games are among them, and so is Star Trek: The Next Generation on Game Gear.
 - Ecco the Dolphin (Game Gear), Ace of Aces, Shadow Dancer, Aerial Assault and a few others
   no longer stop at a black screen.
+- Most conversions of MSX games and several Korean releases now start instead of showing a
+  black screen, among them Bosconian, Dig Dug, Galaga, Pac-Man, Zaxxon, FA Tetris and Pooyan.
+- Some homebrew games, such as Bomberman Boom and Pong Master, and the Game Gear betas of
+  Batman & Robin and The Lion King now start instead of showing a black screen.
 
 ## v0.11
 

@@ -1366,7 +1366,8 @@ bool IsRomInjected(RomInfo *info, bool withOffset)
 
 // Checks for an injected rom that is known by the start of its contents:
 // Master System and Game Gear roms without a usable header or with one naming
-// the wrong console, and SG-1000 roms too large for the SG-1000 guess below.
+// the wrong console, Master System and Game Gear roms of 48 KB or less, and
+// SG-1000 roms too large for the SG-1000 guess below.
 // Called before the header is looked at, since for these roms the header is
 // what gets it wrong. See injectedroms.c.
 static bool IsKnownRomInjected(RomInfo *info, int *offset)
@@ -1840,7 +1841,9 @@ int main()
         else if (!zPressed && cart_type != CART_NULL)
         {
             // The table comes first: it also holds the roms whose header names
-            // the wrong console, which is what IsRomInjected() would go by.
+            // the wrong console, which is what IsRomInjected() would go by, and
+            // the roms of 48 KB or less, which run without a mapper and so need
+            // their real size rather than the 512 KB IsRomInjected() reads.
             if ((loadedFromFlashcartMenu = IsKnownRomInjected(&info, &offset)) == false &&
                 (loadedFromFlashcartMenu = IsRomInjected(&info, false)) == false)
             {

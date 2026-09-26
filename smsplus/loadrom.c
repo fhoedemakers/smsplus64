@@ -145,8 +145,14 @@ int load_rom(uint8_t *rom, int size, int cartType, bool sizeGuessed)
        at $7FE6 and its complement at $7FE8 that add up to $10000; Mesen2 detects
        them the same way. That finds every Codemasters rom in SMS Plus GX's CRC
        list and also their betas, hacks and translations, without a table. It
-       reads the rom itself, so it works for roms a flashcart menu injected too. */
-    cart.mapper = MAPPER_SEGA;
+       reads the rom itself, so it works for roms a flashcart menu injected too.
+       Anything else up to 48K has no mapper chip, as in Mesen2: the rom fills
+       $0000-$BFFF and a write to $FFFC-$FFFF reaches work RAM only. The MSX
+       conversions clear all of work RAM and then enter the game through the
+       MSX header at $4002, which a Sega mapper would have switched to page 0.
+       A flashcart menu passes no size, so injectedroms_table.h gives these roms
+       theirs. */
+    cart.mapper = (size > 0xC000) ? MAPPER_SEGA : MAPPER_NONE;
     if (cartType != TYPE_SG && size > 0x8000)
     {
         int checksum = start[0x7FE6] | (start[0x7FE7] << 8);

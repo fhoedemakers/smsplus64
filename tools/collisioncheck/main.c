@@ -148,10 +148,16 @@ int main(int argc, char **argv)
                   : ends_with(path, ".sg") ? TYPE_SG : TYPE_SMS;
     int is_sg = (cart_type == TYPE_SG);
 
-    /* SG images are padded to a 16 KB boundary with $FF, as loadRomFile()
-       does on the console, so a build with -fsanitize=address sees exactly the
+    /* A copier header comes off as loadRomFile() takes it off: only from a
+       file that is a whole number of 1 KB plus 512 bytes */
+    long header = (!is_sg && (size % 1024) == 512) ? 512 : 0;
+    size -= header;
+    fseek(f, header, SEEK_SET);
+
+    /* Images are padded to a 16 KB boundary with $FF, as loadRomFile() does
+       on the console, so a build with -fsanitize=address sees exactly the
        buffer the emulator gets there. */
-    long alloc = is_sg ? ((size + 0x3FFF) & ~0x3FFF) : size;
+    long alloc = (size + 0x3FFF) & ~0x3FFF;
     uint8_t *rom = malloc(alloc);
     if (fread(rom, 1, size, f) != (size_t)size) { fprintf(stderr, "short read\n"); return 1; }
     fclose(f);
